@@ -43,17 +43,6 @@ export default function InstitutionDashboardPage() {
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               {/* Saludo y Rol */}
               <div className="max-w-3xl">
-                <div className="flex flex-wrap items-center gap-2 mb-3">
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-lime/30 bg-lime/10 px-3 py-1 text-[0.68rem] font-bold uppercase tracking-wider text-lime">
-                    <span className="size-1.5 rounded-full bg-lime animate-pulse" />
-                    Portal Institucional · UTS
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[0.68rem] font-medium text-white/70">
-                    <i className="bx bx-shield-quarter text-lime text-xs" />
-                    Acceso MFA Verificado
-                  </span>
-                </div>
-
                 <h1
                   id="institution-dashboard-title"
                   className="font-display text-[clamp(1.75rem,3.5vw,2.65rem)] font-bold leading-[1.15] tracking-tight text-white m-0"

@@ -1,31 +1,53 @@
+import { useMemo, useState } from 'react';
 import DashboardStatCard from '../components/dashboard/DashboardStatCard.jsx';
 import GraduatePortalLayout from '../components/dashboard/GraduatePortalLayout.jsx';
+import GridVacancyDetailModal from '../components/dashboard/GridVacancyDetailModal.jsx';
 import ResumeUploadCard from '../components/dashboard/ResumeUploadCard.jsx';
+import SavedVacanciesSection from '../components/dashboard/SavedVacanciesSection.jsx';
 import JobBoardPreview from '../components/landing/JobBoardPreview.jsx';
-
-const stats = [
-  {
-    label: 'Perfil Completado',
-    value: '15%',
-    icon: 'bx-user-check',
-    isProgress: true,
-    accent: 'green',
-  },
-  {
-    label: 'Habilidades Detectadas',
-    value: '0',
-    icon: 'bx-bulb',
-    accent: 'amber',
-  },
-  {
-    label: 'Vacantes con alto Match',
-    value: '0',
-    icon: 'bx-target-lock',
-    accent: 'blue',
-  },
-];
+import { useSavedJobs } from '../hooks/useSavedJobs.js';
 
 export default function GraduateDashboard() {
+  const { savedJobs, savedCount, isSaved, toggleSave } = useSavedJobs();
+  const [detailJob, setDetailJob] = useState(null);
+  const [appliedJobs, setAppliedJobs] = useState(new Set());
+  const [toastMessage, setToastMessage] = useState(null);
+
+  function notify(msg) {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  }
+
+  function handleApply(job) {
+    setAppliedJobs((prev) => new Set(prev).add(job.id));
+    notify(`¡Postulación enviada exitosamente a ${job.company} (${job.title})!`);
+  }
+
+  const dynamicStats = useMemo(
+    () => [
+      {
+        label: 'Perfil Completado',
+        value: '85%',
+        icon: 'bx-user-check',
+        isProgress: true,
+        accent: 'green',
+      },
+      {
+        label: 'Vacantes Guardadas',
+        value: String(savedCount),
+        icon: 'bxs-bookmark-star',
+        accent: 'amber',
+      },
+      {
+        label: 'Vacantes con alto Match',
+        value: '6',
+        icon: 'bx-target-lock',
+        accent: 'blue',
+      },
+    ],
+    [savedCount]
+  );
+
   return (
     <GraduatePortalLayout activePage="home">
       <main className="w-full pb-12 lg:pb-16">
@@ -68,20 +90,8 @@ export default function GraduateDashboard() {
                   <span className="text-lime">Tenemos algunas vacantes para ti</span>
                 </h1>
                 <p className="mt-4 max-w-xl text-sm leading-6 text-white/65">
-                  Aquí puedes ver un resumen de tu actividad, subir tu hoja de vida y explorar nuevas oportunidades laborales.
+                  Aquí puedes ver un resumen de tu actividad, tus convocatorias guardadas, subir tu hoja de vida y explorar nuevas oportunidades con convenios UTS.
                 </p>
-              </div>
-
-              {/* Right: Quick stats summary pills */}
-              <div className="flex flex-wrap gap-2.5">
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-medium text-white/85 backdrop-blur-sm">
-                  <i className="bx bx-briefcase text-sm text-lime" aria-hidden="true" />
-                  3 vacantes activas
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-medium text-white/85 backdrop-blur-sm">
-                  <i className="bx bx-bulb text-sm text-lime" aria-hidden="true" />
-                  Matching IA activo
-                </span>
               </div>
             </div>
           </div>
@@ -89,7 +99,7 @@ export default function GraduateDashboard() {
 
         {/* ─── Main Content ─── */}
         <div className="mx-auto max-w-6xl px-5 pt-8 sm:px-8 sm:pt-10 lg:px-10 lg:pt-12">
-          <div className="grid gap-6 sm:gap-7">
+          <div className="grid gap-8 sm:gap-10">
             {/* Stat Cards Row */}
             <section aria-label="Resumen de tu perfil">
               <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -99,22 +109,59 @@ export default function GraduateDashboard() {
                 </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-                {stats.map((stat) => <DashboardStatCard key={stat.label} {...stat} />)}
+                {dynamicStats.map((stat) => (
+                  <DashboardStatCard key={stat.label} {...stat} />
+                ))}
               </div>
             </section>
 
             {/* Resume Upload */}
             <ResumeUploadCard />
 
+            {/* ─── Sección de Vacantes Guardadas (Favoritas) ─── */}
+            <SavedVacanciesSection
+              onOpenJob={(job) => setDetailJob(job)}
+              onApplyJob={handleApply}
+              appliedJobIds={appliedJobs}
+            />
+
             {/* Job Board */}
             <JobBoardPreview variant="dashboard" />
           </div>
 
           <p className="mt-8 border-t border-line-soft pt-5 text-xs leading-5 text-body-muted">
-            Plataforma de vinculación laboral · Red de talento universitario
+            Plataforma de vinculación laboral · Red de talento universitario Unidades Tecnológicas de Santander
           </p>
         </div>
       </main>
+
+      {/* ─── Modal de Detalle de Vacante (Reutilizable para Ficha Completa) ─── */}
+      <GridVacancyDetailModal
+        job={detailJob}
+        isOpen={Boolean(detailJob)}
+        onClose={() => setDetailJob(null)}
+        onApply={(job) => {
+          handleApply(job);
+        }}
+        isApplied={detailJob ? appliedJobs.has(detailJob.id) : false}
+        isSaved={detailJob ? isSaved(detailJob.id) : false}
+        onToggleSave={(id) => {
+          toggleSave(id);
+          notify(isSaved(id) ? 'Vacante eliminada de tus guardados.' : 'Vacante guardada en tus favoritos.');
+        }}
+        allJobs={savedJobs}
+        onSelectJob={(newJob) => setDetailJob(newJob)}
+      />
+
+      {/* ─── Toast de Notificación Flotante ─── */}
+      {toastMessage && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[60] flex justify-center px-4">
+          <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white shadow-hero animate-in fade-in slide-in-from-bottom-2">
+            <i className="bx bxs-check-circle text-lime text-lg" />
+            {toastMessage}
+          </div>
+        </div>
+      )}
     </GraduatePortalLayout>
   );
 }

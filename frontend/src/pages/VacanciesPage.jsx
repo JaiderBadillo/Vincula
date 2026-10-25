@@ -1,20 +1,22 @@
 import { useMemo, useState } from 'react';
 import GraduatePortalLayout from '../components/dashboard/GraduatePortalLayout.jsx';
+import GridVacancyDetailModal from '../components/dashboard/GridVacancyDetailModal.jsx';
 import { proposalJobs } from '../data/proposalJobs.js';
 import { useProfile } from '../hooks/useProfile.js';
+import { useSavedJobs } from '../hooks/useSavedJobs.js';
 
 export default function VacanciesPage() {
   const { profile } = useProfile();
+  const { isSaved, toggleSave } = useSavedJobs();
   const [selectedId, setSelectedId] = useState(proposalJobs[0]?.id ?? null);
   const [activeDetailTab, setActiveDetailTab] = useState('cargo'); // 'cargo' | 'match' | 'empresa' | 'proceso'
-  const [viewMode, setViewMode] = useState('split'); // 'split' | 'grid'
+  const [viewMode, setViewMode] = useState('grid'); // Default is 'grid' (cuadrícula)
+  const [gridDetailJob, setGridDetailJob] = useState(null);
   const [keyword, setKeyword] = useState('');
-  const [sectorFilter, setSectorFilter] = useState('all'); // 'all' | 'private' | 'public'
-  const [modeFilter, setModeFilter] = useState('all'); // 'all' | 'Remoto' | 'Híbrido' | 'Presencial'
+  const [locationQuery, setLocationQuery] = useState('');
   const [sortBy, setSortBy] = useState('match'); // 'match' | 'salary' | 'recent'
   const [applyModalJob, setApplyModalJob] = useState(null);
   const [appliedJobs, setAppliedJobs] = useState(new Set());
-  const [savedJobs, setSavedJobs] = useState(new Set());
   const [applicationNote, setApplicationNote] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
 
@@ -25,18 +27,23 @@ export default function VacanciesPage() {
 
   const filteredJobs = useMemo(() => {
     const q = keyword.trim().toLowerCase();
+    const loc = locationQuery.trim().toLowerCase();
+
     let list = proposalJobs.filter((j) => {
       const matchKeyword =
         !q ||
         j.title.toLowerCase().includes(q) ||
         j.company.toLowerCase().includes(q) ||
-        j.city.toLowerCase().includes(q) ||
-        j.stack.some((s) => s.toLowerCase().includes(q));
+        j.stack.some((s) => s.toLowerCase().includes(q)) ||
+        j.summary.toLowerCase().includes(q);
 
-      const matchSector = sectorFilter === 'all' || j.sector === sectorFilter;
-      const matchMode = modeFilter === 'all' || j.mode.toLowerCase() === modeFilter.toLowerCase();
+      const matchLocation =
+        !loc ||
+        j.city.toLowerCase().includes(loc) ||
+        j.location.toLowerCase().includes(loc) ||
+        j.mode.toLowerCase().includes(loc);
 
-      return matchKeyword && matchSector && matchMode;
+      return matchKeyword && matchLocation;
     });
 
     if (sortBy === 'match') {
@@ -48,22 +55,14 @@ export default function VacanciesPage() {
     }
 
     return list;
-  }, [keyword, sectorFilter, modeFilter, sortBy]);
+  }, [keyword, locationQuery, sortBy]);
 
   const selectedJob = filteredJobs.find((j) => j.id === selectedId) || filteredJobs[0] || null;
 
   function toggleSaveJob(id) {
-    setSavedJobs((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-        notify('Vacante eliminada de tus guardados.');
-      } else {
-        next.add(id);
-        notify('Vacante guardada en tus favoritos.');
-      }
-      return next;
-    });
+    const wasSaved = isSaved(id);
+    toggleSave(id);
+    notify(wasSaved ? 'Vacante eliminada de tus guardados.' : 'Vacante guardada en tus favoritos.');
   }
 
   function handleConfirmApply() {
@@ -90,152 +89,147 @@ export default function VacanciesPage() {
           </div>
 
           <div className="relative z-10 max-w-7xl mx-auto">
-            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-              <div className="max-w-2xl">
-                <h1 className="m-0 font-display text-[clamp(1.8rem,3.2vw,2.6rem)] font-bold tracking-tight text-white leading-tight">
-                  Explorar Vacantes y Oportunidades Laborales
-                </h1>
-                <p className="m-0 mt-2 text-sm sm:text-base text-white/70 leading-relaxed max-w-xl">
-                  Accede a convocatorias transparentes con empresas aliadas verificadas. Descubre tu porcentaje de afinidad según tu titulación y competencias curriculares.
-                </p>
-              </div>
-
-              {/* KPI Strip */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 shrink-0">
-                <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-3.5">
-                  <span className="block text-[0.65rem] font-bold uppercase tracking-wider text-lime">
-                    Convenios Activos
-                  </span>
-                  <span className="font-display text-xl font-bold text-white mt-0.5 block">
-                    {proposalJobs.length} Empresas
-                  </span>
-                  <span className="text-[0.68rem] text-white/50">Santander & Nacional</span>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-3.5">
-                  <span className="block text-[0.65rem] font-bold uppercase tracking-wider text-emerald-400">
-                    Sueldo Promedio
-                  </span>
-                  <span className="font-display text-xl font-bold text-white mt-0.5 block">
-                    $6.4M COP
-                  </span>
-                  <span className="text-[0.68rem] text-white/50">Hasta $8.8M mensuales</span>
-                </div>
-
-                <div className="col-span-2 sm:col-span-1 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-3.5">
-                  <span className="block text-[0.65rem] font-bold uppercase tracking-wider text-sky-400">
-                    Tu Afinidad Máxima
-                  </span>
-                  <span className="font-display text-xl font-bold text-lime mt-0.5 block">
-                    96% Match
-                  </span>
-                  <span className="text-[0.68rem] text-white/50">Con tu perfil UTS</span>
-                </div>
-              </div>
+            <div className="max-w-3xl">
+              <h1 className="m-0 font-display text-[clamp(1.8rem,3.2vw,2.6rem)] font-bold tracking-tight text-white leading-tight">
+                Explorar Vacantes y Oportunidades Laborales
+              </h1>
+              <p className="m-0 mt-2 text-sm sm:text-base text-white/70 leading-relaxed max-w-2xl">
+                Accede a convocatorias transparentes con empresas aliadas verificadas. Descubre tu porcentaje de afinidad según tu titulación y competencias curriculares.
+              </p>
             </div>
 
-            {/* Smart Search Bar */}
-            <div className="mt-8 rounded-2xl border border-white/15 bg-white/10 p-2.5 backdrop-blur-xl shadow-hero">
-              <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
-                <div className="relative flex items-center px-3 py-1.5">
-                  <i className="bx bx-search text-xl text-lime mr-2.5" />
-                  <input
-                    type="search"
-                    value={keyword}
-                    onChange={(e) => setKeyword(e.target.value)}
-                    placeholder="Buscar por cargo (ej. Datos, React), empresa (Bancolombia, Rappi) o tecnología..."
-                    className="w-full bg-transparent text-sm text-white placeholder-white/50 outline-none"
-                  />
-                  {keyword && (
-                    <button
-                      type="button"
-                      onClick={() => setKeyword('')}
-                      className="text-white/60 hover:text-white p-1 text-sm cursor-pointer"
-                    >
-                      <i className="bx bx-x" />
-                    </button>
-                  )}
-                </div>
+            {/* Search bar estilo Inicio */}
+            <form
+              onSubmit={(e) => e.preventDefault()}
+              className="mt-8 grid gap-2 rounded-2xl border border-line bg-white p-2 shadow-hero sm:grid-cols-[1.3fr_1fr_auto] sm:items-center max-w-4xl"
+              role="search"
+              aria-label="Buscar oportunidades laborales"
+            >
+              <label className="flex min-w-0 items-center gap-3 px-3 py-2 text-secondary" htmlFor="job-keyword">
+                <i className="bx bx-search text-xl text-secondary" aria-hidden="true" />
+                <span className="sr-only">Cargo, área o palabra clave</span>
+                <input
+                  id="job-keyword"
+                  type="search"
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  placeholder="Cargo, área o palabra clave"
+                  className="w-full min-w-0 border-0 bg-transparent py-1 text-sm text-ink outline-none placeholder:text-secondary focus-visible:ring-0"
+                />
+                {keyword && (
+                  <button
+                    type="button"
+                    onClick={() => setKeyword('')}
+                    className="text-secondary hover:text-ink p-1 text-sm cursor-pointer"
+                    title="Limpiar"
+                  >
+                    <i className="bx bx-x" />
+                  </button>
+                )}
+              </label>
 
-                {/* Sector filter */}
-                <select
-                  value={sectorFilter}
-                  onChange={(e) => setSectorFilter(e.target.value)}
-                  className="rounded-xl border border-white/15 bg-ink/70 px-3.5 py-2.5 text-xs font-semibold text-white outline-none cursor-pointer"
-                >
-                  <option value="all">Todos los sectores</option>
-                  <option value="private">Sector Privado / Tech</option>
-                  <option value="public">Sector Público / Mixto</option>
-                </select>
+              <label className="flex min-w-0 items-center gap-3 border-t border-line-soft px-3 py-2 text-secondary sm:border-l sm:border-t-0 sm:pl-4" htmlFor="job-location">
+                <i className="bx bx-map text-xl text-secondary" aria-hidden="true" />
+                <span className="sr-only">Ciudad o modalidad</span>
+                <input
+                  id="job-location"
+                  type="search"
+                  value={locationQuery}
+                  onChange={(e) => setLocationQuery(e.target.value)}
+                  placeholder="Ciudad o modalidad"
+                  className="w-full min-w-0 border-0 bg-transparent py-1 text-sm text-ink outline-none placeholder:text-secondary focus-visible:ring-0"
+                />
+                {locationQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setLocationQuery('')}
+                    className="text-secondary hover:text-ink p-1 text-sm cursor-pointer"
+                    title="Limpiar"
+                  >
+                    <i className="bx bx-x" />
+                  </button>
+                )}
+              </label>
 
-                {/* Mode filter */}
-                <select
-                  value={modeFilter}
-                  onChange={(e) => setModeFilter(e.target.value)}
-                  className="rounded-xl border border-white/15 bg-ink/70 px-3.5 py-2.5 text-xs font-semibold text-white outline-none cursor-pointer"
-                >
-                  <option value="all">Todas las modalidades</option>
-                  <option value="Remoto">100% Remoto</option>
-                  <option value="Híbrido">Híbrido</option>
-                  <option value="Presencial">Presencial</option>
-                </select>
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-dark hover:bg-green px-6 py-3 text-sm font-bold text-white shadow-xs transition-colors cursor-pointer whitespace-nowrap"
+              >
+                <span>Buscar oportunidades</span>
+                <i className="bx bx-right-arrow-alt text-xl" aria-hidden="true" />
+              </button>
+            </form>
+          </div>
+        </section>
 
-                {/* Sort selector */}
+        {/* ─── Control Bar: Filters + Results counter + View mode switch ─── */}
+        <div className="border-b border-line-soft bg-white px-5 py-3 sm:px-8 lg:px-10">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+            
+            {/* Ordenamiento & Limpieza de búsqueda */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-secondary">Ordenar por:</span>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="rounded-xl border border-lime/40 bg-lime text-ink px-3.5 py-2.5 text-xs font-bold outline-none cursor-pointer"
+                  className="rounded-xl border border-line bg-page px-3 py-1.5 text-xs font-semibold text-ink focus:border-green focus:outline-none cursor-pointer"
                 >
                   <option value="match">Mayor afinidad UTS</option>
                   <option value="salary">Mayor remuneración</option>
                   <option value="recent">Más recientes</option>
                 </select>
               </div>
-            </div>
-          </div>
-        </section>
 
-        {/* ─── Control Bar: Results counter + View mode switch ─── */}
-        <div className="border-b border-line-soft bg-white px-5 py-3.5 sm:px-8 lg:px-10">
-          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3 text-sm text-body-muted">
-              <span>
-                Mostrando <strong className="text-ink font-bold">{filteredJobs.length}</strong> convocatorias vigentes
-              </span>
-              <span className="text-secondary">•</span>
-              <span className="text-xs text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                <i className="bx bxs-badge-check text-green text-xs mr-1" />
-                Todas verificadas con NIT y Convenio UTS
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-secondary font-medium mr-1">Visualización:</span>
-              <div className="flex rounded-xl border border-line bg-page p-1">
+              {(keyword || locationQuery) && (
                 <button
                   type="button"
-                  onClick={() => setViewMode('split')}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                    viewMode === 'split' ? 'bg-white text-ink shadow-xs' : 'text-secondary hover:text-ink'
-                  }`}
-                  title="Panel dividido (Lista + Ficha inmersiva)"
+                  onClick={() => {
+                    setKeyword('');
+                    setLocationQuery('');
+                  }}
+                  className="text-xs text-secondary hover:text-rose-600 underline cursor-pointer ml-1"
                 >
-                  <i className="bx bx-layout text-sm" />
-                  Panel Dividido
+                  Limpiar búsqueda
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('grid')}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                    viewMode === 'grid' ? 'bg-white text-ink shadow-xs' : 'text-secondary hover:text-ink'
-                  }`}
-                  title="Cuadrícula completa de tarjetas fotográficas"
-                >
-                  <i className="bx bx-grid-alt text-sm" />
-                  Cuadrícula
-                </button>
+              )}
+            </div>
+
+            {/* Contador y Switch de Visualización */}
+            <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 pt-2 md:pt-0 border-t md:border-t-0 border-line-soft">
+              <span className="text-xs text-secondary">
+                Mostrando <strong className="text-ink font-bold">{filteredJobs.length}</strong> vacantes
+              </span>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-secondary font-medium mr-1 hidden sm:inline">Vista:</span>
+                <div className="flex rounded-xl border border-line bg-page p-1">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('grid')}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                      viewMode === 'grid' ? 'bg-white text-ink shadow-xs' : 'text-secondary hover:text-ink'
+                    }`}
+                    title="Cuadrícula completa de tarjetas"
+                  >
+                    <i className="bx bx-grid-alt text-sm" />
+                    <span>Cuadrícula</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('split')}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                      viewMode === 'split' ? 'bg-white text-ink shadow-xs' : 'text-secondary hover:text-ink'
+                    }`}
+                    title="Panel dividido (Lista + Ficha)"
+                  >
+                    <i className="bx bx-layout text-sm" />
+                    <span>Panel Dividido</span>
+                  </button>
+                </div>
               </div>
             </div>
+
           </div>
         </div>
 
@@ -437,11 +431,11 @@ export default function VacanciesPage() {
                           type="button"
                           onClick={() => toggleSaveJob(selectedJob.id)}
                           className={`rounded-full p-2 backdrop-blur-md border border-white/30 text-white transition-colors cursor-pointer ${
-                            savedJobs.has(selectedJob.id) ? 'bg-amber-500 text-white border-amber-500' : 'bg-ink/60 hover:bg-white hover:text-ink'
+                            isSaved(selectedJob.id) ? 'bg-amber-500 text-white border-amber-500' : 'bg-ink/60 hover:bg-white hover:text-ink'
                           }`}
-                          title="Guardar vacante"
+                          title={isSaved(selectedJob.id) ? 'Quitar de guardados' : 'Guardar vacante'}
                         >
-                          <i className={`bx ${savedJobs.has(selectedJob.id) ? 'bxs-bookmark-star' : 'bx-bookmark'} text-base`} />
+                          <i className={`bx ${isSaved(selectedJob.id) ? 'bxs-bookmark-star' : 'bx-bookmark'} text-base`} />
                         </button>
                       </div>
 
@@ -877,7 +871,7 @@ export default function VacanciesPage() {
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {filteredJobs.map((job) => {
                 const isApplied = appliedJobs.has(job.id);
-                const isSaved = savedJobs.has(job.id);
+                const isJobSaved = isSaved(job.id);
 
                 return (
                   <article
@@ -886,7 +880,11 @@ export default function VacanciesPage() {
                   >
                     <div>
                       {/* Panoramic Cover */}
-                      <div className="relative h-40 w-full overflow-hidden bg-ink">
+                      <div
+                        onClick={() => setGridDetailJob(job)}
+                        className="relative h-40 w-full overflow-hidden bg-ink cursor-pointer"
+                        title="Haz clic para ver la ficha completa"
+                      >
                         <img
                           src={job.companyCover}
                           alt={job.company}
@@ -902,6 +900,21 @@ export default function VacanciesPage() {
                         </div>
 
                         <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleSaveJob(job.id);
+                            }}
+                            className={`grid size-7 place-items-center rounded-full backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-xs ${
+                              isJobSaved
+                                ? 'bg-amber-500 text-white border-amber-400'
+                                : 'bg-ink/65 text-white/80 hover:bg-white hover:text-ink'
+                            }`}
+                            title={isJobSaved ? 'Quitar de guardados' : 'Guardar vacante'}
+                          >
+                            <i className={`bx ${isJobSaved ? 'bxs-bookmark-star' : 'bx-bookmark'} text-xs`} />
+                          </button>
                           <span className="rounded-full bg-lime text-ink px-2.5 py-0.5 text-[0.65rem] font-bold shadow-xs">
                             {job.utsMatch}% Match
                           </span>
@@ -924,7 +937,11 @@ export default function VacanciesPage() {
 
                       {/* Body */}
                       <div className="p-5">
-                        <h3 className="m-0 font-display text-base font-bold text-ink group-hover:text-green-dark transition-colors line-clamp-2">
+                        <h3
+                          onClick={() => setGridDetailJob(job)}
+                          className="m-0 font-display text-base font-bold text-ink group-hover:text-green-dark transition-colors line-clamp-2 cursor-pointer"
+                          title="Haz clic para ver la ficha completa"
+                        >
                           {job.title}
                         </h3>
 
@@ -956,10 +973,7 @@ export default function VacanciesPage() {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => {
-                            setSelectedId(job.id);
-                            setViewMode('split');
-                          }}
+                          onClick={() => setGridDetailJob(job)}
                           className="flex-1 rounded-xl border border-line bg-page hover:bg-white hover:text-green-dark py-2.5 text-xs font-bold text-ink transition-colors cursor-pointer text-center"
                         >
                           Ver ficha completa
@@ -1062,6 +1076,22 @@ export default function VacanciesPage() {
           </div>
         </div>
       )}
+
+      {/* ─── Dedicated Grid Vacancy Detail Modal ─── */}
+      <GridVacancyDetailModal
+        job={gridDetailJob}
+        isOpen={Boolean(gridDetailJob)}
+        onClose={() => setGridDetailJob(null)}
+        onApply={(jobToApply) => {
+          setGridDetailJob(null);
+          setApplyModalJob(jobToApply);
+        }}
+        isApplied={gridDetailJob ? appliedJobs.has(gridDetailJob.id) : false}
+        isSaved={gridDetailJob ? isSaved(gridDetailJob.id) : false}
+        onToggleSave={toggleSaveJob}
+        allJobs={filteredJobs}
+        onSelectJob={(newJob) => setGridDetailJob(newJob)}
+      />
 
       {/* Toast Notification */}
       {toastMessage && (

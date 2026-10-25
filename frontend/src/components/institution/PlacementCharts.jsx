@@ -441,14 +441,14 @@ export function SalaryDistributionBarChart({ salaryData }) {
   const data = salaryData || [
     {
       bracket: '1 a 2 SMLV',
-      rangeCOP: '$ 1.42M - $ 2.84M',
+      rangeCOP: '$ 1.75M - $ 3.50M',
       percentage: 38,
       count: 2208,
       typicalProfile: 'Técnicos laborales y tecnólogos en primer empleo',
     },
     {
       bracket: '2 a 4 SMLV',
-      rangeCOP: '$ 2.84M - $ 5.69M',
+      rangeCOP: '$ 3.50M - $ 7.00M',
       percentage: 46,
       count: 2673,
       typicalProfile: 'Profesionales junior y tecnólogos consolidados',
@@ -456,14 +456,14 @@ export function SalaryDistributionBarChart({ salaryData }) {
     },
     {
       bracket: '4 a 6 SMLV',
-      rangeCOP: '$ 5.69M - $ 8.54M',
+      rangeCOP: '$ 7.00M - $ 10.50M',
       percentage: 12,
       count: 697,
       typicalProfile: 'Ingenieros de sistemas, datos y telecomunicaciones',
     },
     {
       bracket: '> 6 SMLV',
-      rangeCOP: '> $ 8.54M COP',
+      rangeCOP: '> $ 10.50M COP',
       percentage: 4,
       count: 233,
       typicalProfile: 'Líderes de arquitectura e infraestructura especializada',

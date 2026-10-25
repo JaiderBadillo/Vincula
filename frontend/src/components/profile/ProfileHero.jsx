@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getInitials, resizeImage } from '../../hooks/useProfile.js';
 
 const DEFAULT_COVER = '/images/profile/cover-office.jpg';
@@ -15,6 +15,20 @@ export default function ProfileHero({
 }) {
   const photoInput = useRef(null);
   const coverInput = useRef(null);
+  const photoMenuRef = useRef(null);
+  const [photoMenuOpen, setPhotoMenuOpen] = useState(false);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (photoMenuRef.current && !photoMenuRef.current.contains(event.target)) {
+        setPhotoMenuOpen(false);
+      }
+    }
+    if (photoMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [photoMenuOpen]);
 
   async function handleImage(event, field, maxSize) {
     const file = event.target.files?.[0];
@@ -68,7 +82,7 @@ export default function ProfileHero({
       </div>
 
       {/* ─── Identity bar ─── */}
-      <div className="relative px-5 sm:px-8 lg:px-10">
+      <div className="relative px-5 pb-6 sm:px-8 sm:pb-8 lg:px-10 lg:pb-10">
         {/* Row 1: Avatar (half over cover) + Action Buttons (cleanly below cover) */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           {/* Avatar: ONLY this element has negative top margin */}
@@ -87,15 +101,56 @@ export default function ProfileHero({
                 #Disponible
               </span>
             )}
-            <button
-              type="button"
-              onClick={() => photoInput.current?.click()}
-              className="absolute right-0 bottom-2 grid size-10 place-items-center rounded-full border-2 border-white bg-ink text-lg text-lime shadow-lg transition-transform hover:scale-110 cursor-pointer"
-              aria-label="Cambiar foto de perfil"
-              title="Cambiar foto de perfil"
-            >
-              <i className="bx bx-camera" aria-hidden="true" />
-            </button>
+
+            {/* Menú flotante de opciones de foto */}
+            <div className="absolute right-0 bottom-2" ref={photoMenuRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (profile.photo) {
+                    setPhotoMenuOpen((prev) => !prev);
+                  } else {
+                    photoInput.current?.click();
+                  }
+                }}
+                className="grid size-10 place-items-center rounded-full border-2 border-white bg-ink text-lg text-lime shadow-lg transition-transform hover:scale-110 cursor-pointer"
+                aria-label="Opciones de foto de perfil"
+                title={profile.photo ? 'Opciones de foto de perfil' : 'Subir foto de perfil'}
+                aria-expanded={photoMenuOpen}
+              >
+                <i className="bx bx-camera" aria-hidden="true" />
+              </button>
+
+              {photoMenuOpen && (
+                <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 z-40 w-44 rounded-2xl border border-line bg-white p-1.5 shadow-hero animate-rise-in">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhotoMenuOpen(false);
+                      photoInput.current?.click();
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-ink hover:bg-page transition-colors cursor-pointer text-left"
+                  >
+                    <i className="bx bx-image-add text-base text-green-dark" />
+                    <span>Actualizar foto</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhotoMenuOpen(false);
+                      updateProfile((p) => ({ ...p, photo: null }));
+                      notify('Foto eliminada.');
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer text-left"
+                  >
+                    <i className="bx bx-trash text-base text-rose-600" />
+                    <span>Eliminar foto</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             <input ref={photoInput} type="file" accept="image/*" className="sr-only" onChange={(e) => handleImage(e, 'photo', 360)} aria-label="Subir foto de perfil" />
           </div>
 
@@ -148,7 +203,7 @@ export default function ProfileHero({
           </p>
 
           {/* Enlace a formación académica UTS y datos de contacto */}
-          <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs sm:text-sm">
+          <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-2.5 text-xs sm:text-sm">
             <button
               type="button"
               onClick={() => (onSelectTab ? onSelectTab('educacion') : (window.location.hash = 'educacion'))}
@@ -177,40 +232,35 @@ export default function ProfileHero({
               <i className="bx bx-envelope text-base text-secondary" aria-hidden="true" />
               Información de contacto
             </button>
-
-            {profile.photo && (
-              <button
-                type="button"
-                className="inline-flex items-center gap-1 font-semibold text-secondary hover:text-red-600 cursor-pointer"
-                onClick={() => { updateProfile((p) => ({ ...p, photo: null })); notify('Foto eliminada.'); }}
-              >
-                <i className="bx bx-trash text-sm" aria-hidden="true" />Quitar foto
-              </button>
-            )}
           </div>
         </div>
 
-        {/* Stats strip */}
-        <ul className="m-0 mt-6 grid list-none gap-3 p-0 sm:grid-cols-3">
-          {stats.map((s, i) => (
-            <li
-              key={s.label}
-              className="profile-stat flex items-center gap-3 rounded-2xl border border-line bg-white px-4 py-3.5 shadow-xs"
-              style={{ animationDelay: `${i * 80}ms` }}
-            >
-              <span className={`grid size-10 place-items-center rounded-xl text-xl ${['bg-sky-50 text-sky-700', 'bg-violet-50 text-violet-700', 'bg-amber-50 text-amber-700'][i]}`} aria-hidden="true">
-                <i className={`bx ${s.icon}`} />
-              </span>
-              <div className="min-w-0">
-                <p className="m-0 flex items-baseline gap-2 font-display text-xl font-bold text-ink">
-                  {s.value}
-                  {s.trend && <span className="text-[0.68rem] font-bold text-emerald-600">{s.trend}</span>}
-                </p>
-                <p className="m-0 truncate text-xs text-body-muted">{s.label} · últimos 30 días</p>
-              </div>
-            </li>
-          ))}
-        </ul>
+        {/* ─── Separador y Estadísticas de Actividad ─── */}
+        <div className="mt-8 sm:mt-10 pt-6 border-t border-line-soft">
+          <ul
+            className="grid list-none gap-4 sm:gap-6 sm:grid-cols-3"
+            style={{ margin: 0, padding: 0 }}
+          >
+            {stats.map((s, i) => (
+              <li
+                key={s.label}
+                className="profile-stat flex items-center gap-4 rounded-2xl border border-line bg-white p-4.5 sm:p-5 shadow-xs transition-all hover:border-line-soft"
+                style={{ animationDelay: `${i * 80}ms` }}
+              >
+                <span className={`grid size-12 shrink-0 place-items-center rounded-xl text-xl ${['bg-sky-50 text-sky-700', 'bg-violet-50 text-violet-700', 'bg-amber-50 text-amber-700'][i]}`} aria-hidden="true">
+                  <i className={`bx ${s.icon}`} />
+                </span>
+                <div className="min-w-0">
+                  <p className="m-0 flex items-baseline gap-2 font-display text-xl font-bold text-ink">
+                    {s.value}
+                    {s.trend && <span className="text-[0.68rem] font-bold text-emerald-600">{s.trend}</span>}
+                  </p>
+                  <p className="m-0 truncate text-xs text-body-muted">{s.label} · últimos 30 días</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </section>
   );

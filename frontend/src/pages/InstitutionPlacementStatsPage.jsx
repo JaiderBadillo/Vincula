@@ -249,9 +249,9 @@ export default function InstitutionPlacementStatsPage() {
               </div>
               <div className="mt-2 flex items-center gap-1.5 text-xs text-body-muted">
                 <span className="rounded-md bg-amber-100/60 px-1.5 py-0.5 font-medium text-amber-900">
-                  ~2.0 SMLV
+                  ~1.62 SMLV
                 </span>
-                <span>Ingreso formal mensual</span>
+                <span>Base SMLV $1.75M COP</span>
               </div>
             </div>
 
@@ -600,7 +600,7 @@ export default function InstitutionPlacementStatsPage() {
                       Distribución por Rangos Salariales (SMLV)
                     </h3>
                     <p className="m-0 text-xs text-secondary">
-                      Ingresos de enganche según vigencia legal Colombia 2026
+                      Ingresos de enganche según vigencia legal Colombia (SMLV: $1.750.000 COP)
                     </p>
                   </div>
                 </div>

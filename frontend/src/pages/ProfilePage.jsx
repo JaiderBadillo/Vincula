@@ -272,7 +272,7 @@ export default function ProfilePage() {
         {/* Sub-pages Navigation Bar */}
         <nav
           id="profile-tabs-nav"
-          className="sticky top-[4.75rem] z-20 mt-6 border-y border-line-soft bg-page/95 backdrop-blur-md shadow-2xs"
+          className="sticky top-[4.75rem] z-20 mt-1 sm:mt-2 border-y border-line-soft bg-page/95 backdrop-blur-md shadow-2xs"
           aria-label="Páginas del perfil de egresado"
         >
           <div className="flex items-center gap-1.5 overflow-x-auto px-5 py-2.5 sm:px-8 lg:px-10 scrollbar-none">

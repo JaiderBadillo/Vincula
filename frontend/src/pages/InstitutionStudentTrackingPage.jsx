@@ -285,15 +285,15 @@ export default function InstitutionStudentTrackingPage() {
                   </select>
                 </div>
 
-                {/* Filtro por Cohorte */}
+                {/* Filtro por Corte */}
                 <div className="flex items-center gap-1.5">
-                  <span className="font-semibold text-secondary">Cohorte:</span>
+                  <span className="font-semibold text-secondary">Corte:</span>
                   <select
                     value={selectedCohort}
                     onChange={(e) => setSelectedCohort(e.target.value)}
                     className="rounded-lg border border-line bg-page px-2.5 py-1.5 font-medium text-ink outline-none cursor-pointer hover:border-green transition-colors"
                   >
-                    <option value="all">Todas las cohortes</option>
+                    <option value="all">Todos los cortes</option>
                     {cohorts.map((c) => (
                       <option key={c} value={c}>
                         Grado {c}
@@ -355,7 +355,7 @@ export default function InstitutionStudentTrackingPage() {
                     <thead>
                       <tr className="border-b border-line bg-page/60 text-[0.68rem] font-bold uppercase tracking-wider text-secondary">
                         <th scope="col" className="px-5 py-3.5">Egresado & Documento</th>
-                        <th scope="col" className="px-5 py-3.5">Programa UTS & Cohorte</th>
+                        <th scope="col" className="px-5 py-3.5">Programa UTS & Corte</th>
                         <th scope="col" className="px-5 py-3.5">Estado Laboral</th>
                         <th scope="col" className="px-5 py-3.5">Empresa / Cargo Actual</th>
                         <th scope="col" className="px-5 py-3.5 text-center">Postulaciones</th>
@@ -398,7 +398,7 @@ export default function InstitutionStudentTrackingPage() {
                               </div>
                             </td>
 
-                            {/* Programa & Cohorte */}
+                            {/* Programa & Corte */}
                             <td className="px-5 py-4">
                               <span className="block font-semibold text-ink truncate max-w-xs">
                                 {grad.program}

@@ -3,6 +3,8 @@ import GraduateDashboard from './pages/GraduateDashboard.jsx';
 import HomePage from './pages/HomePage.jsx';
 import InstitutionAdminAdvisorsPage from './pages/InstitutionAdminAdvisorsPage.jsx';
 import InstitutionAdminProfilePage from './pages/InstitutionAdminProfilePage.jsx';
+import InstitutionCompanyTrackingPage from './pages/InstitutionCompanyTrackingPage.jsx';
+import InstitutionCompanyValidationPage from './pages/InstitutionCompanyValidationPage.jsx';
 import InstitutionDashboardPage from './pages/InstitutionDashboardPage.jsx';
 import InstitutionGraduateValidationPage from './pages/InstitutionGraduateValidationPage.jsx';
 import InstitutionLaborMarketPage from './pages/InstitutionLaborMarketPage.jsx';
@@ -51,11 +53,11 @@ export default function App() {
         />
         <Route
           path="/institucion/empresas/solicitudes"
-          element={<InstitutionPlaceholderPage title="Validación de Empresas y Convenios (HU-25)" />}
+          element={<InstitutionCompanyValidationPage />}
         />
         <Route
           path="/institucion/empresas/seguimiento"
-          element={<InstitutionPlaceholderPage title="Seguimiento a Empresas Empleadoras" />}
+          element={<InstitutionCompanyTrackingPage />}
         />
         <Route
           path="/institucion/mercado-laboral/competencias"
