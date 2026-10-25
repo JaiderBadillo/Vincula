@@ -1,0 +1,296 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+@layer theme, base, bootstrap, components, utilities;
+@import 'bootstrap/dist/css/bootstrap.min.css' layer(bootstrap);
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --color-ink: #001a23;
+  --color-ink-soft: #0b2b34;
+  --color-green: #336f24;
+  --color-green-dark: #28571d;
+  --color-lime: #b1cc74;
+  --color-page: #fbfcf9;
+  --color-panel: #e9eff2;
+  --color-blue-muted: #284d5d;
+  --color-body-muted: #61727a;
+  --color-secondary: #718188;
+  --color-line: #dce4e6;
+  --color-line-soft: #e8edef;
+  --radius-card: 16px;
+  --radius-control: 12px;
+  --shadow-card: 0 8px 24px rgba(0, 26, 35, 0.045);
+  --shadow-hero: 0 26px 65px rgba(0, 0, 0, 0.3);
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 1rem;
+  }
+
+  body {
+    min-width: 320px;
+    margin: 0;
+    overflow-x: hidden;
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-lime);
+    outline-offset: 3px;
+  }
+
+  section[id],
+  tr[id] {
+    scroll-margin-top: 1rem;
+  }
+}
+
+@layer components {
+  .hero-grid {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: linear-gradient(to right, #000 0%, #000 68%, transparent 100%);
+  }
+
+  .hero-orbit {
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 9999px;
+  }
+
+  .hero-panel::before {
+    position: absolute;
+    z-index: -1;
+    inset: -0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: calc(var(--radius-card) + 0.5rem);
+    content: '';
+  }
+
+  .hero-copy,
+  .hero-panel {
+    animation: rise-in 650ms ease both;
+  }
+
+  .hero-panel {
+    animation-delay: 120ms;
+  }
+
+  .featured-rings span {
+    position: absolute;
+    z-index: -1;
+    top: -4rem;
+    right: -4rem;
+    width: 18rem;
+    height: 18rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 9999px;
+    pointer-events: none;
+  }
+
+  .featured-rings span + span {
+    top: -1.25rem;
+    right: -1.25rem;
+    width: 12rem;
+    height: 12rem;
+  }
+
+  .job-detail-dialog {
+    width: min(36rem, calc(100vw - 2rem));
+    max-height: min(90vh, 45rem);
+    padding: 0;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    background: white;
+    color: var(--color-ink);
+    box-shadow: var(--shadow-hero);
+  }
+
+  .job-detail-dialog::backdrop {
+    background: rgba(0, 26, 35, 0.62);
+    backdrop-filter: blur(3px);
+  }
+
+  .capability-table td[data-label]::before {
+    display: none;
+  }
+
+  .showcase-card img {
+    transition: transform 300ms ease;
+  }
+
+  .showcase-card:hover img {
+    transform: scale(1.035);
+  }
+
+  .showcase-image-shade--bottom {
+    background: linear-gradient(to top, rgba(0, 26, 35, 0.82), rgba(0, 26, 35, 0.12) 72%, transparent);
+  }
+
+  .showcase-image-shade--side {
+    background: linear-gradient(90deg, rgba(0, 26, 35, 0.68), rgba(0, 26, 35, 0.03));
+  }
+
+  /* ─── Perfil & CV ─── */
+  .profile-card,
+  .profile-stat {
+    animation: rise-in 520ms ease both;
+  }
+
+  .profile-cover-img {
+    animation: cover-in 1.2s ease both;
+  }
+
+  .profile-otw-ring {
+    background: conic-gradient(from 200deg, #b1cc74, #336f24, #5eead4, #b1cc74);
+    animation: ring-spin 6s linear infinite;
+  }
+
+  .profile-otw-ring > * {
+    animation: ring-spin 6s linear infinite reverse;
+  }
+
+  .profile-ring {
+    transition: stroke-dashoffset 900ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .profile-zoom-img {
+    transition: transform 700ms ease;
+  }
+
+  .profile-card:hover .profile-zoom-img {
+    transform: scale(1.05);
+  }
+
+  .profile-chip {
+    animation: chip-in 260ms ease both;
+  }
+
+  .profile-timeline > li:not(:last-child)::before {
+    position: absolute;
+    top: 2.9rem;
+    bottom: 0.25rem;
+    left: calc(1.375rem - 1px);
+    width: 2px;
+    border-radius: 2px;
+    background: linear-gradient(to bottom, var(--color-line), transparent);
+    content: '';
+  }
+
+  .profile-toast {
+    animation: toast-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .profile-modal {
+    animation: rise-in 260ms ease both;
+  }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cover-in {
+  from { opacity: 0; transform: scale(1.08); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ring-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes chip-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 767px) {
+  .capability-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    clip-path: inset(50%);
+  }
+
+  .capability-table tbody tr {
+    display: block;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .capability-table tbody th {
+    display: block;
+    padding-top: 1rem;
+  }
+
+  .capability-table tbody td {
+    display: grid;
+    grid-template-columns: minmax(6rem, 0.7fr) minmax(0, 1.3fr);
+    gap: 1rem;
+    padding: 0.55rem 0;
+    border: 0;
+  }
+
+  .capability-table td[data-label]::before {
+    display: block;
+    color: var(--color-secondary);
+    content: attr(data-label);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+}
+
+@media (max-width: 575px) {
+  .capability-table tbody td {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .hero-copy,
+  .hero-panel {
+    animation: none;
+  }
+
+  .showcase-card img {
+    transition: none;
+  }
+}
