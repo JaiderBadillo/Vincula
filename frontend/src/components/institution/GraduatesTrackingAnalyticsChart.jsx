@@ -4,7 +4,7 @@ export default function GraduatesTrackingAnalyticsChart({
   graduates = [],
   onApplyFilterToTable,
 }) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [viewMode, setViewMode] = useState('byProgram'); // 'byProgram' | 'byCohort' | 'vinculaImpact'
 
   // Filtros internos del módulo gráfico
@@ -181,19 +181,20 @@ export default function GraduatesTrackingAnalyticsChart({
       className="rounded-2xl border border-line bg-white shadow-xs overflow-hidden transition-all duration-300"
     >
       {/* ─── Encabezado Principal y Toggle Expandir/Contraer ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 sm:px-6 border-b border-line-soft bg-page/40">
+      <div
+        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:px-6 bg-page/40 transition-colors ${
+          isExpanded ? 'border-b border-line-soft' : ''
+        }`}
+      >
         <div className="flex items-center gap-3">
           <div className="grid size-10 place-items-center rounded-xl bg-ink text-lime text-xl shrink-0 shadow-xs">
             <i className="bx bx-bar-chart-alt-2" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="m-0 font-display text-base sm:text-lg font-bold text-ink">
+              <h2 className="m-0 font-display text-base font-bold text-ink">
                 Analítica de Inserción Laboral y Efectividad Vincula
               </h2>
-              <span className="rounded-full bg-lime/25 border border-lime/60 px-2.5 py-0.5 text-[0.62rem] font-bold text-ink">
-                En vivo
-              </span>
             </div>
             <p className="m-0 text-xs text-body-muted mt-0.5">
               Comparativa de egresados con empleo vs búsqueda activa, desglose por carrera, cortes y colocación institucional.
@@ -202,66 +203,60 @@ export default function GraduatesTrackingAnalyticsChart({
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          {/* Pestañas de modo de visualización */}
-          <div className="flex rounded-xl border border-line bg-white p-1 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode('byProgram');
-                if (!isExpanded) setIsExpanded(true);
-              }}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                viewMode === 'byProgram' && isExpanded
-                  ? 'bg-ink text-white font-bold shadow-xs'
-                  : 'text-secondary hover:text-ink'
-              }`}
-              title="Ver gráfico comparativo por Carreras / Programas"
-            >
-              <i className="bx bx-book mr-1" />
-              Por Carrera
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode('byCohort');
-                if (!isExpanded) setIsExpanded(true);
-              }}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                viewMode === 'byCohort' && isExpanded
-                  ? 'bg-ink text-white font-bold shadow-xs'
-                  : 'text-secondary hover:text-ink'
-              }`}
-              title="Ver gráfico comparativo por Cortes / Cohortes de graduación"
-            >
-              <i className="bx bx-calendar mr-1" />
-              Por Cohorte
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode('vinculaImpact');
-                if (!isExpanded) setIsExpanded(true);
-              }}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                viewMode === 'vinculaImpact' && isExpanded
-                  ? 'bg-ink text-white font-bold shadow-xs'
-                  : 'text-secondary hover:text-ink'
-              }`}
-              title="Ver impacto del canal Vincula UTS (Bolsa de Empleo)"
-            >
-              <i className="bx bx-pie-chart-alt-2 mr-1" />
-              Canal Vincula
-            </button>
-          </div>
+          {/* Pestañas de modo de visualización (visibles cuando está expandido) */}
+          {isExpanded && (
+            <div className="hidden sm:flex rounded-xl border border-line bg-white p-1 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setViewMode('byProgram')}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                  viewMode === 'byProgram'
+                    ? 'bg-ink text-white font-bold shadow-xs'
+                    : 'text-secondary hover:text-ink'
+                }`}
+                title="Ver gráfico comparativo por Carreras / Programas"
+              >
+                <i className="bx bx-book mr-1" />
+                Por Carrera
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('byCohort')}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                  viewMode === 'byCohort'
+                    ? 'bg-ink text-white font-bold shadow-xs'
+                    : 'text-secondary hover:text-ink'
+                }`}
+                title="Ver gráfico comparativo por Cortes / Cohortes de graduación"
+              >
+                <i className="bx bx-calendar mr-1" />
+                Por Cohorte
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('vinculaImpact')}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                  viewMode === 'vinculaImpact'
+                    ? 'bg-ink text-white font-bold shadow-xs'
+                    : 'text-secondary hover:text-ink'
+                }`}
+                title="Ver impacto del canal Vincula (Bolsa de Empleo)"
+              >
+                <i className="bx bx-pie-chart-alt-2 mr-1" />
+                Canal Vincula
+              </button>
+            </div>
+          )}
 
-          {/* Toggle colapsar/expandir */}
+          {/* Botón claro de colapsar/expandir */}
           <button
             type="button"
             onClick={() => setIsExpanded((prev) => !prev)}
-            className="grid size-9 place-items-center rounded-xl border border-line bg-white text-secondary hover:text-ink hover:bg-page transition-colors cursor-pointer shadow-2xs"
+            className="inline-flex items-center gap-2 rounded-xl border border-line bg-white px-3.5 py-2 text-xs font-bold text-ink hover:bg-page hover:border-secondary transition-all cursor-pointer shadow-2xs"
             title={isExpanded ? 'Contraer panel de gráficos' : 'Expandir panel de gráficos'}
           >
-            <i className={`bx ${isExpanded ? 'bx-chevron-up' : 'bx-chevron-down'} text-xl`} />
+            <span>{isExpanded ? 'Ocultar analítica' : 'Ver analítica'}</span>
+            <i className={`bx ${isExpanded ? 'bx-chevron-up' : 'bx-chevron-down'} text-base text-secondary`} />
           </button>
         </div>
       </div>
@@ -328,7 +323,7 @@ export default function GraduatesTrackingAnalyticsChart({
                   className="rounded-lg border border-line bg-white px-2.5 py-1.5 font-semibold text-ink outline-none cursor-pointer hover:border-green focus:border-green shadow-2xs"
                 >
                   <option value="all">Todos los canales</option>
-                  <option value="vincula">Colocados vía Vincula UTS</option>
+                  <option value="vincula">Colocados vía Vincula</option>
                   <option value="external">Colocación Externa / Directa</option>
                 </select>
               </div>
