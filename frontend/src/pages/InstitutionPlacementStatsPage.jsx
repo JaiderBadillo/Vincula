@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import InstitutionPortalLayout from '../components/institution/InstitutionPortalLayout.jsx';
+import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
+import { advisorPhotos } from '../data/institutionImages.js';
 import {
   placementOverview,
   facultyPlacementStats,
@@ -86,84 +88,96 @@ export default function InstitutionPlacementStatsPage() {
       <main className="w-full pb-20">
         <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8 space-y-8">
           
-          {/* ─── 1. Header Ejecutivo & Selector de Periodo ─── */}
-          <div className="flex flex-col gap-5 border-b border-line pb-6">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="max-w-3xl">
-                <h1 className="m-0 font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-                  Estadísticas y Analíticas de Empleabilidad
-                </h1>
-                <p className="m-0 mt-1.5 text-sm text-body-muted leading-relaxed">
-                  Monitoreo de inserción laboral formal, tasa de ocupación por programa, brecha de tiempo para el primer empleo y pertinencia con el perfil de egreso en las Unidades Tecnológicas de Santander.
-                </p>
-              </div>
-
-              {/* Botones de acción ejecutiva */}
-              <div className="flex items-center gap-2 self-start lg:self-auto shrink-0">
+          {/* ─── 1. Header Hero Fotográfico & KPIs de Colocación ─── */}
+          <InstitutionPageHero
+            eyebrow="Acreditación Institucional CNA & Indicadores MEN"
+            title="Estadísticas y Analíticas de Empleabilidad"
+            subtitle="Monitoreo de inserción laboral formal, tasa de ocupación por programa, brecha de tiempo para el primer empleo y pertinencia con el perfil de egreso institucional."
+            photo={advisorPhotos.placementStats}
+            stats={[
+              {
+                value: `${placementOverview.placementRate}%`,
+                label: 'Tasa de Colocación',
+              },
+              {
+                value: `${placementOverview.averageTimeToPlacementMonths} m`,
+                label: 'Tiempo a Colocación',
+              },
+              {
+                value: `${placementOverview.relevanceRate}%`,
+                label: 'Pertinencia Curricular',
+              },
+              {
+                value: '$ 2.84M',
+                label: 'Salario Promedio',
+              },
+            ]}
+            actions={
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={handleExportCSV}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2 text-xs font-semibold text-ink shadow-2xs hover:bg-page hover:border-line-strong transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-2 rounded-xl bg-lime hover:bg-lime/85 text-ink font-bold px-4 py-2 text-xs shadow-xs transition-all cursor-pointer"
                   title="Descargar matriz en formato CSV"
                 >
-                  <i className="bx bx-download text-sm text-secondary" />
+                  <i className="bx bx-download text-base" />
                   <span>Exportar Matriz</span>
                 </button>
                 <button
                   type="button"
                   onClick={handlePrint}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-ink/90 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-2 rounded-xl border border-line bg-white hover:bg-page text-ink font-semibold px-4 py-2 text-xs shadow-xs transition-all cursor-pointer"
                 >
-                  <i className="bx bx-printer text-sm" />
+                  <i className="bx bx-printer text-base" />
                   <span>Imprimir Reporte</span>
                 </button>
               </div>
+            }
+          />
+
+          {/* Selector de Periodo y Notificación */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-line bg-white p-4 shadow-xs">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-secondary">
+                Periodo de corte académico:
+              </span>
+              <div className="flex items-center gap-1.5 rounded-xl border border-line bg-page p-1 shadow-2xs">
+                {[
+                  { id: '2026-I', label: '2026 - I (Actual)' },
+                  { id: '2025-II', label: '2025 - II' },
+                  { id: '2025-I', label: '2025 - I' },
+                  { id: 'historico', label: 'Histórico' },
+                ].map((period) => (
+                  <button
+                    key={period.id}
+                    type="button"
+                    onClick={() => setSelectedPeriod(period.id)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                      selectedPeriod === period.id
+                        ? 'bg-lime text-ink shadow-xs font-bold'
+                        : 'text-secondary hover:text-ink hover:bg-white'
+                    }`}
+                  >
+                    {period.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Cohorte / Periodo selector */}
-            <div className="flex items-center justify-between flex-wrap gap-3 pt-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-secondary">
-                  Periodo de corte académico:
-                </span>
-                <div className="flex items-center gap-1.5 rounded-xl border border-line bg-white p-1 shadow-2xs">
-                  {[
-                    { id: '2026-I', label: '2026 - I (Actual)' },
-                    { id: '2025-II', label: '2025 - II' },
-                    { id: '2025-I', label: '2025 - I' },
-                    { id: 'historico', label: 'Histórico' },
-                  ].map((period) => (
-                    <button
-                      key={period.id}
-                      type="button"
-                      onClick={() => setSelectedPeriod(period.id)}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                        selectedPeriod === period.id
-                          ? 'bg-green/15 text-green-dark shadow-xs font-bold border border-green/30'
-                          : 'text-secondary hover:text-ink hover:bg-page'
-                      }`}
-                    >
-                      {period.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <span className="text-xs text-secondary font-medium">
+              Auditoría periódica para acreditación institucional (CNA / MEN)
+            </span>
+          </div>
 
-              <span className="text-xs text-secondary">
-                Auditoría periódica para acreditación institucional (CNA / MEN)
+          {/* Notificación flotante de exportación CSV */}
+          {exportNotice && (
+            <div className="flex items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-xs text-emerald-900 transition-all animate-in fade-in slide-in-from-top-1">
+              <i className="bx bx-check-circle text-base text-emerald-600" />
+              <span>
+                <strong>Matriz de Colocación Generada:</strong> El archivo estructurado con datos anonimizados de colocación 2026-I para auditoría del Ministerio de Educación Nacional ha comenzado su descarga.
               </span>
             </div>
-
-            {/* Notificación flotante de exportación CSV */}
-            {exportNotice && (
-              <div className="flex items-center gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-xs text-emerald-900 transition-all animate-in fade-in slide-in-from-top-1">
-                <i className="bx bx-check-circle text-base text-emerald-600" />
-                <span>
-                  <strong>Matriz de Colocación Generada:</strong> El archivo estructurado con datos anonimizados de colocación 2026-I para auditoría del Ministerio de Educación Nacional ha comenzado su descarga.
-                </span>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* ─── 2. Top 5 Tarjetas KPI Globales de Colocación ─── */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -193,7 +207,7 @@ export default function InstitutionPlacementStatsPage() {
             <div className="rounded-2xl border border-line bg-white p-5 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-secondary">Tiempo Promedio</span>
-                <span className="grid size-8 place-items-center rounded-xl bg-blue-50 text-blue-700">
+                <span className="grid size-8 place-items-center rounded-xl bg-lime/25 text-green-dark">
                   <i className="bx bx-stopwatch text-base" />
                 </span>
               </div>
@@ -216,7 +230,7 @@ export default function InstitutionPlacementStatsPage() {
             <div className="rounded-2xl border border-line bg-white p-5 shadow-2xs hover:shadow-xs transition-shadow">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-secondary">Pertinencia de Carrera</span>
-                <span className="grid size-8 place-items-center rounded-xl bg-purple-50 text-purple-700">
+                <span className="grid size-8 place-items-center rounded-xl bg-emerald-50 text-emerald-800">
                   <i className="bx bx-target-lock text-base" />
                 </span>
               </div>
@@ -224,7 +238,7 @@ export default function InstitutionPlacementStatsPage() {
                 <span className="font-display text-3xl font-bold tracking-tight text-ink">
                   {placementOverview.relevanceRate}%
                 </span>
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-100 px-2 py-0.5 text-[0.7rem] font-bold text-purple-800">
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 border border-emerald-200 px-2 py-0.5 text-[0.7rem] font-bold text-emerald-800">
                   Alta Afinidad
                 </span>
               </div>
@@ -495,7 +509,7 @@ export default function InstitutionPlacementStatsPage() {
                             <span className="font-medium text-green-dark">{prog.faculty}</span>
                             <span>•</span>
                             <span className={`px-1.5 py-0.2 rounded ${
-                              prog.level === 'Profesional' ? 'bg-blue-50 text-blue-700 font-medium' : 'bg-purple-50 text-purple-700 font-medium'
+                              prog.level === 'Profesional' ? 'bg-lime/25 text-ink font-bold' : 'bg-emerald-50 text-emerald-800 font-semibold'
                             }`}>
                               {prog.level}
                             </span>
@@ -546,7 +560,7 @@ export default function InstitutionPlacementStatsPage() {
                               prog.demandStatus === 'Alta Demanda'
                                 ? 'bg-green/15 text-green-dark border border-green/30'
                                 : prog.demandStatus === 'Media-Alta Demanda'
-                                ? 'bg-blue-50 text-blue-800 border border-blue-200'
+                                ? 'bg-lime/20 text-green-dark border border-lime/40'
                                 : 'bg-amber-50 text-amber-800 border border-amber-200'
                             }`}
                           >
@@ -568,7 +582,7 @@ export default function InstitutionPlacementStatsPage() {
             <div className="rounded-2xl border border-line bg-white p-6 shadow-2xs space-y-4">
               <div className="flex items-center justify-between border-b border-line pb-3">
                 <div className="flex items-center gap-2">
-                  <span className="grid size-8 place-items-center rounded-xl bg-blue-50 text-blue-700">
+                  <span className="grid size-8 place-items-center rounded-xl bg-lime/25 text-green-dark">
                     <i className="bx bx-stopwatch text-base" />
                   </span>
                   <div>
@@ -580,7 +594,7 @@ export default function InstitutionPlacementStatsPage() {
                     </p>
                   </div>
                 </div>
-                <span className="text-xs font-semibold text-blue-700">
+                <span className="text-xs font-bold text-green-dark">
                   Promedio: 3.2 meses
                 </span>
               </div>
@@ -616,7 +630,7 @@ export default function InstitutionPlacementStatsPage() {
             <div className="rounded-2xl border border-line bg-white p-6 shadow-2xs space-y-4">
               <div className="flex items-center justify-between border-b border-line pb-3">
                 <div className="flex items-center gap-2">
-                  <span className="grid size-8 place-items-center rounded-xl bg-purple-50 text-purple-700">
+                  <span className="grid size-8 place-items-center rounded-xl bg-emerald-50 text-emerald-800">
                     <i className="bx bx-pie-chart-alt-2 text-base" />
                   </span>
                   <div>
@@ -682,7 +696,7 @@ export default function InstitutionPlacementStatsPage() {
                 <div className="flex items-center gap-2">
                   <i className="bx bx-radar text-lg text-green-dark" />
                   <span className="text-xs text-ink font-medium">
-                    ¿Quieres ver competencias más demandadas en Santander?
+                    ¿Quieres ver competencias más demandadas en el mercado laboral?
                   </span>
                 </div>
                 <Link
@@ -701,7 +715,7 @@ export default function InstitutionPlacementStatsPage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-line pb-4">
               <div>
                 <h2 className="m-0 font-display text-xl font-bold tracking-tight text-ink">
-                  Principales Empresas Empleadoras de la Alianza UTS
+                  Principales Empresas Empleadoras Aliadas
                 </h2>
                 <p className="m-0 mt-1 text-xs text-body-muted">
                   Organizaciones con mayor índice de contratación de egresados y convenios marco de cooperación vigentes.
@@ -763,7 +777,7 @@ export default function InstitutionPlacementStatsPage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-line pb-4">
               <div>
                 <h2 className="m-0 font-display text-xl font-bold tracking-tight text-ink">
-                  Evolución Histórica de la Tasa de Colocación UTS
+                  Evolución Histórica de la Tasa de Colocación
                 </h2>
                 <p className="m-0 mt-1 text-xs text-body-muted">
                   Seguimiento longitudinal del indicador de empleabilidad y salarios promedio en los últimos 4 periodos académicos.
@@ -816,7 +830,7 @@ export default function InstitutionPlacementStatsPage() {
               <div className="flex items-center gap-2">
                 <i className="bx bxs-badge-check text-xl text-green-dark" />
                 <h4 className="m-0 font-display text-base font-bold text-ink">
-                  Acreditación Institucional de Alta Calidad UTS
+                  Acreditación Institucional de Alta Calidad
                 </h4>
               </div>
               <p className="m-0 text-xs text-body-muted leading-relaxed">

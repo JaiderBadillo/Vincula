@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import InstitutionPortalLayout from '../components/institution/InstitutionPortalLayout.jsx';
+import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
 import { advisorProfile } from '../data/institutionData.js';
+import { advisorPhotos } from '../data/institutionImages.js';
 import {
   coverageTone,
   getPriorityGaps,
@@ -30,51 +32,52 @@ export default function InstitutionLaborMarketPage() {
   return (
     <InstitutionPortalLayout activePage="competencias">
       <main className="w-full pb-16">
-        <div className="mx-auto max-w-6xl px-5 pt-8 sm:px-8 lg:px-10">
-          {/* Header del Observatorio de Competencias Demandadas */}
-          <div className="flex flex-col gap-2 border-b border-line pb-6">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pt-1">
-              <div>
-                <h1 className="m-0 font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-                  Programas y Demanda del Mercado
-                </h1>
-                <p className="m-0 mt-1 text-sm text-body-muted max-w-2xl">
-                  Análisis comparativo entre los contenidos curriculares enseñados en las UTS y las competencias técnicas más solicitadas por las empresas contratantes.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+        <div className="mx-auto max-w-7xl px-5 pt-8 sm:px-8 lg:px-10 space-y-8">
+          
+          {/* ─── Hero Fotográfico Institucional & Indicadores del Mercado ─── */}
+          <InstitutionPageHero
+            eyebrow="Observatorio de Tendencias & Brecha de Cualificaciones"
+            title="Programas y Demanda del Mercado Laboral"
+            subtitle="Análisis comparativo entre los contenidos curriculares institucionales y las competencias técnicas más solicitadas por las empresas contratantes en tiempo real."
+            photo={advisorPhotos.laborMarket}
+            stats={[
+              {
+                value: `${overview.employedRate}%`,
+                label: 'Egresados con Empleo',
+              },
+              {
+                value: overview.openVacancies,
+                label: 'Vacantes Abiertas',
+              },
+              {
+                value: programsWithGap,
+                label: 'Programas con Brecha',
+              },
+            ]}
+            actions={
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  to="/institucion/estudiantes/estadisticas"
+                  className="inline-flex items-center gap-2 rounded-xl bg-lime hover:bg-lime/85 text-ink font-bold px-4 py-2 text-xs shadow-xs transition-all no-underline"
+                >
+                  <i className="bx bx-bar-chart-alt-2 text-base" />
+                  <span>Ver Analíticas Completas</span>
+                </Link>
                 <Link
                   to="/institucion/dashboard"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-2 text-xs font-semibold text-secondary hover:text-ink hover:border-ink/20 no-underline transition-colors"
+                  className="inline-flex items-center gap-2 rounded-xl border border-line bg-white hover:bg-page text-ink font-semibold px-4 py-2 text-xs shadow-xs transition-all no-underline"
                 >
-                  <i className="bx bx-arrow-back text-sm" />
+                  <i className="bx bx-arrow-back text-base" />
                   <span>Volver al Panel</span>
                 </Link>
               </div>
-            </div>
-          </div>
+            }
+          />
 
-          {/* Tres números indicadores de impacto */}
-          <dl className="m-0 mt-7 grid grid-cols-1 gap-6 border-y border-line py-5 sm:grid-cols-3 sm:divide-x sm:divide-line">
-            <div className="sm:pr-6">
-              <dt className="text-sm text-secondary">Egresados con empleo</dt>
-              <dd className="m-0 mt-1 font-display text-3xl font-bold text-ink">{overview.employedRate}%</dd>
-            </div>
-            <div className="sm:px-6">
-              <dt className="text-sm text-secondary">Vacantes abiertas</dt>
-              <dd className="m-0 mt-1 font-display text-3xl font-bold text-ink">{overview.openVacancies}</dd>
-            </div>
-            <div className="sm:pl-6">
-              <dt className="text-sm text-secondary">Programas con brecha curricular</dt>
-              <dd className="m-0 mt-1 font-display text-3xl font-bold text-ink">{programsWithGap}</dd>
-            </div>
-          </dl>
-
-          <div className="mt-9 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_20rem]">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_20rem]">
             {/* Programas y demanda */}
-            <section aria-labelledby="programs-title">
-              <div className="flex items-baseline justify-between">
+            <section aria-labelledby="programs-title" className="rounded-2xl border border-line bg-white p-6 shadow-xs">
+              <div className="flex items-baseline justify-between border-b border-line pb-4">
                 <h2 id="programs-title" className="m-0 font-display text-lg font-bold text-ink">
                   Alineación de Programas Académicos
                 </h2>
@@ -83,7 +86,7 @@ export default function InstitutionLaborMarketPage() {
                 </span>
               </div>
 
-              <ul className="m-0 mt-3 list-none divide-y divide-line-soft border-t border-line p-0">
+              <ul className="m-0 mt-3 list-none divide-y divide-line-soft p-0">
                 {programTraceability.map((program) => {
                   const tone = coverageTone(program.coverage);
                   const missing = program.uncovered.length;
@@ -132,15 +135,17 @@ export default function InstitutionLaborMarketPage() {
             </section>
 
             {/* Columna derecha: Brechas prioritarias y Equipo */}
-            <aside className="space-y-10">
-              <section aria-labelledby="gaps-title">
-                <h2 id="gaps-title" className="m-0 font-display text-lg font-bold text-ink">
-                  Brechas prioritarias
-                </h2>
-                <p className="m-0 mt-1 text-xs text-secondary">
-                  Habilidades altamente solicitadas por empresas que ningún programa cubre.
-                </p>
-                <ul className="m-0 mt-3 list-none divide-y divide-line-soft border-t border-line p-0">
+            <aside className="space-y-6">
+              <section aria-labelledby="gaps-title" className="rounded-2xl border border-line bg-white p-5 shadow-xs">
+                <div className="border-b border-line pb-3">
+                  <h2 id="gaps-title" className="m-0 font-display text-base font-bold text-ink">
+                    Brechas prioritarias
+                  </h2>
+                  <p className="m-0 mt-1 text-xs text-secondary">
+                    Habilidades altamente solicitadas por empresas que ningún programa cubre.
+                  </p>
+                </div>
+                <ul className="m-0 mt-3 list-none divide-y divide-line-soft p-0">
                   {gaps.map((gap) => (
                     <li key={gap.skill} className="flex items-center justify-between gap-3 py-3 text-sm">
                       <span className="min-w-0">
@@ -159,9 +164,9 @@ export default function InstitutionLaborMarketPage() {
                 </ul>
               </section>
 
-              <section aria-labelledby="team-title">
-                <div className="flex items-baseline justify-between">
-                  <h2 id="team-title" className="m-0 font-display text-lg font-bold text-ink">
+              <section aria-labelledby="team-title" className="rounded-2xl border border-line bg-white p-5 shadow-xs">
+                <div className="flex items-baseline justify-between border-b border-line pb-3">
+                  <h2 id="team-title" className="m-0 font-display text-base font-bold text-ink">
                     Equipo de Articulación
                   </h2>
                   <button

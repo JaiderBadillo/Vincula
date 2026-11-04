@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import InstitutionPortalLayout from '../components/institution/InstitutionPortalLayout.jsx';
+import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
 import CompanyTrackingDrawer from '../components/institution/CompanyTrackingDrawer.jsx';
 import CompanyInteractionModal from '../components/institution/CompanyInteractionModal.jsx';
 import { trackedCompaniesData } from '../data/institutionCompanyTrackingData.js';
+import { advisorPhotos } from '../data/institutionImages.js';
 
 const STATUS_TABS = [
   { id: 'all', label: 'Todas las Empresas' },
@@ -78,8 +80,8 @@ export default function InstitutionCompanyTrackingPage() {
     // Ordenamiento
     if (sortBy === 'hired') {
       list.sort((a, b) => b.totalGraduatesHired - a.totalGraduatesHired);
-    } else if (sortBy === 'rating') {
-      list.sort((a, b) => b.satisfactionScore - a.satisfactionScore);
+    } else if (sortBy === 'vacancies') {
+      list.sort((a, b) => b.activeVacanciesCount - a.activeVacanciesCount);
     } else if (sortBy === 'expiry') {
       list.sort((a, b) => a.daysToExpiry - b.daysToExpiry);
     } else if (sortBy === 'name') {
@@ -111,7 +113,7 @@ export default function InstitutionCompanyTrackingPage() {
   }
 
   function handleExportReport() {
-    notify('Generando informe ejecutivo de convenios y seguimiento empresarial UTS...');
+    notify('Generando informe ejecutivo de convenios y seguimiento empresarial...');
     setTimeout(() => {
       notify('¡Informe consolidado generado exitosamente en formato Excel / PDF!');
     }, 1500);
@@ -120,92 +122,49 @@ export default function InstitutionCompanyTrackingPage() {
   return (
     <InstitutionPortalLayout activePage="empresas-seguimiento">
       <main className="w-full pb-20">
-        {/* ─── Hero Header Institucional (Sin oval pills) ─── */}
-        <section className="border-b border-line-soft bg-white px-5 py-8 sm:px-8 lg:px-10">
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-            <div className="max-w-3xl">
-              <h1 className="m-0 font-display text-2xl sm:text-3xl font-bold tracking-tight text-ink leading-tight">
-                Seguimiento a Empresas Empleadoras & Convenios UTS
-              </h1>
-              <p className="m-0 mt-2 text-sm sm:text-base text-secondary leading-relaxed">
-                Monitorea la inserción laboral de egresados, la satisfacción de empleadores aliados, la vigencia legal de convenios marco y la trazabilidad institucional.
-              </p>
-            </div>
+        <div className="mx-auto max-w-7xl px-5 pt-8 sm:px-8 lg:px-10 space-y-6">
 
-            <div className="flex items-center gap-2.5 shrink-0">
+          {/* ─── Hero Fotográfico Institucional & KPIs de Convenios ─── */}
+          <InstitutionPageHero
+            eyebrow="Red de Vinculación & Alianzas Estratégicas"
+            title="Seguimiento a Empresas Empleadoras & Convenios"
+            subtitle="Monitorea la inserción laboral de egresados, la satisfacción de empleadores aliados, la vigencia legal de convenios marco y la trazabilidad institucional."
+            photo={advisorPhotos.companyTracking}
+            stats={[
+              {
+                value: metrics.totalCompanies,
+                label: 'Empresas Aliadas',
+              },
+              {
+                value: metrics.totalHired,
+                label: 'Egresados Vinculados',
+              },
+              {
+                value: metrics.totalActiveVacancies,
+                label: 'Vacantes Convocadas',
+              },
+              {
+                value: metrics.expiringSoon,
+                label: 'Por Renovar (<90 d)',
+              },
+            ]}
+            actions={
               <button
                 type="button"
                 onClick={handleExportReport}
-                className="inline-flex items-center gap-2 rounded-xl border border-line bg-page hover:bg-white hover:text-green-dark px-4 py-2.5 text-xs font-bold text-ink shadow-2xs transition-colors cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-xl bg-lime hover:bg-lime/85 text-ink font-bold px-4 py-2 text-xs shadow-xs transition-all cursor-pointer"
               >
                 <i className="bx bx-download text-base" />
                 <span>Exportar Informe</span>
               </button>
-            </div>
-          </div>
+            }
+          />
 
-          {/* ─── KPI Metric Cards Strip ─── */}
-          <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-3.5 mt-8">
-            <div className="rounded-2xl border border-line bg-page/50 p-4 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[0.68rem] font-bold uppercase tracking-wider text-secondary">Empresas Aliadas</span>
-                <span className="grid size-8 place-items-center rounded-lg bg-green/10 text-green-dark text-base">
-                  <i className="bx bx-buildings" />
-                </span>
-              </div>
-              <span className="font-display text-2xl font-bold text-ink mt-2 block">
-                {metrics.totalCompanies}
-              </span>
-              <span className="text-xs text-secondary mt-0.5 block">100% con convenio activo</span>
-            </div>
-
-            <div className="rounded-2xl border border-line bg-page/50 p-4 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[0.68rem] font-bold uppercase tracking-wider text-secondary">Egresados Vinculados</span>
-                <span className="grid size-8 place-items-center rounded-lg bg-emerald-100 text-emerald-800 text-base">
-                  <i className="bx bx-user-check" />
-                </span>
-              </div>
-              <span className="font-display text-2xl font-bold text-emerald-800 mt-2 block">
-                {metrics.totalHired}
-              </span>
-              <span className="text-xs text-secondary mt-0.5 block">Contratados en empresas aliadas</span>
-            </div>
-
-            <div className="rounded-2xl border border-line bg-page/50 p-4 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[0.68rem] font-bold uppercase tracking-wider text-secondary">Satisfacción Empleadora</span>
-                <span className="grid size-8 place-items-center rounded-lg bg-amber-100 text-amber-800 text-base">
-                  <i className="bx bxs-star" />
-                </span>
-              </div>
-              <span className="font-display text-2xl font-bold text-amber-700 mt-2 block flex items-baseline gap-1">
-                {metrics.avgScore} <span className="text-xs font-normal text-secondary">/ 5.0</span>
-              </span>
-              <span className="text-xs text-secondary mt-0.5 block">Encuesta de pertinencia UTS</span>
-            </div>
-
-            <div className="rounded-2xl border border-line bg-page/50 p-4 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-[0.68rem] font-bold uppercase tracking-wider text-secondary">Convenios por Renovar</span>
-                <span className="grid size-8 place-items-center rounded-lg bg-rose-100 text-rose-800 text-base">
-                  <i className="bx bx-alarm-exclamation" />
-                </span>
-              </div>
-              <span className="font-display text-2xl font-bold text-rose-700 mt-2 block">
-                {metrics.expiringSoon}
-              </span>
-              <span className="text-xs text-secondary mt-0.5 block">Vencimiento en menos de 90 días</span>
-            </div>
-          </div>
-        </section>
-
-        {/* ─── Control Bar: Tabs, Search & Filters ─── */}
-        <section className="border-b border-line-soft bg-white px-5 py-4 sm:px-8 lg:px-10">
-          <div className="max-w-7xl mx-auto space-y-4">
-            {/* Top row: Status Tabs */}
+          {/* ─── Control Bar: Tabs, Search & Filters ─── */}
+          <div className="rounded-2xl border border-line bg-white p-5 shadow-xs space-y-4">
+            {/* Top row: Status Tabs Tipo Pills */}
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-line bg-page p-1">
+              <div className="flex flex-wrap items-center gap-2" role="tablist">
                 {STATUS_TABS.map((tab) => {
                   const active = activeStatusTab === tab.id;
                   return (
@@ -213,10 +172,10 @@ export default function InstitutionCompanyTrackingPage() {
                       key={tab.id}
                       type="button"
                       onClick={() => setActiveStatusTab(tab.id)}
-                      className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                      className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
                         active
-                          ? 'bg-white text-ink shadow-xs'
-                          : 'text-secondary hover:text-ink'
+                          ? 'bg-lime text-ink shadow-xs'
+                          : 'bg-page text-secondary hover:text-ink hover:bg-panel'
                       }`}
                     >
                       {tab.label}
@@ -225,7 +184,7 @@ export default function InstitutionCompanyTrackingPage() {
                 })}
               </div>
 
-              <span className="text-xs text-secondary">
+              <span className="text-xs text-secondary font-medium">
                 Mostrando <strong className="text-ink font-bold">{filteredCompanies.length}</strong> empresas aliadas
               </span>
             </div>
@@ -279,7 +238,7 @@ export default function InstitutionCompanyTrackingPage() {
                   className="rounded-xl border border-line bg-page px-3 py-2.5 text-xs font-semibold text-ink focus:border-green focus:outline-none cursor-pointer"
                 >
                   <option value="hired">Mayor contratación de egresados</option>
-                  <option value="rating">Mejor calificación de satisfacción</option>
+                  <option value="vacancies">Mayor número de vacantes activas</option>
                   <option value="expiry">Vencimiento más próximo</option>
                   <option value="name">Alfabético (A - Z)</option>
                 </select>
@@ -303,11 +262,9 @@ export default function InstitutionCompanyTrackingPage() {
               </div>
             )}
           </div>
-        </section>
 
-        {/* ─── Grid de Tarjetas de Empresas Aliadas ─── */}
-        <section className="px-5 py-8 sm:px-8 lg:px-10">
-          <div className="max-w-7xl mx-auto">
+          {/* ─── Grid de Tarjetas de Empresas Aliadas ─── */}
+          <div>
             {filteredCompanies.length === 0 ? (
               <div className="rounded-3xl border border-line bg-white p-12 text-center shadow-xs">
                 <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-page text-secondary text-2xl mb-4">
@@ -375,16 +332,11 @@ export default function InstitutionCompanyTrackingPage() {
                               </span>
                             )}
                             {comp.agreementStatus === 'en_seguimiento' && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 border border-purple-200 px-2.5 py-0.5 text-[0.65rem] font-bold text-purple-800">
-                                <i className="bx bx-sync text-xs text-purple-600" />
+                              <span className="inline-flex items-center gap-1 rounded-full bg-lime/20 border border-lime/50 px-2.5 py-0.5 text-[0.65rem] font-bold text-ink">
+                                <i className="bx bx-sync text-xs text-green-dark" />
                                 En Trámite
                               </span>
                             )}
-
-                            <span className="inline-flex items-center gap-1 text-[0.72rem] font-bold text-amber-700 mt-1">
-                              <i className="bx bxs-star text-amber-500 text-xs" />
-                              {comp.satisfactionScore} / 5.0
-                            </span>
                           </div>
                         </div>
 
@@ -422,7 +374,7 @@ export default function InstitutionCompanyTrackingPage() {
                         {/* Programas UTS más contratados */}
                         <div className="mt-4">
                           <span className="text-[0.68rem] font-bold uppercase tracking-wider text-secondary block mb-2">
-                            Talento UTS más demandado:
+                            Talento institucional más demandado:
                           </span>
                           <div className="flex flex-wrap gap-1.5">
                             {comp.topProgramsHired.slice(0, 3).map((item) => (
@@ -476,7 +428,7 @@ export default function InstitutionCompanyTrackingPage() {
               </div>
             )}
           </div>
-        </section>
+        </div>
 
         {/* ─── Drawer Lateral 360° de la Empresa ─── */}
         <CompanyTrackingDrawer

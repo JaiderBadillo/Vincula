@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import InstitutionSidebar from './InstitutionSidebar.jsx';
 import InstitutionTopbar from './InstitutionTopbar.jsx';
+import { InstitutionThemeProvider, useInstitutionTheme } from '../../context/InstitutionThemeContext.jsx';
 
 const SIDEBAR_PREFERENCE_KEY = 'vincula.institution.sidebar-collapsed';
 
@@ -14,10 +15,11 @@ function getSavedSidebarPreference() {
   }
 }
 
-export default function InstitutionPortalLayout({ activePage = 'dashboard', role = 'advisor', children }) {
+function PortalLayoutContent({ activePage = 'dashboard', role = 'advisor', children }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const menuButtonRef = useRef(null);
+  const { theme } = useInstitutionTheme();
 
   useEffect(() => {
     try {
@@ -46,7 +48,12 @@ export default function InstitutionPortalLayout({ activePage = 'dashboard', role
   }, [mobileMenuOpen]);
 
   return (
-    <div className="min-h-screen bg-page text-ink antialiased">
+    <div
+      data-admin-ies={role === 'admin' ? 'true' : undefined}
+      data-ies-portal="true"
+      data-ies-theme={theme}
+      className={`min-h-screen ${role === 'admin' ? 'bg-cream' : 'bg-page'} text-ink antialiased`}
+    >
       <InstitutionSidebar
         activePage={activePage}
         mobileOpen={mobileMenuOpen}
@@ -70,5 +77,15 @@ export default function InstitutionPortalLayout({ activePage = 'dashboard', role
         {children}
       </div>
     </div>
+  );
+}
+
+export default function InstitutionPortalLayout({ activePage = 'dashboard', role = 'advisor', children }) {
+  return (
+    <InstitutionThemeProvider role={role}>
+      <PortalLayoutContent activePage={activePage} role={role}>
+        {children}
+      </PortalLayoutContent>
+    </InstitutionThemeProvider>
   );
 }

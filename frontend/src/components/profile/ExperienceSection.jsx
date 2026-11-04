@@ -2,10 +2,8 @@ import { useState } from 'react';
 import { Field, GhostButton, Modal, PrimaryButton, SecondaryButton, SectionCard, inputClass } from './ui.jsx';
 
 const typeMeta = {
-  work: { label: 'Empleo', icon: 'bx-briefcase-alt-2', cls: 'bg-ink text-lime' },
-  practice: { label: 'Práctica', icon: 'bx-rocket', cls: 'bg-amber-100 text-amber-700' },
-  education: { label: 'Formación', icon: 'bx-graduation', cls: 'bg-sky-100 text-sky-700' },
-  certification: { label: 'Certificación', icon: 'bx-award', cls: 'bg-violet-100 text-violet-700' },
+  work: { label: 'Empleo / Trabajo formal', icon: 'bx-briefcase-alt-2', cls: 'bg-ink text-lime' },
+  practice: { label: 'Práctica empresarial', icon: 'bx-rocket', cls: 'bg-[#051F26]/10 text-[#051F26]' },
 };
 
 const emptyItem = { type: 'work', role: '', company: '', start: '', end: '', current: false, description: '' };
@@ -23,8 +21,8 @@ function ExperienceModal({ item, onSave, onClose }) {
 
   return (
     <Modal
-      title={item ? 'Editar registro' : 'Agregar a tu trayectoria'}
-      subtitle="Incluye empleos, prácticas, formación o certificaciones relevantes."
+      title={item ? 'Editar experiencia' : 'Agregar experiencia laboral'}
+      subtitle="Registra tus empleos formales, puestos actuales o prácticas empresariales realizadas."
       onClose={onClose}
       footer={(
         <>
@@ -33,7 +31,7 @@ function ExperienceModal({ item, onSave, onClose }) {
         </>
       )}
     >
-      <div className="mb-4 flex flex-wrap gap-2" role="radiogroup" aria-label="Tipo de registro">
+      <div className="mb-4 flex flex-wrap gap-2" role="radiogroup" aria-label="Tipo de experiencia">
         {Object.entries(typeMeta).map(([key, meta]) => (
           <button
             key={key}
@@ -41,28 +39,35 @@ function ExperienceModal({ item, onSave, onClose }) {
             role="radio"
             aria-checked={draft.type === key}
             onClick={() => setDraft((d) => ({ ...d, type: key }))}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-bold transition-all ${draft.type === key ? 'border-ink bg-ink text-white' : 'border-line text-blue-muted hover:border-ink/40'}`}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-bold transition-all ${
+              draft.type === key ? 'border-[#051F26] bg-[#051F26] text-white shadow-xs' : 'border-line text-blue-muted hover:border-[#051F26]/40'
+            }`}
           >
-            <i className={`bx ${meta.icon}`} aria-hidden="true" />{meta.label}
+            <i className={`bx ${meta.icon}`} aria-hidden="true" />
+            {meta.label}
           </button>
         ))}
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={draft.type === 'education' ? 'Título / programa' : draft.type === 'certification' ? 'Nombre del certificado' : 'Cargo'}>
-          <input className={inputClass} value={draft.role} onChange={set('role')} />
+        <Field label="Cargo / Rol desempeñado">
+          <input className={inputClass} placeholder="Ej. Desarrollador Junior, Practicante de Sistemas..." value={draft.role} onChange={set('role')} />
         </Field>
-        <Field label={draft.type === 'education' || draft.type === 'certification' ? 'Institución' : 'Empresa'}>
-          <input className={inputClass} value={draft.company} onChange={set('company')} />
+        <Field label="Empresa u Organización">
+          <input className={inputClass} placeholder="Ej. Tech Solutions S.A.S., Ecopetrol..." value={draft.company} onChange={set('company')} />
         </Field>
-        <Field label="Inicio"><input type="month" className={inputClass} value={draft.start} onChange={set('start')} /></Field>
-        <Field label="Fin"><input type="month" className={inputClass} value={draft.end} onChange={set('end')} disabled={draft.current} /></Field>
-        <label className="flex items-center gap-2 text-sm font-semibold text-ink sm:col-span-2">
-          <input type="checkbox" className="size-4 accent-green-700" checked={draft.current} onChange={set('current')} />
-          {draft.type === 'education' ? 'Actualmente estudio aquí' : 'Actualmente trabajo aquí'}
+        <Field label="Fecha de inicio">
+          <input type="month" className={inputClass} value={draft.start} onChange={set('start')} />
+        </Field>
+        <Field label="Fecha de finalización">
+          <input type="month" className={inputClass} value={draft.end} onChange={set('end')} disabled={draft.current} />
+        </Field>
+        <label className="flex items-center gap-2 text-sm font-semibold text-ink sm:col-span-2 cursor-pointer">
+          <input type="checkbox" className="size-4 accent-[#051F26]" checked={draft.current} onChange={set('current')} />
+          Actualmente trabajo aquí
         </label>
         <div className="sm:col-span-2">
-          <Field label="Descripción y logros" hint="Usa verbos de acción y resultados medibles.">
-            <textarea rows={3} maxLength={400} className={`${inputClass} resize-y`} value={draft.description} onChange={set('description')} />
+          <Field label="Descripción de funciones y logros" hint="Usa verbos de acción y resultados concretos.">
+            <textarea rows={3} maxLength={400} className={`${inputClass} resize-y`} placeholder="Describe brevemente tus responsabilidades principales y logros..." value={draft.description} onChange={set('description')} />
           </Field>
         </div>
       </div>
@@ -72,30 +77,35 @@ function ExperienceModal({ item, onSave, onClose }) {
 
 export default function ExperienceSection({ profile, updateProfile, notify }) {
   const [editing, setEditing] = useState(null); // null | 'new' | item
-  const items = [...(profile.experience ?? [])].sort((a, b) => (b.current - a.current) || (b.start ?? '').localeCompare(a.start ?? ''));
+
+  // Filtramos para que estrictamente solo figuren items de tipo laboral o práctica
+  const items = [...(profile.experience ?? [])]
+    .filter((x) => x.type === 'work' || x.type === 'practice')
+    .sort((a, b) => (b.current - a.current) || (b.start ?? '').localeCompare(a.start ?? ''));
 
   function save(draft) {
     if (editing === 'new') {
-      updateProfile((p) => ({ ...p, experience: [...p.experience, { ...draft, id: `e-${Date.now()}` }] }));
-      notify('Registro agregado a tu trayectoria.');
+      updateProfile((p) => ({ ...p, experience: [...(p.experience ?? []), { ...draft, id: `e-${Date.now()}` }] }));
+      notify('Experiencia agregada a tu trayectoria laboral.');
     } else {
-      updateProfile((p) => ({ ...p, experience: p.experience.map((x) => (x.id === draft.id ? draft : x)) }));
-      notify('Registro actualizado.');
+      updateProfile((p) => ({ ...p, experience: (p.experience ?? []).map((x) => (x.id === draft.id ? draft : x)) }));
+      notify('Experiencia actualizada.');
     }
     setEditing(null);
   }
 
   return (
     <SectionCard
-      icon="bx-git-commit"
-      tone="sky"
-      title="Trayectoria"
-      subtitle="Experiencia laboral, prácticas, formación y certificaciones."
-      action={<GhostButton icon="bx-plus" onClick={() => setEditing('new')}>Agregar</GhostButton>}
+      id="trayectoria"
+      icon="bx-briefcase-alt-2"
+      tone="ink"
+      title="Trayectoria Laboral"
+      subtitle="Experiencias laborales formales y prácticas empresariales."
+      action={<GhostButton icon="bx-plus" onClick={() => setEditing('new')}>Agregar experiencia</GhostButton>}
     >
       {items.length === 0 ? (
         <div className="rounded-xl border border-dashed border-line bg-page p-6 text-center text-sm text-body-muted">
-          ¿Hiciste prácticas o proyectos? Agrégalos: cuentan como experiencia para muchas empresas.
+          ¿Tienes experiencia laboral o prácticas empresariales? Agrégalas aquí: cuentan como experiencia calificada para los reclutadores.
         </div>
       ) : (
         <ol className="profile-timeline relative m-0 list-none p-0">
@@ -111,12 +121,6 @@ export default function ExperienceSection({ profile, updateProfile, notify }) {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="m-0 font-display text-sm font-bold text-ink sm:text-base">{item.role}</p>
-                        {item.type === 'education' && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-700">
-                            <i className="bx bxs-badge-check text-xs text-green" aria-hidden="true" />
-                            Educación Verificada UTS
-                          </span>
-                        )}
                       </div>
                       <p className="m-0 text-sm font-semibold text-blue-muted">{item.company}</p>
                     </div>
@@ -136,9 +140,9 @@ export default function ExperienceSection({ profile, updateProfile, notify }) {
                   </div>
                   <p className="m-0 mt-1 flex flex-wrap items-center gap-2 text-xs text-secondary">
                     <span className="rounded-full border border-line bg-white px-2 py-0.5 font-bold">{meta.label}</span>
-                    {formatMonth(item.start)} — {item.current ? <strong className="text-green-dark">Actualidad</strong> : formatMonth(item.end)}
+                    {formatMonth(item.start)} — {item.current ? <strong className="text-emerald-800">Actualidad</strong> : formatMonth(item.end)}
                   </p>
-                  {item.description && <p className="m-0 mt-2 text-sm leading-6 text-body-muted">{item.description}</p>}
+                  {item.description && <p className="m-0 mt-2 text-xs text-body-muted leading-relaxed">{item.description}</p>}
                 </div>
               </li>
             );

@@ -23,6 +23,19 @@ export default function GraduateDashboard() {
     notify(`¡Postulación enviada exitosamente a ${job.company} (${job.title})!`);
   }
 
+  function handleScrollToSection(targetId) {
+    const el = document.getElementById(targetId);
+    if (!el) return;
+
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Indicador visual sutil para destacar la sección a la que se navegó
+    el.classList.add('ring-2', 'ring-lime', 'ring-offset-4', 'rounded-2xl');
+    setTimeout(() => {
+      el.classList.remove('ring-2', 'ring-lime', 'ring-offset-4', 'rounded-2xl');
+    }, 1800);
+  }
+
   const dynamicStats = useMemo(
     () => [
       {
@@ -30,19 +43,26 @@ export default function GraduateDashboard() {
         value: '85%',
         icon: 'bx-user-check',
         isProgress: true,
+        progressValue: 85,
         accent: 'green',
+        onClick: () => handleScrollToSection('subir-cv'),
+        actionText: 'Bajar a CV y perfil',
       },
       {
         label: 'Vacantes Guardadas',
         value: String(savedCount),
         icon: 'bxs-bookmark-star',
         accent: 'amber',
+        onClick: () => handleScrollToSection('vacantes-guardadas'),
+        actionText: 'Bajar a guardadas',
       },
       {
         label: 'Vacantes con alto Match',
         value: '6',
         icon: 'bx-target-lock',
         accent: 'blue',
+        onClick: () => handleScrollToSection('oportunidades'),
+        actionText: 'Bajar a vacantes',
       },
     ],
     [savedCount]
@@ -90,7 +110,7 @@ export default function GraduateDashboard() {
                   <span className="text-lime">Tenemos algunas vacantes para ti</span>
                 </h1>
                 <p className="mt-4 max-w-xl text-sm leading-6 text-white/65">
-                  Aquí puedes ver un resumen de tu actividad, tus convocatorias guardadas, subir tu hoja de vida y explorar nuevas oportunidades con convenios UTS.
+                  Aquí puedes ver un resumen de tu actividad, tus convocatorias guardadas, subir tu hoja de vida y explorar nuevas oportunidades con convenios institucionales.
                 </p>
               </div>
             </div>
@@ -130,7 +150,7 @@ export default function GraduateDashboard() {
           </div>
 
           <p className="mt-8 border-t border-line-soft pt-5 text-xs leading-5 text-body-muted">
-            Plataforma de vinculación laboral · Red de talento universitario Unidades Tecnológicas de Santander
+            Plataforma de vinculación laboral · Red de talento universitario institucional
           </p>
         </div>
       </main>

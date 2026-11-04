@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import InstitutionPortalLayout from '../components/institution/InstitutionPortalLayout.jsx';
+import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
 import CompanyObservationModal from '../components/institution/CompanyObservationModal.jsx';
 import CompanyValidationDrawer from '../components/institution/CompanyValidationDrawer.jsx';
 import { companyValidationRequests } from '../data/institutionCompanyValidationData.js';
+import { advisorPhotos } from '../data/institutionImages.js';
 
 const tabs = [
   { id: 'pending', label: 'Pendientes de Validación' },
@@ -124,106 +127,83 @@ export default function InstitutionCompanyValidationPage() {
       <main className="w-full pb-16">
         <div className="mx-auto max-w-7xl px-5 pt-8 sm:px-8 lg:px-10 space-y-6">
           
-          {/* ─── Encabezado Principal ─── */}
-          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 border-b border-line pb-6">
-            <div className="max-w-3xl">
-              <h1 className="m-0 font-display text-2xl sm:text-3xl font-bold tracking-tight text-ink">
-                Validación de Empresas y Convenios
-              </h1>
-              <p className="m-0 mt-1.5 text-sm text-body-muted leading-relaxed">
-                Verifica la documentación jurídica, el NIT en Cámara de Comercio y formaliza los convenios marco de cooperación y prácticas académicas con las Unidades Tecnológicas de Santander.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2.5 self-start lg:self-auto shrink-0">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2 text-xs font-semibold text-ink shadow-2xs hover:bg-page transition-colors cursor-pointer"
-              >
-                <i className="bx bx-printer text-sm text-secondary" />
-                <span>Imprimir Listado</span>
-              </button>
-            </div>
-          </div>
-
-          {/* ─── Resumen Rápido de Solicitudes ─── */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="rounded-2xl border border-line bg-white p-4 shadow-2xs flex items-center justify-between">
-              <div>
-                <span className="text-xs font-semibold text-secondary">Pendientes de Revisión</span>
-                <span className="mt-1 block font-display text-2xl font-bold text-ink">
-                  {metrics.totalPending} empresas
-                </span>
-                <span className="text-[0.7rem] text-purple-700 font-medium">Requieren cotejo jurídico</span>
-              </div>
-              <span className="grid size-10 place-items-center rounded-xl bg-purple-50 text-purple-700">
-                <i className="bx bx-buildings text-xl" />
-              </span>
-            </div>
-
-            <div className="rounded-2xl border border-line bg-white p-4 shadow-2xs flex items-center justify-between">
-              <div>
-                <span className="text-xs font-semibold text-secondary">Convenios Activos 2026</span>
-                <span className="mt-1 block font-display text-2xl font-bold text-ink">
-                  {metrics.totalApproved} formalizados
-                </span>
-                <span className="text-[0.7rem] text-emerald-700 font-medium">Alianzas vigentes UTS</span>
-              </div>
-              <span className="grid size-10 place-items-center rounded-xl bg-green/10 text-green-dark">
-                <i className="bx bx-check-shield text-xl" />
-              </span>
-            </div>
-
-            <div className="rounded-2xl border border-line bg-white p-4 shadow-2xs flex items-center justify-between">
-              <div>
-                <span className="text-xs font-semibold text-secondary">Vacantes Proyectadas</span>
-                <span className="mt-1 block font-display text-2xl font-bold text-ink">
-                  {metrics.totalVacancies} plazas
-                </span>
-                <span className="text-[0.7rem] text-secondary">Capacidad de absorción anual</span>
-              </div>
-              <span className="grid size-10 place-items-center rounded-xl bg-blue-50 text-blue-700">
-                <i className="bx bx-briefcase-alt-2 text-xl" />
-              </span>
-            </div>
-          </div>
-
-          {/* ─── Pestañas de Estado (Tabs) ─── */}
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-line pt-2">
-            <div className="flex items-center gap-6" role="tablist">
-              {tabs.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === t.id}
-                  onClick={() => setTab(t.id)}
-                  className={`-mb-px border-b-2 pb-3 text-xs sm:text-sm font-semibold transition-colors cursor-pointer flex items-center gap-2 ${
-                    tab === t.id
-                      ? 'border-ink text-ink font-bold'
-                      : 'border-transparent text-secondary hover:text-ink'
-                  }`}
+          {/* ─── Encabezado Hero Fotográfico & KPIs de Validación Empresarial ─── */}
+          <InstitutionPageHero
+            eyebrow="Cotejo Jurídico & Alianzas Estratégicas"
+            title="Validación de Empresas y Convenios"
+            subtitle="Verifica la documentación jurídica, el NIT en Cámara de Comercio y formaliza los convenios marco de cooperación y prácticas académicas con la institución."
+            photo={advisorPhotos.companyValidation}
+            stats={[
+              {
+                value: counts.pending,
+                label: 'Pendientes de Revisión',
+              },
+              {
+                value: counts.approved,
+                label: 'Convenios Vigentes',
+              },
+              {
+                value: counts.rejected,
+                label: 'Con Observaciones',
+              },
+              {
+                value: metrics.totalVacancies,
+                label: 'Vacantes Proyectadas',
+              },
+            ]}
+            actions={
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  to="/institucion/empresas/seguimiento"
+                  className="inline-flex items-center gap-2 rounded-xl bg-lime hover:bg-lime/85 text-ink font-bold px-4 py-2 text-xs shadow-xs transition-all no-underline"
                 >
-                  <span>{t.label}</span>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[0.68rem] font-bold ${
-                      tab === t.id
-                        ? t.id === 'pending'
-                          ? 'bg-purple-100 text-purple-900'
-                          : t.id === 'approved'
-                          ? 'bg-emerald-100 text-emerald-900'
-                          : 'bg-rose-100 text-rose-900'
-                        : 'bg-page text-secondary'
+                  <i className="bx bx-buildings text-base" />
+                  <span>Ver Directorio & Trazabilidad</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-2 rounded-xl border border-line bg-white hover:bg-page text-ink font-semibold px-4 py-2 text-xs shadow-xs transition-all cursor-pointer"
+                >
+                  <i className="bx bx-printer text-base" />
+                  <span>Imprimir Listado</span>
+                </button>
+              </div>
+            }
+          />
+
+          {/* ─── Pestañas de Estado Tipo Pills (Verde Claro UTS) ─── */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-line pb-4">
+            <div className="flex flex-wrap items-center gap-2" role="tablist">
+              {tabs.map((t) => {
+                const isActive = tab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setTab(t.id)}
+                    className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-lime text-ink shadow-xs'
+                        : 'bg-page text-secondary hover:text-ink hover:bg-panel'
                     }`}
                   >
-                    {counts[t.id]}
-                  </span>
-                </button>
-              ))}
+                    <span>{t.label}</span>
+                    <span
+                      className={`rounded-full px-2 py-0.2 text-[0.62rem] font-black ${
+                        isActive ? 'bg-ink text-white' : 'bg-line text-secondary'
+                      }`}
+                    >
+                      {counts[t.id]}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
-            <span className="text-xs text-secondary pb-3">
+            <span className="text-xs text-secondary font-medium">
               Mostrando <strong>{visibleRequests.length}</strong> de {requests.length} organizaciones
             </span>
           </div>
@@ -386,7 +366,7 @@ export default function InstitutionCompanyValidationPage() {
                               <button
                                 type="button"
                                 onClick={() => handleApprove(comp.id)}
-                                className="rounded-xl bg-green-dark px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-green-dark/90 transition-colors cursor-pointer"
+                                className="rounded-xl bg-lime hover:bg-lime/85 px-3.5 py-2 text-xs font-bold text-ink shadow-xs transition-colors cursor-pointer"
                                 title="Aprobar convenio directamente"
                               >
                                 Aprobar

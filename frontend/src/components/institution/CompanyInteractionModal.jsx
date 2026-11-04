@@ -1,11 +1,11 @@
 import { useState } from 'react';
 
 const INTERACTION_TYPES = [
-  { id: 'reunion', label: 'Reunión Bilateral', icon: 'bx-group', color: 'text-blue-600 bg-blue-50' },
-  { id: 'visita', label: 'Visita Presencial', icon: 'bx-buildings', color: 'text-purple-600 bg-purple-50' },
-  { id: 'llamada', label: 'Llamada de Acompañamiento', icon: 'bx-phone-call', color: 'text-emerald-600 bg-emerald-50' },
-  { id: 'evaluacion', label: 'Encuesta de Satisfacción', icon: 'bx-star', color: 'text-amber-600 bg-amber-50' },
-  { id: 'convenio', label: 'Gestión de Convenio', icon: 'bx-file', color: 'text-teal-600 bg-teal-50' },
+  { id: 'reunion', label: 'Reunión Bilateral', icon: 'bx-group', color: 'text-green-dark bg-green/10' },
+  { id: 'visita', label: 'Visita Presencial', icon: 'bx-buildings', color: 'text-ink bg-lime/25' },
+  { id: 'llamada', label: 'Llamada de Acompañamiento', icon: 'bx-phone-call', color: 'text-emerald-700 bg-emerald-50' },
+  { id: 'evaluacion', label: 'Encuesta de Pertinencia', icon: 'bx-poll', color: 'text-amber-800 bg-amber-50' },
+  { id: 'convenio', label: 'Gestión de Convenio', icon: 'bx-file', color: 'text-teal-800 bg-teal-50' },
 ];
 
 export default function CompanyInteractionModal({ company, isOpen, onClose, onSave }) {
@@ -170,7 +170,7 @@ export default function CompanyInteractionModal({ company, isOpen, onClose, onSa
           {/* Asesor Responsable info */}
           <div className="rounded-xl border border-line-soft bg-page p-3 text-[0.7rem] text-secondary flex items-center justify-between">
             <span>
-              Asesor UTS a cargo: <strong className="text-ink font-semibold">{advisorName}</strong>
+              Asesor a cargo: <strong className="text-ink font-semibold">{advisorName}</strong>
             </span>
             <span className="text-emerald-700 font-bold flex items-center gap-1">
               <i className="bx bxs-check-shield text-xs" />

@@ -2,14 +2,13 @@ import { useEffect, useState } from 'react';
 import { getInitials } from '../../hooks/useProfile.js';
 import { skillLevels } from '../../data/profile.js';
 import { formatApplicationDate } from '../../utils/formatters.js';
+import SoftSkillsRadarChart from './SoftSkillsRadarChart.jsx';
 
 const currency = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 
 const typeLabels = {
   work: { label: 'Experiencia laboral', icon: 'bx-briefcase-alt-2', cls: 'bg-ink text-lime' },
-  practice: { label: 'Práctica empresarial', icon: 'bx-rocket', cls: 'bg-amber-100 text-amber-800' },
-  education: { label: 'Formación académica', icon: 'bx-graduation', cls: 'bg-sky-100 text-sky-800' },
-  certification: { label: 'Certificación', icon: 'bx-award', cls: 'bg-violet-100 text-violet-800' },
+  practice: { label: 'Práctica empresarial', icon: 'bx-rocket', cls: 'bg-[#051F26]/10 text-[#051F26]' },
 };
 
 function formatMonth(value) {
@@ -90,7 +89,7 @@ export default function RecruiterPreviewModal({ profile, onClose }) {
                   </span>
                 </div>
                 <h2 id="recruiter-preview-title" className="m-0 font-display text-sm font-bold sm:text-base">
-                  Así ven tu perfil las empresas de la Red UTS
+                  Así ven tu perfil las empresas de la red institucional
                 </h2>
               </div>
             </div>
@@ -161,7 +160,7 @@ export default function RecruiterPreviewModal({ profile, onClose }) {
               
               <div className="absolute top-3 right-3 flex items-center gap-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/20 px-3 py-1 text-[0.68rem] font-bold text-white">
                 <i className="bx bxs-badge-check text-lime text-sm" aria-hidden="true" />
-                Candidato UTS Verificado
+                Candidato Verificado
               </div>
             </div>
 
@@ -242,12 +241,12 @@ export default function RecruiterPreviewModal({ profile, onClose }) {
                   {/* Tarjeta de Educación UTS */}
                   <div className="shrink-0 flex items-center sm:items-start gap-2.5 rounded-xl border border-line bg-page p-3 text-xs shadow-2xs max-w-xs">
                     <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-ink text-lime font-display font-bold text-xs shadow-xs">
-                      UTS
+                      <i className="bx bxs-graduation text-base" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1">
                         <p className="m-0 font-display font-bold text-ink truncate text-xs">
-                          Unidades Tecnológicas de Santander
+                          {profile.institution || profile.university || 'Institución Universitaria'}
                         </p>
                         <i className="bx bxs-badge-check text-green text-sm shrink-0" aria-hidden="true" />
                       </div>
@@ -371,7 +370,7 @@ export default function RecruiterPreviewModal({ profile, onClose }) {
                             className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-page px-2.5 py-1 text-xs font-semibold text-ink"
                           >
                             <span>{s.name}</span>
-                            <span className="text-[0.6rem] font-bold text-violet-700 bg-violet-50 px-1 rounded">
+                            <span className="text-[0.6rem] font-bold text-[#051F26] bg-[#051F26]/10 px-1 rounded">
                               {skillLevels[s.level - 1]}
                             </span>
                           </span>
@@ -379,20 +378,12 @@ export default function RecruiterPreviewModal({ profile, onClose }) {
                       </div>
                     </div>
 
-                    {profile.skills.some(s => s.type === 'soft') && (
-                      <div className="pt-2 border-t border-line-soft">
-                        <span className="text-[0.68rem] font-bold uppercase text-secondary block mb-1.5">Habilidades Blandas:</span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {profile.skills.filter(s => s.type === 'soft').map((s) => (
-                            <span
-                              key={s.id}
-                              className="inline-flex items-center gap-1 rounded-full border border-line bg-page px-2.5 py-0.5 text-xs text-body-muted font-medium"
-                            >
-                              <i className="bx bx-check text-green" aria-hidden="true" />
-                              {s.name}
-                            </span>
-                          ))}
-                        </div>
+                    {profile.skills.some((s) => s.type === 'soft') && (
+                      <div className="pt-3 border-t border-line-soft">
+                        <SoftSkillsRadarChart
+                          skills={profile.skills}
+                          readOnly={true}
+                        />
                       </div>
                     )}
                   </div>
@@ -421,15 +412,15 @@ export default function RecruiterPreviewModal({ profile, onClose }) {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
                     <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-ink text-lime font-display font-black text-sm shadow-xs border border-white/10" aria-hidden="true">
-                      UTS
+                      <i className="bx bxs-graduation text-xl" />
                     </span>
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <h4 className="m-0 font-display text-sm font-bold text-ink">
-                          Unidades Tecnológicas de Santander
+                          {profile.institution || profile.university || 'Institución Universitaria'}
                         </h4>
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.2 text-[0.62rem] font-bold text-emerald-800">
-                          <i className="bx bxs-badge-check text-green text-xs" /> Institución Oficial UTS
+                          <i className="bx bxs-badge-check text-green text-xs" /> Formación Acreditada
                         </span>
                       </div>
                       <p className="m-0 mt-0.5 text-xs font-semibold text-blue-muted">
@@ -453,18 +444,48 @@ export default function RecruiterPreviewModal({ profile, onClose }) {
                     {profile.thesis}
                   </div>
                 )}
+
+                {/* Especializaciones y Certificaciones en Educación */}
+                {profile.otherEducation?.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-line-soft space-y-2">
+                    <span className="text-[0.68rem] font-bold uppercase text-secondary block">
+                      Especializaciones y Certificaciones ({profile.otherEducation.length}):
+                    </span>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {profile.otherEducation.map((edu) => (
+                        <div key={edu.id} className="rounded-lg border border-line-soft bg-white p-2.5 shadow-2xs flex items-start gap-2.5">
+                          <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[#051F26]/10 text-[#051F26] text-sm">
+                            <i className={edu.type === 'Certificación' ? 'bx bx-award' : 'bx bx-book-bookmark'} />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="m-0 font-display text-xs font-bold text-ink truncate">{edu.degree}</p>
+                            <p className="m-0 text-[0.68rem] font-medium text-blue-muted truncate">{edu.institution}</p>
+                            <div className="mt-1 flex items-center gap-1.5">
+                              <span className="rounded bg-page border border-line-soft px-1.5 py-0.2 text-[0.6rem] font-bold text-secondary">
+                                {edu.type}
+                              </span>
+                              {edu.year && <span className="text-[0.65rem] text-secondary">{edu.year}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Trayectoria / Experiencia Laboral */}
               <div className="rounded-xl border border-line bg-white p-5 shadow-2xs">
                 <h3 className="m-0 mb-3 font-display text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1.5">
-                  <i className="bx bx-git-commit text-base text-sky-600" aria-hidden="true" />
-                  Trayectoria profesional y formativa
+                  <i className="bx bx-briefcase-alt-2 text-base text-[#051F26]" aria-hidden="true" />
+                  Trayectoria laboral y prácticas
                 </h3>
 
-                {profile.experience?.length > 0 ? (
+                {(profile.experience || []).filter((x) => x.type === 'work' || x.type === 'practice').length > 0 ? (
                   <ol className="m-0 list-none p-0 space-y-4">
-                    {profile.experience.map((item) => {
+                    {(profile.experience || [])
+                      .filter((x) => x.type === 'work' || x.type === 'practice')
+                      .map((item) => {
                       const meta = typeLabels[item.type] || typeLabels.work;
                       return (
                         <li key={item.id} className="relative flex gap-3 text-xs">
@@ -639,7 +660,7 @@ export default function RecruiterPreviewModal({ profile, onClose }) {
         {/* ─── Footer Controls ─── */}
         <div className="border-t border-line-soft bg-page px-5 py-3.5 sm:px-6 flex items-center justify-between">
           <p className="m-0 text-xs text-body-muted hidden sm:block">
-            Estás visualizando tu perfil como candidato verificado de las UTS.
+            Estás visualizando tu perfil como candidato verificado de la institución.
           </p>
           <div className="flex items-center gap-2 ml-auto">
             <button

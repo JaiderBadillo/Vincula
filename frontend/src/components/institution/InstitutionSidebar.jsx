@@ -4,15 +4,20 @@ import { advisorProfile } from '../../data/institutionData.js';
 import { useInstitutionProfile } from '../../hooks/useInstitutionProfile.js';
 
 function Brand({ collapsed = false, role = 'advisor' }) {
+  const isAdmin = role === 'admin';
   return (
     <Link
       className={`flex items-center text-ink no-underline ${collapsed ? 'w-full justify-center' : 'w-fit gap-3'}`}
-      to="/institucion/dashboard"
+      to={isAdmin ? '/institucion/admin/perfil' : '/institucion/dashboard'}
       aria-label="Vincula IES, portal institucional"
       title={collapsed ? 'Vincula IES' : undefined}
     >
       <span
-        className="grid size-10 shrink-0 place-items-center rounded-xl border border-green/20 bg-green/10 text-2xl text-green-dark shadow-xs"
+        className={`grid size-10 shrink-0 place-items-center rounded-xl border text-2xl shadow-xs ${
+          isAdmin
+            ? 'border-sand-line bg-sand/70 text-terracotta'
+            : 'border-green/20 bg-green/10 text-green-dark'
+        }`}
         aria-hidden="true"
       >
         <i className="bx bxs-institution" />
@@ -20,12 +25,16 @@ function Brand({ collapsed = false, role = 'advisor' }) {
       <span className={collapsed ? 'sr-only' : 'grid gap-0.5'}>
         <span className="font-display text-[0.8rem] font-bold tracking-[0.14em] flex items-center gap-1.5">
           VINCULA{' '}
-          <span className="rounded bg-lime px-1.5 py-0.2 text-[0.62rem] font-black text-ink uppercase tracking-wider">
-            {role === 'admin' ? 'Admin' : 'IES'}
+          <span
+            className={`rounded px-1.5 py-0.2 text-[0.62rem] font-black uppercase tracking-wider ${
+              isAdmin ? 'bg-terracotta text-white font-bold' : 'bg-lime text-ink'
+            }`}
+          >
+            {isAdmin ? 'Admin' : 'IES'}
           </span>
         </span>
         <span className="text-[0.6rem] font-medium tracking-wide text-secondary">
-          Portal Institucional UTS
+          Portal Institucional IES
         </span>
       </span>
     </Link>
@@ -77,7 +86,7 @@ function AdvisorProfileCard({ collapsed = false }) {
 
 function AdminProfileCard({ collapsed = false, profile }) {
   const brandIcon = profile?.logo ? (
-    <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white p-1 border border-line shadow-2xs overflow-hidden">
+    <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white p-1 border border-sand-line shadow-2xs overflow-hidden">
       <img
         src={profile.logo}
         alt={profile.name}
@@ -85,7 +94,7 @@ function AdminProfileCard({ collapsed = false, profile }) {
       />
     </span>
   ) : (
-    <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-green/10 text-green-dark font-display text-xs font-bold border border-green/20 shadow-2xs">
+    <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-cocoa text-ochre font-display text-xs font-bold shadow-2xs">
       {profile?.acronym || 'IES'}
     </span>
   );
@@ -113,7 +122,10 @@ const adminNavSections = [
     title: 'Mi institución',
     items: [
       { id: 'admin-perfil', label: 'Datos de la institución', icon: 'bx-buildings', to: '/institucion/admin/perfil' },
-      { id: 'admin-asesores', label: 'Asesores', icon: 'bx-group', to: '/institucion/admin/asesores' },
+      { id: 'admin-sedes', label: 'Sedes y Campus', icon: 'bx-map-pin', to: '/institucion/admin/asesores?tab=sedes' },
+      { id: 'admin-programas', label: 'Programas y Carreras', icon: 'bx-book-bookmark', to: '/institucion/admin/programas' },
+      { id: 'admin-trazabilidad', label: 'Trazabilidad y Pensums', icon: 'bx-line-chart', to: '/institucion/admin/trazabilidad' },
+      { id: 'admin-asesores', label: 'Asesores por Sede', icon: 'bx-group', to: '/institucion/admin/asesores' },
     ],
   },
 ];
@@ -139,7 +151,7 @@ const advisorNavSections = [
         icon: 'bx-user-check',
         to: '/institucion/estudiantes/solicitudes',
         badge: '14',
-        badgeColor: 'bg-amber-500 text-ink font-bold',
+        badgeColor: 'bg-emerald-700 text-white font-bold',
       },
       {
         id: 'estudiantes-seguimiento',
@@ -164,7 +176,7 @@ const advisorNavSections = [
         icon: 'bx-buildings',
         to: '/institucion/empresas/solicitudes',
         badge: '5',
-        badgeColor: 'bg-purple-400 text-ink font-bold',
+        badgeColor: 'bg-sand text-cocoa font-bold border border-sand-line',
       },
       {
         id: 'empresas-seguimiento',
@@ -211,16 +223,18 @@ export default function InstitutionSidebar({
       {/* Sidebar container: permanent white bar */}
       <aside
         id="institution-sidebar"
-        className={`fixed bottom-0 top-0 z-40 flex flex-col border-r border-line bg-white text-ink shadow-xs transition-[width,transform] duration-200 ease-out min-[1200px]:translate-x-0 ${
+        className={`fixed bottom-0 top-0 z-40 flex flex-col border-r ${
+          role === 'admin' ? 'border-sand-line' : 'border-line'
+        } bg-white text-ink shadow-xs transition-[width,transform] duration-200 ease-out min-[1200px]:translate-x-0 ${
           collapsed ? 'min-[1200px]:w-[5.5rem]' : 'min-[1200px]:w-[17.5rem]'
         } ${mobileOpen ? 'left-0 w-72 translate-x-0' : '-translate-x-full min-[1200px]:translate-x-0'}`}
         aria-label={role === 'admin' ? 'Navegación del administrador institucional' : 'Navegación del asesor institucional'}
       >
         {/* Top Header */}
         <div
-          className={`flex min-h-[4.75rem] items-center border-b border-line ${
-            collapsed ? 'justify-center px-3' : 'justify-between px-5'
-          }`}
+          className={`flex min-h-[4.75rem] items-center border-b ${
+            role === 'admin' ? 'border-sand-line' : 'border-line'
+          } ${collapsed ? 'justify-center px-3' : 'justify-between px-5'}`}
         >
           <Brand collapsed={collapsed} role={role} />
 
@@ -273,14 +287,20 @@ export default function InstitutionSidebar({
                           collapsed ? 'justify-center px-0' : 'gap-3 px-3'
                         } ${
                           isActive
-                            ? 'bg-green/10 font-bold text-green-dark shadow-xs'
-                            : 'font-medium text-secondary hover:bg-page hover:text-ink'
+                            ? role === 'admin'
+                              ? 'bg-sand font-bold text-cocoa'
+                              : 'bg-green/10 font-bold text-green-dark shadow-xs'
+                            : role === 'admin'
+                              ? 'font-medium text-secondary hover:bg-cream hover:text-cocoa'
+                              : 'font-medium text-secondary hover:bg-page hover:text-ink'
                         }`}
                         aria-current={isActive ? 'page' : undefined}
                       >
                         {isActive && (
                           <span
-                            className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-green"
+                            className={`absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full ${
+                              role === 'admin' ? 'bg-terracotta' : 'bg-green'
+                            }`}
                             aria-hidden="true"
                           />
                         )}
@@ -288,8 +308,12 @@ export default function InstitutionSidebar({
                         <i
                           className={`bx ${item.icon} shrink-0 text-lg transition-colors ${
                             isActive
-                              ? 'text-green-dark'
-                              : 'text-secondary group-hover:text-green-dark'
+                              ? role === 'admin'
+                                ? 'text-terracotta'
+                                : 'text-green-dark'
+                              : role === 'admin'
+                                ? 'text-secondary group-hover:text-terracotta'
+                                : 'text-secondary group-hover:text-green-dark'
                           }`}
                           aria-hidden="true"
                         />
@@ -314,10 +338,12 @@ export default function InstitutionSidebar({
           ))}
 
           {/* Cambio de vista (mientras no exista el inicio de sesión por rol) */}
-          <div className="pt-2 space-y-0.5 border-t border-line">
+          <div className={`pt-2 space-y-0.5 border-t ${role === 'admin' ? 'border-sand-line' : 'border-line'}`}>
             <Link
               to={role === 'admin' ? '/institucion/dashboard' : '/institucion/admin/perfil'}
-              className={`flex items-center rounded-xl p-2.5 text-[0.72rem] text-secondary hover:text-green-dark hover:bg-page no-underline transition-colors ${
+              className={`flex items-center rounded-xl p-2.5 text-[0.72rem] text-secondary ${
+                role === 'admin' ? 'hover:text-terracotta hover:bg-cream' : 'hover:text-green-dark hover:bg-page'
+              } no-underline transition-colors ${
                 collapsed ? 'justify-center' : 'gap-2'
               }`}
               title={role === 'admin' ? 'Ver como asesor' : 'Ver como administrador'}
@@ -328,8 +354,22 @@ export default function InstitutionSidebar({
               </span>
             </Link>
             <Link
+              to="/empresa/admin/perfil"
+              className={`flex items-center rounded-xl p-2.5 text-[0.72rem] text-secondary ${
+                role === 'admin' ? 'hover:text-terracotta hover:bg-cream' : 'hover:text-green-dark hover:bg-page'
+              } no-underline transition-colors ${
+                collapsed ? 'justify-center' : 'gap-2'
+              }`}
+              title="Ver como administrador de empresa"
+            >
+              <i className="bx bxs-business text-base text-secondary" />
+              <span className={collapsed ? 'sr-only' : ''}>Ver como empresa</span>
+            </Link>
+            <Link
               to="/dashboard"
-              className={`flex items-center rounded-xl p-2.5 text-[0.72rem] text-secondary hover:text-green-dark hover:bg-page no-underline transition-colors ${
+              className={`flex items-center rounded-xl p-2.5 text-[0.72rem] text-secondary ${
+                role === 'admin' ? 'hover:text-terracotta hover:bg-cream' : 'hover:text-green-dark hover:bg-page'
+              } no-underline transition-colors ${
                 collapsed ? 'justify-center' : 'gap-2'
               }`}
               title="Vista de Egresado"

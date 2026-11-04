@@ -311,7 +311,7 @@ export default function ApplicationDetailModal({ application, interview, onClose
                     </p>
                   </div>
                   <p className="m-0 text-xs text-body-muted leading-relaxed">
-                    {application.experienceDetail || 'Se valora formación técnica y proyectos de grado de las UTS.'}
+                    {application.experienceDetail || 'Se valora formación técnica y proyectos de grado institucionales.'}
                   </p>
                 </div>
               </div>
@@ -437,7 +437,7 @@ export default function ApplicationDetailModal({ application, interview, onClose
                   </span>
                   <div className="min-w-0">
                     <p className="font-semibold text-ink truncate m-0">
-                      {application.submittedDocument?.fileName || 'Hoja_de_Vida_UTS.pdf'}
+                      {application.submittedDocument?.fileName || 'Hoja_de_Vida_Digital.pdf'}
                     </p>
                     <span className="text-[0.68rem] text-secondary">
                       {application.submittedDocument?.fileSize || '320 KB'} · Postulado el {formatApplicationDate(application.appliedAt)}

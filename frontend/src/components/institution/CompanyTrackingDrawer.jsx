@@ -3,7 +3,7 @@ import { useState } from 'react';
 const TABS = [
   { id: 'resumen', label: 'Resumen & Convenio', icon: 'bx-file-blank' },
   { id: 'egresados', label: 'Egresados Vinculados', icon: 'bx-user-check' },
-  { id: 'evaluacion', label: 'Satisfacción & Pertinencia', icon: 'bx-star' },
+  { id: 'evaluacion', label: 'Retroalimentación & Pertinencia', icon: 'bx-message-square-check' },
   { id: 'bitacora', label: 'Bitácora de Trazabilidad', icon: 'bx-history' },
 ];
 
@@ -51,8 +51,8 @@ export default function CompanyTrackingDrawer({
                       </span>
                     )}
                     {company.agreementStatus === 'en_seguimiento' && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 border border-purple-200 px-2.5 py-0.5 text-[0.68rem] font-bold text-purple-800">
-                        <i className="bx bx-sync text-xs text-purple-600" />
+                      <span className="inline-flex items-center gap-1 rounded-full bg-lime/20 border border-lime/50 px-2.5 py-0.5 text-[0.68rem] font-bold text-ink">
+                        <i className="bx bx-sync text-xs text-green-dark" />
                         En Formalización
                       </span>
                     )}
@@ -86,7 +86,7 @@ export default function CompanyTrackingDrawer({
             {/* Quick KPI Bar */}
             <div className="grid grid-cols-4 gap-2 mt-4 pt-3.5 border-t border-line-soft text-center">
               <div className="rounded-xl border border-line-soft bg-white p-2">
-                <span className="text-[0.65rem] font-bold uppercase tracking-wider text-secondary block">Egresados UTS</span>
+                <span className="text-[0.65rem] font-bold uppercase tracking-wider text-secondary block">Egresados</span>
                 <span className="font-display text-base font-bold text-ink mt-0.5 block">{company.totalGraduatesHired}</span>
               </div>
               <div className="rounded-xl border border-line-soft bg-white p-2">
@@ -94,10 +94,9 @@ export default function CompanyTrackingDrawer({
                 <span className="font-display text-base font-bold text-green-dark mt-0.5 block">{company.activeVacanciesCount}</span>
               </div>
               <div className="rounded-xl border border-line-soft bg-white p-2">
-                <span className="text-[0.65rem] font-bold uppercase tracking-wider text-secondary block">Satisfacción</span>
-                <span className="font-display text-base font-bold text-amber-700 mt-0.5 block flex items-center justify-center gap-1">
-                  <i className="bx bxs-star text-xs text-amber-500" />
-                  {company.satisfactionScore}
+                <span className="text-[0.65rem] font-bold uppercase tracking-wider text-secondary block">Sueldo Promedio</span>
+                <span className="font-display text-xs font-bold text-emerald-800 mt-1 block truncate">
+                  {company.avgSalary.split(' ')[1]}M COP
                 </span>
               </div>
               <div className="rounded-xl border border-line-soft bg-white p-2">
@@ -138,7 +137,7 @@ export default function CompanyTrackingDrawer({
                 <div className="rounded-2xl border border-line p-4.5 bg-page/40">
                   <h3 className="m-0 text-xs font-bold uppercase tracking-wider text-secondary mb-3 flex items-center gap-2">
                     <i className="bx bx-award text-base text-green-dark" />
-                    Condiciones del Convenio Institucional UTS
+                    Condiciones del Convenio Institucional
                   </h3>
                   <div className="grid sm:grid-cols-2 gap-3 text-xs">
                     <div>
@@ -212,7 +211,7 @@ export default function CompanyTrackingDrawer({
                 <div className="rounded-2xl border border-line p-4.5 bg-white">
                   <h3 className="m-0 text-xs font-bold uppercase tracking-wider text-secondary mb-3 flex items-center gap-2">
                     <i className="bx bxs-graduation text-base text-green-dark" />
-                    Programas UTS Más Contratados por la Empresa
+                    Programas Más Contratados por la Empresa
                   </h3>
                   <div className="space-y-2.5">
                     {company.topProgramsHired.map((item) => {
@@ -240,7 +239,7 @@ export default function CompanyTrackingDrawer({
               <div className="space-y-4 animate-rise-in">
                 <div className="flex items-center justify-between">
                   <p className="m-0 text-xs text-secondary">
-                    Egresados UTS actualmente contratados en <strong>{company.commercialName}</strong> ({company.hiredGraduatesSample.length} en muestra verificada):
+                    Egresados actualmente contratados en <strong>{company.commercialName}</strong> ({company.hiredGraduatesSample.length} en muestra verificada):
                   </p>
                   <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[0.68rem] font-bold text-emerald-800">
                     {company.totalGraduatesHired} Vinculaciones Totales
@@ -281,38 +280,35 @@ export default function CompanyTrackingDrawer({
             {/* TAB 3: SATISFACCIÓN & PERTINENCIA */}
             {activeTab === 'evaluacion' && (
               <div className="space-y-6 animate-rise-in">
-                {/* Score Card */}
-                <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                {/* Concepto Institucional */}
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <div className="grid size-16 place-items-center rounded-2xl bg-amber-500 text-white font-display text-2xl font-bold shadow-xs">
-                      {company.satisfactionScore}
+                    <div className="grid size-12 place-items-center rounded-2xl bg-green-dark text-white text-2xl shadow-xs">
+                      <i className="bx bx-check-shield" />
                     </div>
                     <div>
-                      <span className="text-[0.68rem] font-bold uppercase tracking-wider text-amber-800 block">
-                        Calificación del Empleador
+                      <span className="text-[0.68rem] font-bold uppercase tracking-wider text-emerald-800 block">
+                        Evaluación Institucional del Empleador
                       </span>
-                      <h4 className="m-0 font-display text-lg font-bold text-ink">
-                        Nivel {company.satisfactionLevel}
+                      <h4 className="m-0 font-display text-base font-bold text-ink">
+                        Concepto: {company.satisfactionLevel}
                       </h4>
                       <p className="m-0 text-xs text-secondary mt-0.5">
-                        Basado en encuesta anual de competencias y clima laboral UTS
+                        Basado en encuesta anual de competencias y pertinencia curricular
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 text-amber-500 text-xl">
-                    <i className="bx bxs-star" />
-                    <i className="bx bxs-star" />
-                    <i className="bx bxs-star" />
-                    <i className="bx bxs-star" />
-                    <i className="bx bxs-star-half" />
-                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 border border-emerald-300 px-3.5 py-1 text-xs font-bold text-emerald-900">
+                    <i className="bx bxs-badge-check text-green text-sm" />
+                    Empleador Verificado
+                  </span>
                 </div>
 
                 {/* Fortalezas Destacadas */}
                 <div className="rounded-2xl border border-line p-4.5 bg-white">
                   <h4 className="m-0 text-xs font-bold uppercase tracking-wider text-emerald-800 mb-3 flex items-center gap-1.5">
                     <i className="bx bxs-check-circle text-base text-green" />
-                    Fortalezas Reconocidas en el Talento UTS
+                    Fortalezas Reconocidas en el Talento Egresado
                   </h4>
                   <ul className="m-0 list-none p-0 space-y-2">
                     {company.skillsFeedback.strengths.map((s, idx) => (
@@ -325,15 +321,15 @@ export default function CompanyTrackingDrawer({
                 </div>
 
                 {/* Sugerencias de Pertinencia Curricular */}
-                <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4.5">
-                  <h4 className="m-0 text-xs font-bold uppercase tracking-wider text-blue-900 mb-3 flex items-center gap-1.5">
-                    <i className="bx bx-bulb text-base text-blue-600" />
-                    Recomendaciones para Actualización Curricular UTS
+                <div className="rounded-2xl border border-green/20 bg-green/5 p-4.5">
+                  <h4 className="m-0 text-xs font-bold uppercase tracking-wider text-green-dark mb-3 flex items-center gap-1.5">
+                    <i className="bx bx-bulb text-base text-green" />
+                    Recomendaciones para Actualización Curricular
                   </h4>
                   <ul className="m-0 list-none p-0 space-y-2">
                     {company.skillsFeedback.improvementOpportunities.map((o, idx) => (
                       <li key={idx} className="flex items-start gap-2 text-xs text-ink leading-relaxed">
-                        <i className="bx bx-right-arrow-alt text-blue-600 text-base mt-0.5 shrink-0" />
+                        <i className="bx bx-right-arrow-alt text-green text-base mt-0.5 shrink-0" />
                         <span>{o}</span>
                       </li>
                     ))}
@@ -347,12 +343,12 @@ export default function CompanyTrackingDrawer({
               <div className="space-y-4 animate-rise-in">
                 <div className="flex items-center justify-between">
                   <p className="m-0 text-xs text-secondary">
-                    Historial de gestiones y contactos institucionales UTS - {company.commercialName}:
+                    Historial de gestiones y contactos institucionales - {company.commercialName}:
                   </p>
                   <button
                     type="button"
                     onClick={() => onOpenInteractionModal(company)}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-green-dark hover:bg-green px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-lime hover:bg-lime/85 px-3.5 py-1.5 text-xs font-bold text-ink shadow-xs transition-colors cursor-pointer"
                   >
                     <i className="bx bx-plus text-sm" />
                     <span>Registrar Gestión</span>
@@ -363,10 +359,10 @@ export default function CompanyTrackingDrawer({
                   <div className="relative pl-6 space-y-5 border-l-2 border-line-soft ml-3 mt-4">
                     {company.interactionLogs.map((log) => {
                       const icons = {
-                        reunion: 'bx-group text-blue-600 bg-blue-100',
-                        visita: 'bx-buildings text-purple-600 bg-purple-100',
+                        reunion: 'bx-group text-green-dark bg-green/10',
+                        visita: 'bx-buildings text-ink bg-lime/25',
                         llamada: 'bx-phone-call text-emerald-600 bg-emerald-100',
-                        evaluacion: 'bx-star text-amber-600 bg-amber-100',
+                        evaluacion: 'bx-poll text-amber-600 bg-amber-100',
                         convenio: 'bx-file text-teal-600 bg-teal-100',
                       };
                       return (

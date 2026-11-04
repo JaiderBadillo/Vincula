@@ -12,6 +12,14 @@ export function formatApplicationDate(date) {
   return `${values.day} ${values.month.replace('.', '')} ${values.year}`;
 }
 
+/** Días que faltan hasta una fecha `YYYY-MM-DD` (negativo si ya pasó, null si no hay fecha). */
+export function daysUntil(date) {
+  if (!date) return null;
+  const target = new Date(`${date}T23:59:59`);
+  const diff = target.getTime() - Date.now();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
 export function formatInterviewDate(dateTime) {
   if (!dateTime) return 'Fecha por confirmar';
 

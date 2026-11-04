@@ -98,10 +98,6 @@ export default function SiteHeader() {
           </div>
           <div className="hero-panel relative z-10 mx-auto w-full max-w-[500px]">
             <ProfileForm />
-            <div className="mt-4 flex w-fit items-center gap-2 rounded-control border border-white/10 bg-ink-soft px-4 py-3 text-sm text-white max-sm:hidden">
-              <span className="size-2 rounded-full bg-lime" aria-hidden="true" />
-              <span className="text-white/80">Tu experiencia, en el centro</span>
-            </div>
           </div>
         </div>
       </section>

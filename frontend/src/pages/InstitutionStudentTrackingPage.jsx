@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
 import InstitutionPortalLayout from '../components/institution/InstitutionPortalLayout.jsx';
+import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
 import StudentTrackingDrawer from '../components/institution/StudentTrackingDrawer.jsx';
+import GraduatesTrackingAnalyticsChart from '../components/institution/GraduatesTrackingAnalyticsChart.jsx';
 import { graduatesTrackingData } from '../data/institutionTrackingData.js';
+import { advisorPhotos } from '../data/institutionImages.js';
 
 function getInitials(name) {
   return name
@@ -19,6 +22,17 @@ export default function InstitutionStudentTrackingPage() {
   const [selectedCohort, setSelectedCohort] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all'); // 'all' | 'employed' | 'seeking'
   const [activeDrawerId, setActiveDrawerId] = useState(null);
+
+  function handleApplyFilterFromChart({ program, cohort, status }) {
+    if (program && program !== 'all') setSelectedProgram(program);
+    if (cohort && cohort !== 'all') setSelectedCohort(cohort);
+    if (status && status !== 'all') setSelectedStatus(status);
+
+    const el = document.getElementById('tabla-seguimiento-egresados');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
 
   // Programas únicos para el dropdown
   const programs = useMemo(() => {
@@ -115,92 +129,54 @@ export default function InstitutionStudentTrackingPage() {
     <InstitutionPortalLayout activePage="estudiantes-seguimiento">
       <main className="w-full pb-16">
         <div className="mx-auto max-w-7xl px-5 pt-8 sm:px-8 lg:px-10 space-y-8">
-          {/* ─── 1. Encabezado y KPIs del Seguimiento ─── */}
-          <div className="flex flex-col gap-4 border-b border-line pb-6">
-            <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-              <div>
-                <h1 className="m-0 font-display text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-                  Seguimiento Laboral de Egresados
-                </h1>
-                <p className="m-0 mt-1 text-sm text-body-muted max-w-3xl">
-                  Monitorea en tiempo real el estado de inserción productiva, empresas empleadoras, aspiraciones y el avance en fases de selección de los egresados de las UTS.
-                </p>
-              </div>
+          {/* ─── 1. Encabezado Hero Fotográfico y KPIs del Seguimiento ─── */}
+          <InstitutionPageHero
+            eyebrow="Trazabilidad & Colocación Laboral"
+            title="Seguimiento Laboral de Egresados"
+            subtitle="Monitorea en tiempo real el estado de inserción productiva, empresas empleadoras, aspiraciones y el avance en fases de selección de los egresados de la institución."
+            photo={advisorPhotos.studentTracking}
+            stats={[
+              {
+                value: `${metrics.employmentRate}%`,
+                label: 'Tasa de Vinculación',
+              },
+              {
+                value: metrics.employed,
+                label: 'Egresados Vinculados',
+              },
+              {
+                value: metrics.seeking,
+                label: 'En Búsqueda Activa',
+              },
+              {
+                value: metrics.totalApplications,
+                label: 'Postulaciones Radicadas',
+              },
+            ]}
+            actions={
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-2 rounded-xl bg-lime hover:bg-lime/85 text-ink px-4 py-2 text-xs font-bold transition-all shadow-xs cursor-pointer"
+                title="Imprimir o exportar listado a PDF"
+              >
+                <i className="bx bx-printer text-base" />
+                <span>Exportar Reporte</span>
+              </button>
+            }
+          />
 
-              {/* Botón de exportar reporte */}
-              <div className="flex items-center gap-2 self-start lg:self-auto shrink-0">
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2 text-xs font-semibold text-ink hover:border-green hover:text-green-dark transition-colors shadow-xs cursor-pointer"
-                  title="Imprimir o exportar listado a PDF"
-                >
-                  <i className="bx bx-printer text-base" />
-                  <span>Exportar Reporte</span>
-                </button>
-              </div>
-            </div>
+          {/* ─── 2. Panel Analítico y Gráficos de Inserción Laboral ─── */}
+          <GraduatesTrackingAnalyticsChart
+            graduates={graduates}
+            onApplyFilterToTable={handleApplyFilterFromChart}
+          />
 
-            {/* 4 KPIs de Resumen Rápido */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 pt-2">
-              <div className="rounded-2xl border border-line bg-white p-4 shadow-xs">
-                <span className="block text-[0.68rem] font-bold uppercase tracking-wider text-secondary">
-                  Expedientes en Seguimiento
-                </span>
-                <span className="font-display text-2xl font-extrabold text-ink mt-1 block">
-                  {metrics.total}
-                </span>
-                <span className="text-[0.65rem] text-secondary mt-0.5 block">
-                  Muestra representativa activa
-                </span>
-              </div>
-
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 shadow-xs">
-                <span className="block text-[0.68rem] font-bold uppercase tracking-wider text-emerald-900">
-                  Egresados Contratados
-                </span>
-                <span className="font-display text-2xl font-extrabold text-emerald-950 mt-1 block flex items-baseline gap-1.5">
-                  {metrics.employed}
-                  <span className="text-xs font-bold text-emerald-700">
-                    ({metrics.employmentRate}%)
-                  </span>
-                </span>
-                <span className="text-[0.65rem] text-emerald-800 mt-0.5 block font-medium">
-                  Ubicados en sector formal
-                </span>
-              </div>
-
-              <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4 shadow-xs">
-                <span className="block text-[0.68rem] font-bold uppercase tracking-wider text-amber-950">
-                  En Búsqueda Activa
-                </span>
-                <span className="font-display text-2xl font-extrabold text-amber-950 mt-1 block flex items-baseline gap-1.5">
-                  {metrics.seeking}
-                  <span className="text-xs font-bold text-amber-800">
-                    ({100 - metrics.employmentRate}%)
-                  </span>
-                </span>
-                <span className="text-[0.65rem] text-amber-800 mt-0.5 block font-medium">
-                  Disponibles para postulaciones
-                </span>
-              </div>
-
-              <div className="rounded-2xl border border-line bg-white p-4 shadow-xs">
-                <span className="block text-[0.68rem] font-bold uppercase tracking-wider text-secondary">
-                  Postulaciones Radicadas
-                </span>
-                <span className="font-display text-2xl font-extrabold text-ink mt-1 block">
-                  {metrics.totalApplications}
-                </span>
-                <span className="text-[0.65rem] text-secondary mt-0.5 block">
-                  En procesos de selección
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* ─── 2. Barra de Búsqueda y Filtros Inteligentes ─── */}
-          <div className="rounded-2xl border border-line bg-white p-5 shadow-xs space-y-4">
+          {/* ─── 3. Barra de Búsqueda y Filtros del Directorio ─── */}
+          <div
+            id="tabla-seguimiento-egresados"
+            className="rounded-2xl border border-line bg-white p-5 shadow-xs space-y-4 scroll-mt-24"
+          >
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
               {/* Barra de Búsqueda */}
               <div className="relative flex-1">
@@ -225,42 +201,61 @@ export default function InstitutionStudentTrackingPage() {
                 )}
               </div>
 
-              {/* Pestañas de Estado de Empleabilidad */}
-              <div className="inline-flex rounded-xl bg-page p-1 border border-line-soft self-start lg:self-auto shrink-0">
+              {/* Pestañas de Estado de Empleabilidad (Pills en Verde Claro UTS) */}
+              <div className="flex flex-wrap items-center gap-2" role="tablist">
                 <button
                   type="button"
                   onClick={() => setSelectedStatus('all')}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                  className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
                     selectedStatus === 'all'
-                      ? 'bg-white text-ink shadow-xs font-bold'
-                      : 'text-secondary hover:text-ink'
+                      ? 'bg-lime text-ink shadow-xs'
+                      : 'bg-page text-secondary hover:text-ink hover:bg-panel'
                   }`}
                 >
-                  Todos ({graduatesTrackingData.length})
+                  <span>Todos</span>
+                  <span
+                    className={`rounded-full px-2 py-0.2 text-[0.62rem] font-black ${
+                      selectedStatus === 'all' ? 'bg-ink text-white' : 'bg-line text-secondary'
+                    }`}
+                  >
+                    {graduatesTrackingData.length}
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setSelectedStatus('employed')}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                  className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
                     selectedStatus === 'employed'
-                      ? 'bg-white text-emerald-900 shadow-xs font-bold'
-                      : 'text-secondary hover:text-ink'
+                      ? 'bg-lime text-ink shadow-xs'
+                      : 'bg-page text-secondary hover:text-ink hover:bg-panel'
                   }`}
                 >
-                  <span className="size-2 rounded-full bg-emerald-600" />
-                  Contratados ({metrics.employed})
+                  <span>Contratados</span>
+                  <span
+                    className={`rounded-full px-2 py-0.2 text-[0.62rem] font-black ${
+                      selectedStatus === 'employed' ? 'bg-ink text-white' : 'bg-line text-secondary'
+                    }`}
+                  >
+                    {metrics.employed}
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setSelectedStatus('seeking')}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                  className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
                     selectedStatus === 'seeking'
-                      ? 'bg-white text-amber-900 shadow-xs font-bold'
-                      : 'text-secondary hover:text-ink'
+                      ? 'bg-lime text-ink shadow-xs'
+                      : 'bg-page text-secondary hover:text-ink hover:bg-panel'
                   }`}
                 >
-                  <span className="size-2 rounded-full bg-amber-500" />
-                  En Búsqueda ({metrics.seeking})
+                  <span>En Búsqueda</span>
+                  <span
+                    className={`rounded-full px-2 py-0.2 text-[0.62rem] font-black ${
+                      selectedStatus === 'seeking' ? 'bg-ink text-white' : 'bg-line text-secondary'
+                    }`}
+                  >
+                    {metrics.seeking}
+                  </span>
                 </button>
               </div>
             </div>
@@ -355,7 +350,7 @@ export default function InstitutionStudentTrackingPage() {
                     <thead>
                       <tr className="border-b border-line bg-page/60 text-[0.68rem] font-bold uppercase tracking-wider text-secondary">
                         <th scope="col" className="px-5 py-3.5">Egresado & Documento</th>
-                        <th scope="col" className="px-5 py-3.5">Programa UTS & Corte</th>
+                        <th scope="col" className="px-5 py-3.5">Programa & Corte</th>
                         <th scope="col" className="px-5 py-3.5">Estado Laboral</th>
                         <th scope="col" className="px-5 py-3.5">Empresa / Cargo Actual</th>
                         <th scope="col" className="px-5 py-3.5 text-center">Postulaciones</th>
@@ -430,10 +425,28 @@ export default function InstitutionStudentTrackingPage() {
                             <td className="px-5 py-4">
                               {isEmployed ? (
                                 <div className="min-w-0 max-w-xs">
-                                  <span className="block font-bold text-ink truncate">
-                                    {grad.employmentDetails.company}
-                                  </span>
-                                  <span className="block text-[0.68rem] text-secondary truncate">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-bold text-ink truncate">
+                                      {grad.employmentDetails.company}
+                                    </span>
+                                    {grad.employmentDetails?.placedViaVincula ? (
+                                      <span
+                                        className="inline-flex items-center gap-0.5 rounded bg-lime/40 border border-lime/70 px-1.5 py-0.2 text-[0.6rem] font-bold text-ink"
+                                        title="Contratado a través de la Bolsa Institucional Vincula UTS"
+                                      >
+                                        <i className="bx bxs-bolt text-[0.7rem] text-green-dark" />
+                                        Vincula UTS
+                                      </span>
+                                    ) : (
+                                      <span
+                                        className="inline-flex items-center rounded bg-page border border-line-soft px-1.5 py-0.2 text-[0.6rem] font-medium text-secondary"
+                                        title="Contratado por convocatoria externa / vinculación directa"
+                                      >
+                                        Externo
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="block text-[0.68rem] text-secondary truncate mt-0.5">
                                     {grad.employmentDetails.jobTitle}
                                   </span>
                                 </div>

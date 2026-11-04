@@ -203,7 +203,7 @@ export default function StudentTrackingDrawer({ isOpen, onClose, student }) {
               <span className="font-bold text-green-dark">{student.gpa}</span>
             </div>
             <div>
-              <span className="block text-[0.65rem] font-bold uppercase text-secondary">Sede UTS</span>
+              <span className="block text-[0.65rem] font-bold uppercase text-secondary">Sede</span>
               <span className="font-medium text-ink truncate block">{student.campus.split('·')[0]}</span>
             </div>
             <div>
@@ -275,7 +275,7 @@ export default function StudentTrackingDrawer({ isOpen, onClose, student }) {
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-emerald-100 text-[0.7rem] text-secondary">
                   <span className="flex items-center gap-1 font-medium text-emerald-800">
                     <i className="bx bxs-badge-check text-base text-emerald-600" />
-                    Inserción formal validada por convenio UTS
+                    Inserción formal validada por convenio institucional
                   </span>
                   <span>Actualizado: {student.employmentDetails.lastStatusUpdate}</span>
                 </div>
@@ -348,7 +348,7 @@ export default function StudentTrackingDrawer({ isOpen, onClose, student }) {
                   </span>
                 )}
                 {inProgressApps > 0 && (
-                  <span className="rounded-lg bg-blue-100 border border-blue-300 px-2 py-1 font-bold text-blue-800">
+                  <span className="rounded-lg bg-lime/25 border border-lime/60 px-2 py-1 font-bold text-ink">
                     {inProgressApps} activas
                   </span>
                 )}
@@ -378,7 +378,7 @@ export default function StudentTrackingDrawer({ isOpen, onClose, student }) {
                         app.outcome === 'hired'
                           ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
                           : app.outcome === 'in_progress'
-                          ? 'bg-blue-100 text-blue-900 border border-blue-300'
+                          ? 'bg-lime/25 text-ink border border-lime/60'
                           : 'bg-page text-secondary border border-line'
                       }`}
                     >
@@ -477,7 +477,7 @@ export default function StudentTrackingDrawer({ isOpen, onClose, student }) {
         <div className="flex items-center justify-between border-t border-line bg-page/40 px-6 py-4">
           <div className="flex items-center gap-2">
             <a
-              href={`mailto:${student.email}?subject=Seguimiento%20Laboral%20UTS%20-%20Bolsa%20de%20Empleo&body=Estimado(a)%20${encodeURIComponent(student.studentName)},%0A%0ATe%20escribimos%20desde%20la%20Coordinaci%C3%B3n%20de%20Egresados%20de%20las%20UTS...`}
+              href={`mailto:${student.email}?subject=Seguimiento%20Laboral%20Institucional%20-%20Bolsa%20de%20Empleo&body=Estimado(a)%20${encodeURIComponent(student.studentName)},%0A%0ATe%20escribimos%20desde%20la%20Coordinaci%C3%B3n%20de%20Egresados...`}
               className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-3 py-2 text-xs font-semibold text-ink hover:border-green hover:text-green-dark transition-colors no-underline shadow-xs"
             >
               <i className="bx bx-envelope text-sm" />

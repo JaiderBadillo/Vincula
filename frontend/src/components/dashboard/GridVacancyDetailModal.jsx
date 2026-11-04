@@ -139,7 +139,7 @@ export default function GridVacancyDetailModal({
                     </h3>
                     <span className="inline-flex items-center gap-1 text-[0.68rem] font-bold text-lime bg-lime/15 border border-lime/30 px-2 py-0.5 rounded-full">
                       <i className="bx bxs-badge-check" />
-                      Convenio Activo UTS
+                      Convenio Institucional Activo
                     </span>
                   </div>
                   <h2
@@ -155,7 +155,7 @@ export default function GridVacancyDetailModal({
               <div className="hidden sm:flex flex-col items-end shrink-0">
                 <span className="rounded-full bg-lime text-ink px-3 py-1 text-xs font-extrabold shadow-md inline-flex items-center gap-1.5 border border-white/30">
                   <i className="bx bxs-bolt text-sm" />
-                  {job.utsMatch}% Afinidad UTS
+                  {job.utsMatch}% Match Perfil
                 </span>
               </div>
             </div>
@@ -196,7 +196,7 @@ export default function GridVacancyDetailModal({
             <nav className="flex gap-2 overflow-x-auto scrollbar-none" aria-label="Detalles de la vacante">
               {[
                 { id: 'cargo', label: 'Cargo & Requisitos', icon: 'bx-briefcase-alt-2' },
-                { id: 'match', label: `Afinidad UTS (${job.utsMatch}%)`, icon: 'bx-target-lock' },
+                { id: 'match', label: `Afinidad Curricular (${job.utsMatch}%)`, icon: 'bx-target-lock' },
                 { id: 'empresa', label: 'Empresa & Beneficios', icon: 'bx-buildings' },
                 { id: 'proceso', label: 'Fases de Selección', icon: 'bx-git-repo-forked' },
               ].map((t) => (
@@ -321,7 +321,7 @@ export default function GridVacancyDetailModal({
                     <span className="font-semibold text-ink mt-0.5 block">{job.experienceYears}</span>
                   </div>
                   <div>
-                    <span className="text-[0.68rem] text-secondary font-bold uppercase block">Convalidación UTS</span>
+                    <span className="text-[0.68rem] text-secondary font-bold uppercase block">Convalidación Académica</span>
                     <span className="font-semibold text-ink mt-0.5 block">{job.experienceEquivalence}</span>
                   </div>
                 </div>
@@ -337,10 +337,10 @@ export default function GridVacancyDetailModal({
                   </div>
                   <div className="space-y-2 text-center sm:text-left">
                     <h4 className="m-0 font-display text-lg font-bold text-ink">
-                      Compatibilidad Alta con tu Formación UTS
+                      Compatibilidad Alta con tu Perfil Académico
                     </h4>
                     <p className="m-0 text-xs sm:text-sm text-body-muted leading-relaxed max-w-xl">
-                      Este cargo fue validado con el plan de estudios y competencias técnicas de las Unidades Tecnológicas de Santander. Tu perfil cumple con los criterios solicitados por {job.company}.
+                      Este cargo fue validado con el plan de estudios y competencias técnicas institucionales. Tu perfil cumple con los criterios solicitados por {job.company}.
                     </p>
                   </div>
                 </div>
@@ -375,7 +375,7 @@ export default function GridVacancyDetailModal({
                     Garantías de la Alianza Institucional
                   </h5>
                   <p className="m-0 text-body-muted leading-relaxed">
-                    Las postulaciones canalizadas a través de Vincula UTS reciben revisión preferente por la coordinación de talento humano de <strong>{job.company}</strong>, con verificación automática de títulos y expedientes académicos.
+                    Las postulaciones canalizadas a través de la plataforma institucional reciben revisión preferente por la coordinación de talento humano de <strong>{job.company}</strong>, con verificación automática de títulos y expedientes académicos.
                   </p>
                 </div>
               </div>
@@ -416,7 +416,7 @@ export default function GridVacancyDetailModal({
                       <span className="font-semibold text-ink mt-0.5 block">{job.companyFounded}</span>
                     </div>
                     <div className="rounded-xl border border-line-soft bg-page/40 p-3.5">
-                      <span className="text-[0.68rem] text-secondary font-bold uppercase block">Convenio UTS</span>
+                      <span className="text-[0.68rem] text-secondary font-bold uppercase block">Convenio Institucional</span>
                       <span className="font-semibold text-green-dark mt-0.5 block">{job.partnershipType}</span>
                     </div>
                     <div className="col-span-2 sm:col-span-1 rounded-xl border border-line-soft bg-page/40 p-3.5">
@@ -571,7 +571,7 @@ export default function GridVacancyDetailModal({
               }`}
             >
               <i className={`bx ${isApplied ? 'bx-check-circle' : 'bx-send'} text-base`} />
-              <span>{isApplied ? 'Ya te has postulado' : 'Postularme con perfil UTS'}</span>
+              <span>{isApplied ? 'Ya te has postulado' : 'Postularme a esta vacante'}</span>
             </button>
           </div>
         </div>

@@ -3,7 +3,6 @@ import GraduatePortalLayout from '../components/dashboard/GraduatePortalLayout.j
 import { phaseDefinitions, proposalApplications, proposalInterviews } from '../data/proposalApplications.js';
 
 const phaseOptions = [
-  { value: 'all', label: 'Todas las fases', shortLabel: 'Todas' },
   { value: '1', label: 'Fase 1: Postulación recibida', shortLabel: 'Fase 1', dot: 'bg-amber-500' },
   { value: '2', label: 'Fase 2: Revisión curricular', shortLabel: 'Fase 2', dot: 'bg-sky-500' },
   { value: '3', label: 'Fase 3: Entrevista técnica', shortLabel: 'Fase 3', dot: 'bg-purple-500' },
@@ -12,7 +11,6 @@ const phaseOptions = [
 
 export default function MyApplicationsPage() {
   const [phaseFilter, setPhaseFilter] = useState('all'); // 'all' | '1' | '2' | '3' | '4'
-  const [companyFilter, setCompanyFilter] = useState('all');
   const [keyword, setKeyword] = useState('');
   const [selectedAppId, setSelectedAppId] = useState(proposalApplications[0]?.id || null);
   const [inspectingPhase, setInspectingPhase] = useState(null);
@@ -31,12 +29,7 @@ export default function MyApplicationsPage() {
     [withdrawnApps],
   );
 
-  const companyOptions = useMemo(
-    () => [...new Set(activeApplications.map((a) => a.companyName))].sort(),
-    [activeApplications],
-  );
-
-  // Filtered applications based on search, phase buttons and company dropdown
+  // Filtered applications based on search and phase buttons
   const filteredApplications = useMemo(() => {
     const q = keyword.trim().toLowerCase();
     return activeApplications.filter((app) => {
@@ -47,11 +40,10 @@ export default function MyApplicationsPage() {
         app.applicationCode.toLowerCase().includes(q);
 
       const matchPhase = phaseFilter === 'all' || app.phase === Number(phaseFilter);
-      const matchCompany = companyFilter === 'all' || app.companyName === companyFilter;
 
-      return matchKeyword && matchPhase && matchCompany;
+      return matchKeyword && matchPhase;
     });
-  }, [activeApplications, keyword, phaseFilter, companyFilter]);
+  }, [activeApplications, keyword, phaseFilter]);
 
   // Selected application for detail pane
   const selectedApp = useMemo(() => {
@@ -266,41 +258,22 @@ export default function MyApplicationsPage() {
             </div>
           )}
 
-          {/* ─── Bloque de Filtros y Navegación por Fases (Estilo Fiel a la Primera Versión) ─── */}
+          {/* ─── Bloque de Filtros: Fases en sí y Buscador ─── */}
           <section
             className="rounded-2xl border border-lime/40 bg-gradient-to-r from-lime/15 via-white to-lime/10 p-4 sm:p-5 shadow-xs"
             aria-label="Filtros de postulaciones"
           >
-            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 sm:gap-6">
-              {/* Filtro por Empresa */}
-              <div className="w-full lg:w-64 shrink-0">
-                <label htmlFor="application-company-filter" className="block font-display text-xs sm:text-sm font-bold text-ink mb-1.5">
-                  Empresa
-                </label>
-                <div className="relative">
-                  <select
-                    id="application-company-filter"
-                    value={companyFilter}
-                    onChange={(e) => setCompanyFilter(e.target.value)}
-                    className="w-full min-h-[3rem] appearance-none rounded-xl border border-line bg-white px-3.5 pr-8 text-xs sm:text-sm font-semibold text-ink shadow-2xs outline-none transition-all hover:border-green/50 focus:border-green focus:ring-2 focus:ring-green/20 cursor-pointer"
-                  >
-                    <option value="all">Todas las empresas ({activeApplications.length})</option>
-                    {companyOptions.map((companyName) => (
-                      <option key={companyName} value={companyName}>{companyName}</option>
-                    ))}
-                  </select>
-                  <i className="bx bx-chevron-down absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary text-lg" />
-                </div>
-              </div>
-
-              {/* Botones para Navegar por Fases (Estilo Primera Versión) */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6">
+              {/* Botones para Navegar por Fases (Fase 1, Fase 2, Fase 3, Fase 4) */}
               <fieldset className="m-0 p-0 border-0 flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1.5">
                   <legend className="float-none font-display text-xs sm:text-sm font-bold text-ink p-0 m-0">
                     Fase
                   </legend>
                   <span className="text-[0.7rem] text-secondary font-medium hidden sm:inline">
-                    Haz clic en una fase para navegar y filtrar
+                    {phaseFilter === 'all'
+                      ? 'Haz clic en una fase para navegar y filtrar'
+                      : 'Haz clic de nuevo en la fase activa para ver todas'}
                   </span>
                 </div>
 
@@ -311,21 +284,20 @@ export default function MyApplicationsPage() {
                 >
                   {phaseOptions.map(({ value, shortLabel }) => {
                     const isSelected = phaseFilter === value;
-                    const count = value === 'all'
-                      ? activeApplications.length
-                      : activeApplications.filter((a) => a.phase === Number(value)).length;
+                    const count = activeApplications.filter((a) => a.phase === Number(value)).length;
 
                     return (
                       <button
                         key={value}
                         type="button"
-                        onClick={() => setPhaseFilter(value)}
+                        onClick={() => setPhaseFilter((prev) => (prev === value ? 'all' : value))}
                         aria-pressed={isSelected}
-                        className={`min-h-[3rem] px-3.5 sm:px-4 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap inline-flex items-center gap-2 shrink-0 ${
+                        className={`min-h-[3rem] px-3.5 sm:px-5 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap inline-flex items-center gap-2 shrink-0 ${
                           isSelected
                             ? 'bg-green text-white border border-green shadow-md shadow-green/25 ring-2 ring-green/20 font-bold'
                             : 'bg-white text-blue-muted border border-line hover:border-green/50 hover:bg-lime/15 hover:text-green-dark'
                         }`}
+                        title={isSelected ? 'Haz clic para deseleccionar y ver todas' : `Filtrar por ${shortLabel}`}
                       >
                         <span>{shortLabel}</span>
                         <span
@@ -341,8 +313,8 @@ export default function MyApplicationsPage() {
                 </div>
               </fieldset>
 
-              {/* Buscador de apoyo & Botón Limpiar */}
-              <div className="w-full lg:w-56 shrink-0 flex items-end gap-2">
+              {/* Buscador & Botón Limpiar */}
+              <div className="w-full md:w-64 lg:w-72 shrink-0 flex items-end gap-2">
                 <div className="relative flex-1">
                   <label htmlFor="vacancy-search-input" className="block font-display text-xs sm:text-sm font-bold text-ink mb-1.5">
                     Buscar
@@ -354,25 +326,25 @@ export default function MyApplicationsPage() {
                       type="search"
                       value={keyword}
                       onChange={(e) => setKeyword(e.target.value)}
-                      placeholder="Cargo o código..."
+                      placeholder="Cargo, empresa o código..."
                       className="w-full min-h-[3rem] rounded-xl border border-line bg-white pl-8 pr-2.5 text-xs text-ink shadow-2xs outline-none transition-all hover:border-green/50 focus:border-green focus:ring-2 focus:ring-green/20"
                     />
                   </div>
                 </div>
 
-                {(phaseFilter !== 'all' || companyFilter !== 'all' || keyword) && (
+                {(phaseFilter !== 'all' || keyword) && (
                   <button
                     type="button"
                     onClick={() => {
                       setPhaseFilter('all');
-                      setCompanyFilter('all');
                       setKeyword('');
                     }}
-                    className="min-h-[3rem] px-3 rounded-xl border border-line bg-white text-secondary hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
-                    title="Restablecer todos los filtros"
-                    aria-label="Restablecer todos los filtros"
+                    className="min-h-[3rem] px-3.5 rounded-xl border border-line bg-white text-secondary hover:text-rose-600 hover:border-rose-300 hover:bg-rose-50 transition-colors cursor-pointer shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold"
+                    title="Restablecer filtros"
+                    aria-label="Restablecer filtros"
                   >
                     <i className="bx bx-trash text-base" />
+                    <span className="hidden sm:inline">Limpiar</span>
                   </button>
                 )}
               </div>
@@ -393,12 +365,11 @@ export default function MyApplicationsPage() {
                 type="button"
                 onClick={() => {
                   setPhaseFilter('all');
-                  setCompanyFilter('all');
                   setKeyword('');
                 }}
                 className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-ink px-4 py-2 text-xs font-bold text-white hover:bg-ink-soft cursor-pointer"
               >
-                Ver todas las fases
+                Ver todas las postulaciones
               </button>
             </div>
           ) : (
@@ -734,7 +705,7 @@ export default function MyApplicationsPage() {
                           </span>
                         </div>
                         <span className="rounded-full bg-lime/20 text-green-dark px-2 py-0.5 text-[0.62rem] font-bold">
-                          {selectedApp.submittedDocument.matchScore}% Match UTS
+                          {selectedApp.submittedDocument.matchScore}% Match Perfil
                         </span>
                       </div>
 

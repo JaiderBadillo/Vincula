@@ -95,7 +95,7 @@ export default function CompanyObservationModal({ isOpen, onClose, company, onCo
               setNotes(e.target.value);
               if (error) setError('');
             }}
-            placeholder="Describe con precisión qué documento debe actualizar o corregir la empresa para formalizar el convenio marco con las UTS..."
+            placeholder="Describe con precisión qué documento debe actualizar o corregir la empresa para formalizar el convenio marco con la institución..."
             className="w-full rounded-xl border border-line bg-page p-3 text-xs text-ink placeholder:text-secondary/60 focus:border-green focus:outline-none focus:ring-1 focus:ring-green resize-none"
           />
           {error && <p className="mt-1 text-xs font-semibold text-rose-600 m-0">{error}</p>}

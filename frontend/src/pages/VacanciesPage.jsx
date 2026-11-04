@@ -2,18 +2,60 @@ import { useMemo, useState } from 'react';
 import GraduatePortalLayout from '../components/dashboard/GraduatePortalLayout.jsx';
 import GridVacancyDetailModal from '../components/dashboard/GridVacancyDetailModal.jsx';
 import { proposalJobs } from '../data/proposalJobs.js';
+import { COLOMBIAN_LOCATIONS } from '../data/profile.js';
 import { useProfile } from '../hooks/useProfile.js';
 import { useSavedJobs } from '../hooks/useSavedJobs.js';
 
+const MODE_OPTIONS = [
+  { value: '', label: 'Todas las modalidades' },
+  { value: 'Presencial', label: 'Presencial' },
+  { value: 'Híbrido', label: 'Híbrido' },
+  { value: 'Remoto', label: 'Remoto' },
+];
+
+const CONTRACT_OPTIONS = [
+  { value: '', label: 'Todos los contratos' },
+  { value: 'Término Indefinido Directo', label: 'Término Indefinido Directo' },
+  { value: 'Término Indefinido', label: 'Término Indefinido' },
+  { value: 'Término Fijo', label: 'Término Fijo (Renovable)' },
+];
+
+const SALARY_RANGES = [
+  { value: '', label: 'Cualquier salario', min: 0, max: Infinity, shortLabel: 'Cualquier salario' },
+  { value: '2000000-2700000', label: '$2.000.000 - $2.700.000 COP (2M a 2.7M)', min: 2000000, max: 2700000, shortLabel: '$2M a $2.7M' },
+  { value: '2700000-3500000', label: '$2.700.000 - $3.500.000 COP (2.7M a 3.5M)', min: 2700000, max: 3500000, shortLabel: '$2.7M a $3.5M' },
+  { value: '3500000-4500000', label: '$3.500.000 - $4.500.000 COP (3.5M a 4.5M)', min: 3500000, max: 4500000, shortLabel: '$3.5M a $4.5M' },
+  { value: '4500000-6000000', label: '$4.500.000 - $6.000.000 COP (4.5M a 6M)', min: 4500000, max: 6000000, shortLabel: '$4.5M a $6M' },
+  { value: '6000000+', label: 'Más de $6.000.000 COP (6M+)', min: 6000000, max: Infinity, shortLabel: '> $6M' },
+];
+
+const MATCH_OPTIONS = [
+  { value: '', label: 'Cualquier afinidad' },
+  { value: '90', label: 'Afinidad ≥ 90%' },
+  { value: '95', label: 'Afinidad ≥ 95%' },
+];
+
 export default function VacanciesPage() {
   const { profile } = useProfile();
-  const { isSaved, toggleSave } = useSavedJobs();
+  const { isSaved, toggleSave, savedCount } = useSavedJobs();
   const [selectedId, setSelectedId] = useState(proposalJobs[0]?.id ?? null);
   const [activeDetailTab, setActiveDetailTab] = useState('cargo'); // 'cargo' | 'match' | 'empresa' | 'proceso'
   const [viewMode, setViewMode] = useState('grid'); // Default is 'grid' (cuadrícula)
   const [gridDetailJob, setGridDetailJob] = useState(null);
+
+  // Search & filter states
   const [keyword, setKeyword] = useState('');
-  const [locationQuery, setLocationQuery] = useState('');
+  const [selectedDept, setSelectedDept] = useState('');
+  const [selectedCity, setSelectedCity] = useState('');
+  const [selectedMode, setSelectedMode] = useState('');
+  const [selectedContract, setSelectedContract] = useState('');
+  const [selectedSalaryRange, setSelectedSalaryRange] = useState('');
+  const [selectedMinMatch, setSelectedMinMatch] = useState('');
+  const [onlySaved, setOnlySaved] = useState(false);
+
+  const departments = Object.keys(COLOMBIAN_LOCATIONS);
+  const availableCities = selectedDept ? (COLOMBIAN_LOCATIONS[selectedDept] || []) : [];
+
   const [sortBy, setSortBy] = useState('match'); // 'match' | 'salary' | 'recent'
   const [applyModalJob, setApplyModalJob] = useState(null);
   const [appliedJobs, setAppliedJobs] = useState(new Set());
@@ -25,37 +67,140 @@ export default function VacanciesPage() {
     setTimeout(() => setToastMessage(null), 3500);
   }
 
+  const activeFiltersCount =
+    (keyword.trim() ? 1 : 0) +
+    (selectedDept ? 1 : 0) +
+    (selectedCity ? 1 : 0) +
+    (selectedMode ? 1 : 0) +
+    (selectedContract ? 1 : 0) +
+    (selectedSalaryRange ? 1 : 0) +
+    (selectedMinMatch ? 1 : 0) +
+    (onlySaved ? 1 : 0);
+
+  function clearAllFilters() {
+    setKeyword('');
+    setSelectedDept('');
+    setSelectedCity('');
+    setSelectedMode('');
+    setSelectedContract('');
+    setSelectedSalaryRange('');
+    setSelectedMinMatch('');
+    setOnlySaved(false);
+  }
+
   const filteredJobs = useMemo(() => {
     const q = keyword.trim().toLowerCase();
-    const loc = locationQuery.trim().toLowerCase();
 
     let list = proposalJobs.filter((j) => {
+      // 1. Búsqueda por palabra clave (título, empresa, tecnologías, resumen, área)
       const matchKeyword =
         !q ||
         j.title.toLowerCase().includes(q) ||
         j.company.toLowerCase().includes(q) ||
         j.stack.some((s) => s.toLowerCase().includes(q)) ||
-        j.summary.toLowerCase().includes(q);
+        j.summary.toLowerCase().includes(q) ||
+        (j.category && j.category.toLowerCase().includes(q));
 
-      const matchLocation =
-        !loc ||
-        j.city.toLowerCase().includes(loc) ||
-        j.location.toLowerCase().includes(loc) ||
-        j.mode.toLowerCase().includes(loc);
+      // 2. Ubicación: Departamento y Ciudad (Cobertura completa nacional)
+      let matchLocation = true;
+      if (selectedDept) {
+        const deptTarget = selectedDept.toLowerCase();
+        const deptCities = (COLOMBIAN_LOCATIONS[selectedDept] || []).map((c) => c.toLowerCase());
 
-      return matchKeyword && matchLocation;
+        if (selectedCity && selectedCity !== 'Remoto') {
+          const cityTarget = selectedCity.toLowerCase();
+          matchLocation =
+            (j.city && j.city.toLowerCase().includes(cityTarget)) ||
+            (j.location && j.location.toLowerCase().includes(cityTarget));
+        } else if (selectedCity === 'Remoto') {
+          matchLocation =
+            (j.mode && j.mode.toLowerCase().includes('remoto')) ||
+            (j.city && j.city.toLowerCase().includes('remoto')) ||
+            (j.location && j.location.toLowerCase().includes('remoto'));
+        } else {
+          // Si solo seleccionó departamento, coincide si la ubicación o ciudad menciona el departamento o sus municipios
+          const jobLoc = `${j.location || ''} ${j.city || ''}`.toLowerCase();
+          matchLocation =
+            jobLoc.includes(deptTarget) ||
+            deptCities.some((c) => jobLoc.includes(c));
+        }
+      } else if (selectedCity) {
+        if (selectedCity === 'Remoto') {
+          matchLocation =
+            (j.mode && j.mode.toLowerCase().includes('remoto')) ||
+            (j.city && j.city.toLowerCase().includes('remoto')) ||
+            (j.location && j.location.toLowerCase().includes('remoto'));
+        } else {
+          const cityTarget = selectedCity.toLowerCase();
+          matchLocation =
+            (j.city && j.city.toLowerCase().includes(cityTarget)) ||
+            (j.location && j.location.toLowerCase().includes(cityTarget));
+        }
+      }
+
+      // 3. Modalidad de trabajo (Presencial / Remoto / Híbrido)
+      const matchMode =
+        !selectedMode ||
+        (j.mode && j.mode.toLowerCase().includes(selectedMode.toLowerCase())) ||
+        (j.workModeDetail && j.workModeDetail.toLowerCase().includes(selectedMode.toLowerCase()));
+
+      // 4. Tipo de contrato
+      const matchContract =
+        !selectedContract ||
+        (j.contractType && j.contractType.toLowerCase().includes(selectedContract.toLowerCase()));
+
+      // 5. Rango salarial (ej. 2M a 2.7M, 2.7M a 3.5M, etc.)
+      let matchSalary = true;
+      if (selectedSalaryRange) {
+        const range = SALARY_RANGES.find((r) => r.value === selectedSalaryRange);
+        if (range) {
+          const jobMin = j.salaryMin || 0;
+          const jobMax = j.salaryMax || j.salaryMin || 0;
+          matchSalary = jobMin <= range.max && jobMax >= range.min;
+        }
+      }
+
+      // 6. Afinidad mínima UTS
+      let matchAfinidad = true;
+      if (selectedMinMatch) {
+        matchAfinidad = (j.utsMatch || 0) >= Number(selectedMinMatch);
+      }
+
+      // 7. Solo vacantes guardadas
+      const matchSaved = !onlySaved || isSaved(j.id);
+
+      return (
+        matchKeyword &&
+        matchLocation &&
+        matchMode &&
+        matchContract &&
+        matchSalary &&
+        matchAfinidad &&
+        matchSaved
+      );
     });
 
     if (sortBy === 'match') {
       list.sort((a, b) => b.utsMatch - a.utsMatch);
     } else if (sortBy === 'salary') {
-      list.sort((a, b) => b.salaryMax - a.salaryMax);
+      list.sort((a, b) => (b.salaryMax || 0) - (a.salaryMax || 0));
     } else if (sortBy === 'recent') {
       list.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
     }
 
     return list;
-  }, [keyword, locationQuery, sortBy]);
+  }, [
+    keyword,
+    selectedDept,
+    selectedCity,
+    selectedMode,
+    selectedContract,
+    selectedSalaryRange,
+    selectedMinMatch,
+    onlySaved,
+    sortBy,
+    isSaved,
+  ]);
 
   const selectedJob = filteredJobs.find((j) => j.id === selectedId) || filteredJobs[0] || null;
 
@@ -98,67 +243,250 @@ export default function VacanciesPage() {
               </p>
             </div>
 
-            {/* Search bar estilo Inicio */}
+            {/* Buscador Principal: Palabra clave + Desplegables Departamento, Ciudad y Modalidad */}
             <form
               onSubmit={(e) => e.preventDefault()}
-              className="mt-8 grid gap-2 rounded-2xl border border-line bg-white p-2 shadow-hero sm:grid-cols-[1.3fr_1fr_auto] sm:items-center max-w-4xl"
+              className="mt-8 grid gap-2 rounded-2xl border border-line bg-white p-2 shadow-hero sm:grid-cols-[1.4fr_1.1fr_1.1fr_1fr_auto] sm:items-center max-w-6xl"
               role="search"
               aria-label="Buscar oportunidades laborales"
             >
+              {/* Campo 1: Cargo, empresa o palabra clave */}
               <label className="flex min-w-0 items-center gap-3 px-3 py-2 text-secondary" htmlFor="job-keyword">
-                <i className="bx bx-search text-xl text-secondary" aria-hidden="true" />
-                <span className="sr-only">Cargo, área o palabra clave</span>
+                <i className="bx bx-search text-xl text-secondary shrink-0" aria-hidden="true" />
+                <span className="sr-only">Cargo, empresa o palabra clave</span>
                 <input
                   id="job-keyword"
                   type="search"
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
-                  placeholder="Cargo, área o palabra clave"
+                  placeholder="Cargo, empresa o palabra clave"
                   className="w-full min-w-0 border-0 bg-transparent py-1 text-sm text-ink outline-none placeholder:text-secondary focus-visible:ring-0"
                 />
                 {keyword && (
                   <button
                     type="button"
                     onClick={() => setKeyword('')}
-                    className="text-secondary hover:text-ink p-1 text-sm cursor-pointer"
-                    title="Limpiar"
+                    className="text-secondary hover:text-ink p-1 text-sm cursor-pointer shrink-0"
+                    title="Limpiar búsqueda"
                   >
                     <i className="bx bx-x" />
                   </button>
                 )}
               </label>
 
-              <label className="flex min-w-0 items-center gap-3 border-t border-line-soft px-3 py-2 text-secondary sm:border-l sm:border-t-0 sm:pl-4" htmlFor="job-location">
-                <i className="bx bx-map text-xl text-secondary" aria-hidden="true" />
-                <span className="sr-only">Ciudad o modalidad</span>
-                <input
-                  id="job-location"
-                  type="search"
-                  value={locationQuery}
-                  onChange={(e) => setLocationQuery(e.target.value)}
-                  placeholder="Ciudad o modalidad"
-                  className="w-full min-w-0 border-0 bg-transparent py-1 text-sm text-ink outline-none placeholder:text-secondary focus-visible:ring-0"
-                />
-                {locationQuery && (
+              {/* Campo 2: Selector desplegable de Departamento */}
+              <div className="flex min-w-0 items-center gap-2 border-t border-line-soft px-3 py-2 text-secondary sm:border-l sm:border-t-0 sm:pl-3">
+                <i className="bx bx-map-pin text-xl text-secondary shrink-0" aria-hidden="true" />
+                <div className="w-full min-w-0">
+                  <label htmlFor="job-dept" className="sr-only">Departamento</label>
+                  <select
+                    id="job-dept"
+                    value={selectedDept}
+                    onChange={(e) => {
+                      setSelectedDept(e.target.value);
+                      setSelectedCity('');
+                    }}
+                    className="w-full border-0 bg-transparent py-1 text-sm text-ink outline-none cursor-pointer focus-visible:ring-0 font-medium"
+                  >
+                    <option value="" className="text-ink">Todos los departamentos</option>
+                    {departments.map((dept) => (
+                      <option key={dept} value={dept} className="text-ink">
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {selectedDept && (
                   <button
                     type="button"
-                    onClick={() => setLocationQuery('')}
-                    className="text-secondary hover:text-ink p-1 text-sm cursor-pointer"
-                    title="Limpiar"
+                    onClick={() => {
+                      setSelectedDept('');
+                      setSelectedCity('');
+                    }}
+                    className="text-secondary hover:text-ink p-1 text-sm cursor-pointer shrink-0"
+                    title="Restablecer departamento"
                   >
                     <i className="bx bx-x" />
                   </button>
                 )}
-              </label>
+              </div>
 
+              {/* Campo 3: Selector desplegable de Ciudad / Municipio */}
+              <div className="flex min-w-0 items-center gap-2 border-t border-line-soft px-3 py-2 text-secondary sm:border-l sm:border-t-0 sm:pl-3">
+                <i className="bx bx-map text-xl text-secondary shrink-0" aria-hidden="true" />
+                <div className="w-full min-w-0">
+                  <label htmlFor="job-city" className="sr-only">Ciudad / Municipio</label>
+                  <select
+                    id="job-city"
+                    value={selectedCity}
+                    onChange={(e) => setSelectedCity(e.target.value)}
+                    className="w-full border-0 bg-transparent py-1 text-sm text-ink outline-none cursor-pointer focus-visible:ring-0 font-medium"
+                  >
+                    <option value="" className="text-ink">
+                      {selectedDept ? `Todos los municipios de ${selectedDept}` : 'Todas las ciudades'}
+                    </option>
+                    <option value="Remoto" className="text-ink">Remoto (Nacional)</option>
+                    {selectedDept ? (
+                      availableCities.map((city) => (
+                        <option key={city} value={city} className="text-ink">
+                          {city}
+                        </option>
+                      ))
+                    ) : (
+                      ['Bucaramanga', 'Floridablanca', 'Piedecuesta', 'Girón', 'Barrancabermeja', 'San Gil', 'Bogotá D.C.', 'Medellín', 'Cali', 'Barranquilla', 'Cúcuta', 'Pereira'].map((city) => (
+                        <option key={city} value={city} className="text-ink">
+                          {city}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+                {selectedCity && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCity('')}
+                    className="text-secondary hover:text-ink p-1 text-sm cursor-pointer shrink-0"
+                    title="Restablecer ciudad"
+                  >
+                    <i className="bx bx-x" />
+                  </button>
+                )}
+              </div>
+
+              {/* Campo 4: Selector desplegable de Modalidad */}
+              <div className="flex min-w-0 items-center gap-2 border-t border-line-soft px-3 py-2 text-secondary sm:border-l sm:border-t-0 sm:pl-3">
+                <i className="bx bx-buildings text-xl text-secondary shrink-0" aria-hidden="true" />
+                <div className="w-full min-w-0">
+                  <label htmlFor="job-mode" className="sr-only">Modalidad</label>
+                  <select
+                    id="job-mode"
+                    value={selectedMode}
+                    onChange={(e) => setSelectedMode(e.target.value)}
+                    className="w-full border-0 bg-transparent py-1 text-sm text-ink outline-none cursor-pointer focus-visible:ring-0 font-medium"
+                  >
+                    {MODE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value} className="text-ink">
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {selectedMode && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMode('')}
+                    className="text-secondary hover:text-ink p-1 text-sm cursor-pointer shrink-0"
+                    title="Restablecer modalidad"
+                  >
+                    <i className="bx bx-x" />
+                  </button>
+                )}
+              </div>
+
+              {/* Botón Buscar */}
               <button
                 type="submit"
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-dark hover:bg-green px-6 py-3 text-sm font-bold text-white shadow-xs transition-colors cursor-pointer whitespace-nowrap"
               >
-                <span>Buscar oportunidades</span>
-                <i className="bx bx-right-arrow-alt text-xl" aria-hidden="true" />
+                <span>Buscar</span>
+                <i className="bx bx-search text-lg" aria-hidden="true" />
               </button>
             </form>
+
+            {/* Fila de Filtros Avanzados Rápidos en el Hero */}
+            <div className="mt-4 flex flex-wrap items-center gap-2 max-w-5xl text-xs">
+              <span className="text-white/70 font-semibold inline-flex items-center gap-1.5 mr-1">
+                <i className="bx bx-filter-alt text-lime" />
+                Más filtros:
+              </span>
+
+              {/* Tipo de Contrato */}
+              <div className="relative">
+                <select
+                  value={selectedContract}
+                  onChange={(e) => setSelectedContract(e.target.value)}
+                  className={`rounded-xl border px-3 py-1.5 text-xs font-semibold outline-none cursor-pointer transition-all ${
+                    selectedContract
+                      ? 'border-lime bg-lime text-ink font-bold'
+                      : 'border-white/20 bg-ink/70 text-white/90 hover:bg-ink hover:border-white/40'
+                  }`}
+                  title="Filtrar por Tipo de Contrato"
+                >
+                  {CONTRACT_OPTIONS.map((c) => (
+                    <option key={c.value} value={c.value} className="bg-white text-ink">
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Rango salarial mensual */}
+              <div className="relative">
+                <select
+                  value={selectedSalaryRange}
+                  onChange={(e) => setSelectedSalaryRange(e.target.value)}
+                  className={`rounded-xl border px-3 py-1.5 text-xs font-semibold outline-none cursor-pointer transition-all ${
+                    selectedSalaryRange
+                      ? 'border-lime bg-lime text-ink font-bold'
+                      : 'border-white/20 bg-ink/70 text-white/90 hover:bg-ink hover:border-white/40'
+                  }`}
+                  title="Filtrar por Rango Salarial"
+                >
+                  {SALARY_RANGES.map((sal) => (
+                    <option key={sal.value} value={sal.value} className="bg-white text-ink">
+                      {sal.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Afinidad mínima UTS */}
+              <div className="relative">
+                <select
+                  value={selectedMinMatch}
+                  onChange={(e) => setSelectedMinMatch(e.target.value)}
+                  className={`rounded-xl border px-3 py-1.5 text-xs font-semibold outline-none cursor-pointer transition-all ${
+                    selectedMinMatch
+                      ? 'border-lime bg-lime text-ink font-bold'
+                      : 'border-white/20 bg-ink/70 text-white/90 hover:bg-ink hover:border-white/40'
+                  }`}
+                  title="Filtrar por Afinidad mínima UTS"
+                >
+                  {MATCH_OPTIONS.map((m) => (
+                    <option key={m.value} value={m.value} className="bg-white text-ink">
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Toggle Solo guardadas */}
+              <button
+                type="button"
+                onClick={() => setOnlySaved((prev) => !prev)}
+                className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                  onlySaved
+                    ? 'border-amber-400 bg-amber-400 text-ink shadow-xs font-bold'
+                    : 'border-white/20 bg-ink/70 text-white/90 hover:bg-ink hover:border-white/40'
+                }`}
+                title="Mostrar únicamente vacantes guardadas en favoritos"
+              >
+                <i className={`bx ${onlySaved ? 'bxs-bookmark-star' : 'bx-bookmark'} text-sm`} />
+                <span>Solo guardadas ({savedCount})</span>
+              </button>
+
+              {/* Limpiar todos los filtros */}
+              {activeFiltersCount > 0 && (
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="inline-flex items-center gap-1 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 px-3 py-1.5 text-xs font-bold text-white cursor-pointer transition-colors"
+                >
+                  <i className="bx bx-x text-sm" />
+                  <span>Limpiar filtros ({activeFiltersCount})</span>
+                </button>
+              )}
+            </div>
           </div>
         </section>
 
@@ -166,7 +494,7 @@ export default function VacanciesPage() {
         <div className="border-b border-line-soft bg-white px-5 py-3 sm:px-8 lg:px-10">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
             
-            {/* Ordenamiento & Limpieza de búsqueda */}
+            {/* Ordenamiento & Active filter tags */}
             <div className="flex flex-wrap items-center gap-2.5">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-semibold text-secondary">Ordenar por:</span>
@@ -175,22 +503,105 @@ export default function VacanciesPage() {
                   onChange={(e) => setSortBy(e.target.value)}
                   className="rounded-xl border border-line bg-page px-3 py-1.5 text-xs font-semibold text-ink focus:border-green focus:outline-none cursor-pointer"
                 >
-                  <option value="match">Mayor afinidad UTS</option>
+                  <option value="match">Mayor afinidad</option>
                   <option value="salary">Mayor remuneración</option>
                   <option value="recent">Más recientes</option>
                 </select>
               </div>
 
-              {(keyword || locationQuery) && (
+              {/* Badges de filtros activos */}
+              {keyword && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-page border border-line px-2.5 py-1 text-xs text-ink">
+                  <span>&ldquo;{keyword}&rdquo;</span>
+                  <button type="button" onClick={() => setKeyword('')} className="text-secondary hover:text-ink cursor-pointer">
+                    <i className="bx bx-x" />
+                  </button>
+                </span>
+              )}
+
+              {selectedDept && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-page border border-line px-2.5 py-1 text-xs text-ink">
+                  <i className="bx bx-map-pin text-green-dark" />
+                  <span>Dpto: {selectedDept}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedDept('');
+                      setSelectedCity('');
+                    }}
+                    className="text-secondary hover:text-ink cursor-pointer"
+                  >
+                    <i className="bx bx-x" />
+                  </button>
+                </span>
+              )}
+
+              {selectedCity && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-page border border-line px-2.5 py-1 text-xs text-ink">
+                  <i className="bx bx-map text-green-dark" />
+                  <span>{selectedCity}</span>
+                  <button type="button" onClick={() => setSelectedCity('')} className="text-secondary hover:text-ink cursor-pointer">
+                    <i className="bx bx-x" />
+                  </button>
+                </span>
+              )}
+
+              {selectedMode && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-page border border-line px-2.5 py-1 text-xs text-ink">
+                  <i className="bx bx-buildings text-green-dark" />
+                  <span>{selectedMode}</span>
+                  <button type="button" onClick={() => setSelectedMode('')} className="text-secondary hover:text-ink cursor-pointer">
+                    <i className="bx bx-x" />
+                  </button>
+                </span>
+              )}
+
+              {selectedContract && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-page border border-line px-2.5 py-1 text-xs text-ink">
+                  <span>{selectedContract}</span>
+                  <button type="button" onClick={() => setSelectedContract('')} className="text-secondary hover:text-ink cursor-pointer">
+                    <i className="bx bx-x" />
+                  </button>
+                </span>
+              )}
+
+              {selectedSalaryRange && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-page border border-line px-2.5 py-1 text-xs text-ink">
+                  <i className="bx bx-wallet text-green-dark" />
+                  <span>{SALARY_RANGES.find((r) => r.value === selectedSalaryRange)?.shortLabel || selectedSalaryRange}</span>
+                  <button type="button" onClick={() => setSelectedSalaryRange('')} className="text-secondary hover:text-ink cursor-pointer">
+                    <i className="bx bx-x" />
+                  </button>
+                </span>
+              )}
+
+              {selectedMinMatch && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-page border border-line px-2.5 py-1 text-xs text-ink">
+                  <i className="bx bxs-bolt text-lime" />
+                  <span>Match ≥ {selectedMinMatch}%</span>
+                  <button type="button" onClick={() => setSelectedMinMatch('')} className="text-secondary hover:text-ink cursor-pointer">
+                    <i className="bx bx-x" />
+                  </button>
+                </span>
+              )}
+
+              {onlySaved && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-amber-50 border border-amber-300 px-2.5 py-1 text-xs text-amber-900 font-semibold">
+                  <i className="bx bxs-bookmark-star text-amber-600" />
+                  <span>Solo guardadas</span>
+                  <button type="button" onClick={() => setOnlySaved(false)} className="text-amber-800 hover:text-ink cursor-pointer">
+                    <i className="bx bx-x" />
+                  </button>
+                </span>
+              )}
+
+              {activeFiltersCount > 0 && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setKeyword('');
-                    setLocationQuery('');
-                  }}
+                  onClick={clearAllFilters}
                   className="text-xs text-secondary hover:text-rose-600 underline cursor-pointer ml-1"
                 >
-                  Limpiar búsqueda
+                  Limpiar todos ({activeFiltersCount})
                 </button>
               )}
             </div>
@@ -246,12 +657,7 @@ export default function VacanciesPage() {
               </p>
               <button
                 type="button"
-                onClick={() => {
-                  setKeyword('');
-                  setSectorFilter('all');
-                  setModeFilter('all');
-                  setSortBy('match');
-                }}
+                onClick={clearAllFilters}
                 className="mt-4 inline-flex items-center gap-2 rounded-xl bg-ink px-4 py-2 text-xs font-bold text-white hover:bg-ink-soft cursor-pointer"
               >
                 Restablecer todos los filtros
@@ -265,7 +671,7 @@ export default function VacanciesPage() {
                 {filteredJobs.map((job) => {
                   const isSelected = selectedJob?.id === job.id;
                   const isApplied = appliedJobs.has(job.id);
-                  const isSaved = savedJobs.has(job.id);
+                  const isJobSaved = isSaved(job.id);
 
                   return (
                     <article
@@ -315,7 +721,7 @@ export default function VacanciesPage() {
                                 <span className="font-display text-sm font-bold text-ink">
                                   {job.company}
                                 </span>
-                                <i className="bx bxs-badge-check text-green text-sm" title="Empresa Verificada UTS" />
+                                <i className="bx bxs-badge-check text-green text-sm" title="Empresa Verificada Institucional" />
                               </div>
                               <span className="text-[0.68rem] text-secondary">
                                 {job.companySector}
@@ -331,11 +737,11 @@ export default function VacanciesPage() {
                               toggleSaveJob(job.id);
                             }}
                             className={`grid size-8 place-items-center rounded-full transition-colors ${
-                              isSaved ? 'text-amber-500 bg-amber-50' : 'text-secondary hover:text-ink hover:bg-page'
+                              isJobSaved ? 'text-amber-500 bg-amber-50' : 'text-secondary hover:text-ink hover:bg-page'
                             }`}
-                            title={isSaved ? 'Guardada' : 'Guardar vacante'}
+                            title={isJobSaved ? 'Guardada' : 'Guardar vacante'}
                           >
-                            <i className={`bx ${isSaved ? 'bxs-bookmark-star' : 'bx-bookmark'} text-lg`} />
+                            <i className={`bx ${isJobSaved ? 'bxs-bookmark-star' : 'bx-bookmark'} text-lg`} />
                           </button>
                         </div>
 
@@ -508,7 +914,7 @@ export default function VacanciesPage() {
                           }`}
                         >
                           <i className={`bx ${appliedJobs.has(selectedJob.id) ? 'bx-check-circle' : 'bx-send'} text-lg`} />
-                          {appliedJobs.has(selectedJob.id) ? 'Ya te postulaste a esta vacante' : 'Postularme con mi perfil UTS'}
+                          {appliedJobs.has(selectedJob.id) ? 'Ya te postulaste a esta vacante' : 'Postularme con mi perfil'}
                         </button>
 
                         <a
@@ -528,7 +934,7 @@ export default function VacanciesPage() {
                       <nav className="flex gap-2 overflow-x-auto scrollbar-none" aria-label="Detalles de la vacante">
                         {[
                           { id: 'cargo', label: 'Detalles del Cargo', icon: 'bx-briefcase-alt-2' },
-                          { id: 'match', label: `Afinidad UTS (${selectedJob.utsMatch}%)`, icon: 'bx-target-lock' },
+                          { id: 'match', label: `Afinidad Curricular (${selectedJob.utsMatch}%)`, icon: 'bx-target-lock' },
                           { id: 'empresa', label: 'Empresa & Cultura', icon: 'bx-buildings' },
                           { id: 'proceso', label: 'Proceso de Selección', icon: 'bx-git-repo-forked' },
                         ].map((t) => (
@@ -729,7 +1135,7 @@ export default function VacanciesPage() {
                             <div className="flex items-center justify-between gap-4">
                               <div>
                                 <span className="text-[0.68rem] font-bold uppercase tracking-wider text-green-dark">
-                                  Algoritmo de Compatibilidad UTS
+                                  Algoritmo de Compatibilidad
                                 </span>
                                 <h4 className="m-0 font-display text-xl font-bold text-ink mt-0.5">
                                   Tu afinidad es del {selectedJob.utsMatch}%
@@ -760,7 +1166,7 @@ export default function VacanciesPage() {
                               Consejo para destacar tu postulación en {selectedJob.company}:
                             </strong>
                             Asegúrate de que en la sección de <strong>Habilidades</strong> de tu perfil tengas agregadas herramientas como{' '}
-                            {selectedJob.stack.slice(0, 3).join(', ')}. Las empresas aliadas filtran primero los perfiles que cuentan con certificación curricular UTS.
+                            {selectedJob.stack.slice(0, 3).join(', ')}. Las empresas aliadas filtran primero los perfiles que cuentan con certificación curricular avalada.
                           </div>
                         </div>
                       )}
@@ -829,7 +1235,7 @@ export default function VacanciesPage() {
                               Etapas del Proceso de Selección
                             </h4>
                             <p className="m-0 text-xs text-body-muted mt-1">
-                              Proceso 100% transparente y directo, coordinado a través del convenio de la Bolsa de Empleo UTS.
+                              Proceso 100% transparente y directo, coordinado a través del convenio de la Bolsa de Empleo Institucional.
                             </p>
                           </div>
 
@@ -1029,9 +1435,9 @@ export default function VacanciesPage() {
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-xs">
                 <span className="font-bold text-emerald-900 block flex items-center gap-1.5 mb-1">
                   <i className="bx bxs-badge-check text-green text-sm" />
-                  Convenio Institucional de Egresados UTS
+                  Convenio Institucional de Egresados
                 </span>
-                Tu postulación se enviará directamente con tu perfil verificado de <strong>{profile.fullName}</strong> y tu código de egresado UTS.
+                Tu postulación se enviará directamente con tu perfil verificado de <strong>{profile.fullName}</strong> y tu código de egresado.
               </div>
 
               <div>
@@ -1042,7 +1448,7 @@ export default function VacanciesPage() {
                   rows={3}
                   value={applicationNote}
                   onChange={(e) => setApplicationNote(e.target.value)}
-                  placeholder="Ej: Estimado equipo, me entusiasma esta oportunidad debido a mi formación en analítica y proyectos de desarrollo en las UTS..."
+                  placeholder="Ej: Estimado equipo, me entusiasma esta oportunidad debido a mi formación profesional y proyectos de desarrollo..."
                   className="w-full rounded-xl border border-line p-3 text-xs text-ink outline-none focus:border-green"
                 />
               </div>
@@ -1050,7 +1456,7 @@ export default function VacanciesPage() {
               <div className="rounded-xl border border-line bg-page p-3 text-[0.72rem] text-body-muted flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <i className="bx bx-file text-base text-secondary" />
-                  {profile.cvFile ? profile.cvFile.name : 'Hoja de Vida UTS (Perfil Digital)'}
+                  {profile.cvFile ? profile.cvFile.name : 'Hoja de Vida Digital (Perfil Institucional)'}
                 </span>
                 <span className="text-emerald-700 font-bold">Adjunto</span>
               </div>

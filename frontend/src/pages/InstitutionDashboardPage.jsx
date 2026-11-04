@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import InstitutionPortalLayout from '../components/institution/InstitutionPortalLayout.jsx';
+import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
+import { advisorPhotos } from '../data/institutionImages.js';
 import {
   advisorProfile,
   institutionMetrics,
@@ -15,80 +17,82 @@ export default function InstitutionDashboardPage() {
 
   return (
     <InstitutionPortalLayout activePage="dashboard">
-      <main className="w-full pb-16">
-        {/* ─── Hero Banner Institucional (Identidad UTS) ─── */}
-        <section
-          className="relative isolate overflow-hidden bg-ink"
-          aria-labelledby="institution-dashboard-title"
-        >
-          {/* Background image con overlay arquitectónico */}
-          <div className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
-            <img
-              className="size-full object-cover object-[center_20%] opacity-20"
-              src="https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=1920&q=80"
-              alt=""
-              loading="eager"
-              decoding="async"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/90 to-ink/65" />
-            <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-transparent" />
-          </div>
+      <main className="w-full pb-20">
+        <div className="mx-auto max-w-7xl px-5 pt-8 sm:px-8 lg:px-10 space-y-8">
+          
+          {/* ─── Hero Showcase Institucional (Estilo Sonnet con Identidad UTS) ─── */}
+          <InstitutionPageHero
+            eyebrow="Observatorio de Empleabilidad & Gestión IES"
+            title={`¡Bienvenida, ${advisorProfile.fullName}!`}
+            subtitle="Supervisa la inserción laboral de los egresados de la institución, valida solicitudes académicas en cola y gestiona los convenios empresariales activos."
+            photo={advisorPhotos.dashboard}
+            stats={[
+              {
+                value: institutionMetrics.registeredStudents.total.toLocaleString('es-CO'),
+                label: 'Egresados',
+              },
+              {
+                value: institutionMetrics.employedStudents.ratePercentage,
+                label: 'Vinculación',
+              },
+              {
+                value: institutionMetrics.availableVacancies.total,
+                label: 'Vacantes',
+              },
+              {
+                value: '19',
+                label: 'En Cola',
+              },
+            ]}
+            actions={
+              <Link
+                to="/institucion/estudiantes/solicitudes"
+                className="inline-flex items-center gap-2 rounded-xl bg-lime hover:bg-lime/85 text-ink font-bold px-4 py-2.5 text-xs shadow-xs transition-all no-underline cursor-pointer"
+              >
+                <i className="bx bx-check-shield text-base" />
+                <span>Atender Solicitudes (19)</span>
+              </Link>
+            }
+          />
 
-          {/* Sutiles efectos visuales del design system */}
-          <div className="hero-grid pointer-events-none absolute inset-0 z-0" aria-hidden="true" />
-          <div className="hero-orbit pointer-events-none absolute -right-20 -top-20 z-0 size-72 opacity-20" aria-hidden="true" />
-          <div className="hero-orbit pointer-events-none absolute -right-10 -top-10 z-0 size-48 opacity-15" aria-hidden="true" />
-
-          <div className="relative z-10 mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-12 lg:px-10 lg:py-14">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-              {/* Saludo y Rol */}
-              <div className="max-w-3xl">
-                <h1
-                  id="institution-dashboard-title"
-                  className="font-display text-[clamp(1.75rem,3.5vw,2.65rem)] font-bold leading-[1.15] tracking-tight text-white m-0"
-                >
-                  ¡Bienvenida, {advisorProfile.fullName}!{' '}
-                  <span className="text-lime block sm:inline font-normal">Panel de Empleabilidad</span>
-                </h1>
-
-                <p className="mt-3 max-w-2xl text-xs sm:text-sm leading-relaxed text-white/70">
-                  Supervisa la inserción laboral de los egresados de las Unidades Tecnológicas de Santander, valida solicitudes académicas en cola y gestiona los convenios empresariales activos.
-                </p>
-              </div>
-
-              {/* Controles Rápidos: Periodo y Estado */}
-              <div className="flex flex-wrap items-center gap-2.5 sm:self-auto">
-                <div className="rounded-xl border border-white/15 bg-white/10 p-1.5 backdrop-blur-sm flex items-center gap-2">
-                  <span className="text-[0.68rem] font-bold uppercase tracking-wider text-white/50 pl-2">
-                    Periodo:
-                  </span>
-                  <select
-                    value={selectedPeriod}
-                    onChange={(e) => setSelectedPeriod(e.target.value)}
-                    className="rounded-lg border-0 bg-ink/70 px-2.5 py-1 text-xs font-semibold text-white outline-none cursor-pointer hover:bg-ink"
-                    aria-label="Seleccionar periodo académico"
+          {/* ─── Barra de Control de Periodo Académico & Estado en Vivo ─── */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-line bg-white p-4 shadow-xs">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-secondary">
+                Periodo de corte institucional:
+              </span>
+              <div className="flex items-center gap-1.5 rounded-xl border border-line bg-page p-1 shadow-2xs">
+                {[
+                  { id: '2026-2', label: '2026 - II (Actual)' },
+                  { id: '2026-1', label: '2026 - I' },
+                  { id: '2025-2', label: '2025 - II' },
+                  { id: 'historico', label: 'Histórico' },
+                ].map((period) => (
+                  <button
+                    key={period.id}
+                    type="button"
+                    onClick={() => setSelectedPeriod(period.id)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                      selectedPeriod === period.id
+                        ? 'bg-lime text-ink shadow-xs font-bold'
+                        : 'text-secondary hover:text-ink hover:bg-white'
+                    }`}
                   >
-                    <option value="2026-2">2026 - II (Actual)</option>
-                    <option value="2026-1">2026 - I</option>
-                    <option value="2025-2">2025 - II</option>
-                    <option value="historico">Histórico Consolidado</option>
-                  </select>
-                </div>
-
-                <Link
-                  to="/institucion/estudiantes/solicitudes"
-                  className="inline-flex items-center gap-2 rounded-xl bg-lime hover:bg-lime/85 text-ink px-4 py-2.5 text-xs font-bold transition-all no-underline shadow-xs cursor-pointer"
-                >
-                  <i className="bx bx-check-shield text-base" />
-                  <span>Atender Solicitudes (19)</span>
-                </Link>
+                    {period.label}
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
-        </section>
 
-        {/* ─── Contenedor Principal del Dashboard ─── */}
-        <div className="mx-auto max-w-7xl px-5 pt-8 sm:px-8 sm:pt-10 lg:px-10 space-y-10">
+            <div className="flex items-center gap-3 text-xs text-secondary font-medium">
+              <span className="inline-flex items-center gap-1.5">
+                <i className="bx bx-time-five text-green text-sm" />
+                <span>Actualizado hoy, 08:00 AM</span>
+              </span>
+              <span>·</span>
+              <span className="text-green-dark font-semibold">100% sincronizado</span>
+            </div>
+          </div>
 
           {/* ─── 1. Barra Superior de Resumen General (Top KPIs) ─── */}
           {/* NOTA: Excluye empresas registradas/activas por requerimiento expreso del usuario */}
@@ -111,7 +115,7 @@ export default function InstitutionDashboardPage() {
               {/* KPI 1: Estudiantes Registrados */}
               <div className="rounded-2xl border border-line bg-white p-5 shadow-xs transition-all hover:shadow-card hover:border-green/30">
                 <div className="flex items-center justify-between">
-                  <span className="grid size-11 place-items-center rounded-xl bg-blue-50 text-blue-700 text-xl font-bold">
+                  <span className="grid size-11 place-items-center rounded-xl bg-lime/20 text-green-dark text-xl font-bold">
                     <i className="bx bx-group" />
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[0.68rem] font-bold text-emerald-800">
@@ -140,7 +144,7 @@ export default function InstitutionDashboardPage() {
                     <i className="bx bx-briefcase" />
                   </span>
                   <span className="rounded-full bg-panel px-2.5 py-0.5 text-[0.65rem] font-bold text-ink">
-                    {institutionMetrics.availableVacancies.activeExclusivelyForUTS} exclusivas UTS
+                    {institutionMetrics.availableVacancies.activeExclusivelyForUTS} exclusivas institucionales
                   </span>
                 </div>
                 <div className="mt-4">
@@ -181,17 +185,17 @@ export default function InstitutionDashboardPage() {
               </div>
 
               {/* KPI 4: Estudiantes sin Empleo / En Búsqueda Activa */}
-              <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/50 via-white to-white p-5 shadow-xs transition-all hover:shadow-card hover:border-amber-400">
+              <div className="rounded-2xl border border-line bg-white p-5 shadow-xs transition-all hover:shadow-card hover:border-slate-300">
                 <div className="flex items-center justify-between">
-                  <span className="grid size-11 place-items-center rounded-xl bg-amber-500 text-ink text-xl font-bold shadow-xs">
+                  <span className="grid size-11 place-items-center rounded-xl bg-panel text-ink text-xl font-bold shadow-xs">
                     <i className="bx bx-search-alt" />
                   </span>
-                  <span className="rounded-full bg-amber-100 text-amber-950 border border-amber-300 px-2 py-0.5 text-xs font-extrabold">
+                  <span className="rounded-full bg-panel text-ink border border-line px-2 py-0.5 text-xs font-extrabold">
                     {institutionMetrics.unemployedStudents.ratePercentage}
                   </span>
                 </div>
                 <div className="mt-4">
-                  <p className="m-0 text-xs font-semibold text-amber-950 uppercase tracking-wider">
+                  <p className="m-0 text-xs font-semibold text-secondary uppercase tracking-wider">
                     {institutionMetrics.unemployedStudents.label}
                   </p>
                   <p className="font-display text-2xl sm:text-3xl font-extrabold text-ink m-0 mt-1">
@@ -344,7 +348,7 @@ export default function InstitutionDashboardPage() {
               <div>
                 <div className="flex items-center justify-between pb-3 border-b border-line-soft">
                   <div className="flex items-center gap-2.5">
-                    <span className="grid size-8 place-items-center rounded-lg bg-purple-100 text-purple-800 text-lg">
+                    <span className="grid size-8 place-items-center rounded-lg bg-lime/25 text-green-dark text-lg">
                       <i className="bx bx-buildings" />
                     </span>
                     <div>
@@ -386,12 +390,12 @@ export default function InstitutionDashboardPage() {
                       </div>
 
                       <div className="shrink-0 text-right">
-                        <span className="rounded-full bg-purple-50 text-purple-900 border border-purple-200 px-2 py-0.5 text-[0.62rem] font-bold block mb-1">
+                        <span className="rounded-full bg-lime/25 text-ink border border-lime/60 px-2 py-0.5 text-[0.62rem] font-bold block mb-1">
                           ~{emp.vacanciesProjected} vacantes
                         </span>
                         <Link
                           to="/institucion/empresas/solicitudes"
-                          className="inline-flex items-center gap-1 rounded-lg border border-line bg-page px-2 py-1 text-[0.68rem] font-bold text-ink hover:bg-green hover:text-white hover:border-green transition-colors no-underline"
+                          className="inline-flex items-center gap-1 rounded-lg border border-line bg-page px-2 py-1 text-[0.68rem] font-bold text-ink hover:bg-lime hover:border-lime/60 transition-colors no-underline"
                         >
                           <span>Validar</span>
                           <i className="bx bx-chevron-right text-xs" />
@@ -422,7 +426,7 @@ export default function InstitutionDashboardPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-line-soft">
               <div>
                 <h3 id="faculty-placement-title" className="font-display text-base font-bold text-ink m-0">
-                  Distribución de Empleabilidad por Facultades UTS
+                  Distribución de Empleabilidad por Facultades
                 </h3>
                 <p className="text-xs text-body-muted m-0 mt-0.5">
                   Proporción de egresados formalmente ubicados en el sector productivo

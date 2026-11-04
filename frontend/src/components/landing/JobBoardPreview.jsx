@@ -258,7 +258,11 @@ export default function JobBoardPreview({ variant = 'home' }) {
   }
 
   return (
-    <section className={dashboard || explore ? 'bg-page py-6' : 'bg-page px-5 py-16 sm:px-6 lg:px-10 lg:py-20'} id="oportunidades" aria-labelledby={explore ? 'vacancies-page-title' : 'opportunities-title'}>
+    <section
+      className={dashboard || explore ? 'bg-page py-6 scroll-mt-24 transition-all duration-300' : 'bg-page px-5 py-16 sm:px-6 lg:px-10 lg:py-20 scroll-mt-24 transition-all duration-300'}
+      id="oportunidades"
+      aria-labelledby={explore ? 'vacancies-page-title' : 'opportunities-title'}
+    >
       <div className={explore ? 'w-full' : 'mx-auto max-w-7xl'}>
         {/* Section header + filters */}
         <div className={`mb-8 flex flex-col gap-6 lg:mb-10 ${explore ? 'xl:flex-row xl:items-end xl:justify-between' : 'lg:flex-row lg:items-end lg:justify-between'}`}>

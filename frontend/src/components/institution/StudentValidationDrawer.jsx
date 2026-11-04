@@ -74,7 +74,7 @@ export default function StudentValidationDrawer({
               }`}
             >
               <i className={`bx ${matchOk ? 'bx-check-circle' : 'bx-error-circle'} text-lg`} />
-              {matchOk ? 'Coincide con el registro de la UTS' : match.label}
+              {matchOk ? 'Coincide con el registro institucional' : match.label}
             </p>
             {match.discrepancyNote && (
               <p className="m-0 mt-2 text-sm text-body-muted">{match.discrepancyNote}</p>

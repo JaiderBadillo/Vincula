@@ -194,7 +194,7 @@ export default function ProfileHero({
             </h1>
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[0.68rem] font-bold text-emerald-700">
               <i className="bx bxs-badge-check text-green text-sm" aria-hidden="true" />
-              Egresado Verificado UTS
+              Egresado Verificado
             </span>
           </div>
 
@@ -208,12 +208,12 @@ export default function ProfileHero({
               type="button"
               onClick={() => (onSelectTab ? onSelectTab('educacion') : (window.location.hash = 'educacion'))}
               className="group inline-flex items-center gap-2 rounded-full border border-line bg-page px-3.5 py-1.5 font-semibold text-ink transition-all hover:border-green hover:bg-white hover:text-green-dark shadow-2xs cursor-pointer text-left"
-              title="Ir a formación académica UTS"
+              title="Ir a formación académica"
             >
               <span className="grid size-5 place-items-center rounded-full bg-ink text-lime text-xs group-hover:bg-green group-hover:text-white transition-colors">
                 <i className="bx bxs-graduation" aria-hidden="true" />
               </span>
-              <span>Unidades Tecnológicas de Santander</span>
+              <span>{profile.institution || profile.university || 'Institución Universitaria'}</span>
               <span className="text-secondary font-normal">•</span>
               <span className="text-blue-muted font-medium">{profile.program}</span>
               <i className="bx bx-chevron-right text-base text-secondary group-hover:translate-x-0.5 transition-transform" />

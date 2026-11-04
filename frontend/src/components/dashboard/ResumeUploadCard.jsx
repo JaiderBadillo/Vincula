@@ -26,7 +26,7 @@ export default function ResumeUploadCard() {
 
   return (
     <section
-      className="group relative isolate overflow-hidden rounded-card border border-line bg-ink p-6 text-white shadow-card sm:p-8 lg:p-9"
+      className="group relative isolate overflow-hidden rounded-card border border-line bg-ink p-6 text-white shadow-card sm:p-8 lg:p-9 scroll-mt-24 transition-all duration-300"
       id="subir-cv"
       aria-labelledby="resume-card-title"
     >

@@ -24,12 +24,15 @@ const TABS = [
   },
   {
     id: 'educacion',
-    label: 'Educación UTS',
+    label: 'Educación',
     shortLabel: 'Educación',
     icon: 'bx-graduation',
-    badge: 'UTS',
+    getBadge: (profile) => {
+      const count = 1 + (profile.otherEducation?.length || 0);
+      return String(count);
+    },
     badgeCls: 'bg-emerald-100 text-emerald-800',
-    description: 'Título universitario, competencias curriculares y registro oficial',
+    description: 'Pregrados, especializaciones, posgrados y certificaciones oficiales',
   },
   {
     id: 'cv',
@@ -46,7 +49,9 @@ const TABS = [
     shortLabel: 'Habilidades',
     icon: 'bx-bolt-circle',
     getBadge: (profile) => {
-      const count = (profile.skills?.technical?.length || 0) + (profile.skills?.soft?.length || 0);
+      const count = Array.isArray(profile.skills)
+        ? profile.skills.length
+        : ((profile.skills?.technical?.length || 0) + (profile.skills?.soft?.length || 0));
       return count > 0 ? String(count) : null;
     },
     badgeCls: 'bg-lime/30 text-ink',
@@ -58,11 +63,11 @@ const TABS = [
     shortLabel: 'Trayectoria',
     icon: 'bx-briefcase-alt-2',
     getBadge: (profile) => {
-      const count = profile.experience?.length || 0;
+      const count = (profile.experience || []).filter((e) => e.type === 'work' || e.type === 'practice').length;
       return count > 0 ? String(count) : null;
     },
     badgeCls: 'bg-panel text-blue-muted',
-    description: 'Experiencia laboral, pasantías y proyectos destacados',
+    description: 'Experiencia laboral formal y prácticas empresariales',
   },
   {
     id: 'preferencias',
@@ -80,58 +85,6 @@ const TABS = [
     description: 'Disponibilidad para trabajar, visibilidad y alertas de empleo',
   },
 ];
-
-const TAB_TIPS = {
-  'sobre-mi': {
-    title: 'Consejo para tu extracto',
-    icon: 'bx-bulb',
-    text: 'Redacta un extracto de 3 a 5 líneas destacando tu enfoque técnico y tu vocación. Es lo primero que lee un reclutador.',
-    statLabel: 'Impacto estimado',
-    statValue: '+40% interés',
-  },
-  educacion: {
-    title: 'Respaldo Institucional UTS',
-    icon: 'bxs-graduation',
-    text: 'Tu titulación cuenta con verificación de las Unidades Tecnológicas de Santander para agilizar procesos de selección en empresas aliadas.',
-    statLabel: 'Acreditación',
-    statValue: 'Verificada',
-  },
-  cv: {
-    title: 'Optimización ATS',
-    icon: 'bx-file-find',
-    text: 'Los sistemas ATS leen mejor PDFs limpios sin tablas excesivas. Incluye términos clave coincidentes con las vacantes a las que aplicas.',
-    statLabel: 'Compatibilidad',
-    statValue: 'ATS Friendly',
-  },
-  habilidades: {
-    title: 'Habilidades más buscadas',
-    icon: 'bx-check-double',
-    text: 'Las empresas en Santander valoran perfiles con al menos 4 herramientas técnicas específicas combinadas con comunicación y resolución.',
-    statLabel: 'Recomendado',
-    statValue: '5+ habilidades',
-  },
-  trayectoria: {
-    title: 'Impacto cuantificable',
-    icon: 'bx-trending-up',
-    text: 'Si eres recién egresado, incluye tus prácticas empresariales UTS, proyectos de aula destacados o proyectos freelance.',
-    statLabel: 'Valor curricular',
-    statValue: 'Prácticas UTS',
-  },
-  preferencias: {
-    title: 'Alineación salarial',
-    icon: 'bx-coin-stack',
-    text: 'Establecer un rango realista te permite recibir ofertas filtradas que cumplan tus expectativas y disponibilidad horaria.',
-    statLabel: 'Recomendaciones',
-    statValue: 'Algoritmo activo',
-  },
-  privacidad: {
-    title: 'Búsqueda discreta',
-    icon: 'bx-lock-alt',
-    text: 'Si eliges "Solo reclutadores", tu empresa actual no verá tu disponibilidad activa. Tu privacidad está completamente protegida.',
-    statLabel: 'Confidencialidad',
-    statValue: '100% segura',
-  },
-};
 
 const linkMeta = {
   linkedin: { icon: 'bxl-linkedin-square', label: 'LinkedIn', cls: 'text-[#0a66c2]' },
@@ -253,7 +206,6 @@ export default function ProfilePage() {
   const currentTab = TABS[currentTabIndex] || TABS[0];
   const prevTab = currentTabIndex > 0 ? TABS[currentTabIndex - 1] : null;
   const nextTab = currentTabIndex < TABS.length - 1 ? TABS[currentTabIndex + 1] : null;
-  const currentTip = TAB_TIPS[activeTab] || TAB_TIPS['sobre-mi'];
 
   return (
     <GraduatePortalLayout activePage="profile">
@@ -448,13 +400,13 @@ export default function ProfilePage() {
                     <div className="max-w-xl">
                       <span className="mb-2.5 inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-white">
                         <span className="size-2 rounded-full bg-lime animate-pulse" aria-hidden="true" />
-                        Perfil profesional UTS
+                        Perfil profesional verificado
                       </span>
                       <h3 className="font-display text-xl sm:text-2xl lg:text-[1.7rem] font-bold leading-snug text-white mt-1">
                         Conecta lo que sabes con nuevas oportunidades.
                       </h3>
                       <p className="mt-2 text-xs sm:text-sm text-white/75 leading-relaxed max-w-lg">
-                        Tu formación en las UTS y tu experiencia práctica son tu mayor valor. Explora vacantes que coincidan con tu perfil e inscríbete con un solo clic.
+                        Tu formación académica y tu experiencia práctica son tu mayor valor. Explora vacantes que coincidan con tu perfil e inscríbete con un solo clic.
                       </p>
                     </div>
                     <Link
@@ -485,7 +437,7 @@ export default function ProfilePage() {
                       <div>
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[0.65rem] font-bold text-emerald-800 uppercase tracking-wide">
                           <i className="bx bxs-badge-check text-green text-sm" />
-                          Convenio Empresarial UTS
+                          Convenio Empresarial Institucional
                         </span>
                         <h3 className="m-0 font-display text-base sm:text-lg font-bold text-ink mt-1">
                           Acreditación y Verificación Oficial
@@ -597,65 +549,6 @@ export default function ProfilePage() {
           <aside className="grid min-w-0 gap-6" aria-label="Progreso y consejos del perfil">
             {/* Gamified Profile Strength Meter */}
             <ProfileStrength score={score} checks={checks} onAction={handleStrengthAction} />
-
-            {/* Contextual guidance card for current active page */}
-            <div className="rounded-[1.25rem] border border-line bg-white p-5 shadow-card">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-green-dark">
-                  <span className="grid size-6 place-items-center rounded-lg bg-green/10 text-green">
-                    <i className={`bx ${currentTip.icon} text-base`} />
-                  </span>
-                  {currentTip.title}
-                </div>
-                <span className="rounded-full bg-panel px-2 py-0.5 text-[0.62rem] font-bold text-secondary">
-                  {currentTip.statValue}
-                </span>
-              </div>
-              <p className="m-0 mt-2.5 text-xs leading-relaxed text-body-muted">
-                {currentTip.text}
-              </p>
-              <div className="mt-3.5 pt-3 border-t border-line-soft flex items-center justify-between text-[0.72rem]">
-                <span className="text-secondary">Página actual</span>
-                <span className="font-bold text-ink">{currentTab.label}</span>
-              </div>
-            </div>
-
-            {/* Quick sub-page index list */}
-            <div className="rounded-[1.25rem] border border-line bg-white p-4 shadow-card">
-              <span className="block text-[0.68rem] font-bold uppercase tracking-wider text-secondary mb-2.5 px-1">
-                Índice de páginas
-              </span>
-              <ul className="m-0 list-none p-0 grid gap-1">
-                {TABS.map((t, idx) => {
-                  const isCurrent = activeTab === t.id;
-                  return (
-                    <li key={t.id}>
-                      <button
-                        type="button"
-                        onClick={() => handleTabChange(t.id)}
-                        className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-all cursor-pointer ${
-                          isCurrent
-                            ? 'bg-ink text-white shadow-2xs font-bold'
-                            : 'text-blue-muted hover:bg-page hover:text-ink'
-                        }`}
-                      >
-                        <span className="flex items-center gap-2">
-                          <i
-                            className={`bx ${t.icon} text-sm ${
-                              isCurrent ? 'text-lime' : 'text-secondary'
-                            }`}
-                          />
-                          <span>{t.label}</span>
-                        </span>
-                        <span className={`text-[0.65rem] ${isCurrent ? 'text-white/60' : 'text-secondary'}`}>
-                          0{idx + 1}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
 
             {/* Reset mock data */}
             <button

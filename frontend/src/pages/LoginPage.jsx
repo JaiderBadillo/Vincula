@@ -1,11 +1,19 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { primaryButton } from '../utils/classes.js';
+import { useAuthCredentials } from '../hooks/useAuthCredentials.js';
 
 export default function LoginPage() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { credentials } = useAuthCredentials();
+
+  const isLogout = searchParams.get('logout') === '1';
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [authError, setAuthError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
 
   const fieldClasses =
@@ -14,6 +22,37 @@ export default function LoginPage() {
   function handleSubmit(event) {
     event.preventDefault();
     setSubmitted(true);
+    setAuthError(null);
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) return;
+
+    // Buscar si las credenciales coinciden con algún rol configurado
+    const matchedRole = Object.values(credentials).find(
+      (c) => c.email.toLowerCase() === trimmedEmail.toLowerCase()
+    );
+
+    if (!matchedRole) {
+      setAuthError('No encontramos una cuenta con este correo electrónico.');
+      return;
+    }
+
+    if (matchedRole.password !== password) {
+      setAuthError('Contraseña incorrecta. Por favor verifica tus credenciales.');
+      return;
+    }
+
+    // Redirige al portal respectivo del rol
+    navigate(matchedRole.portalRoute || '/dashboard');
+  }
+
+  function handleQuickFill(roleKey) {
+    const roleCreds = credentials[roleKey];
+    if (roleCreds) {
+      setEmail(roleCreds.email);
+      setPassword(roleCreds.password);
+      setAuthError(null);
+    }
   }
 
   return (
@@ -49,18 +88,41 @@ export default function LoginPage() {
       {/* ─── Center: Login Box (Centered, slightly larger & comfortable) ─── */}
       <main className="relative z-20 mx-auto my-auto flex w-full max-w-lg flex-col justify-center px-4 py-8 sm:px-6">
         <div className="w-full rounded-3xl border border-line/90 bg-white/95 p-8 shadow-hero backdrop-blur-xl sm:p-10">
+          {/* Alerta de sesión cerrada */}
+          {isLogout && (
+            <div className="mb-6 rounded-2xl border border-sand-line bg-sand/40 p-4 text-xs text-cocoa flex items-center gap-3 animate-in fade-in">
+              <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-terracotta text-white text-base">
+                <i className="bx bx-check" />
+              </span>
+              <div>
+                <p className="m-0 font-bold text-ink">Sesión finalizada con éxito</p>
+                <p className="m-0 text-[0.7rem] text-secondary">
+                  Has salido de la plataforma de forma segura. Ingresa de nuevo tus credenciales cuando lo requieras.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Header */}
           <div className="text-center">
             <h1 className="font-display text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
               Bienvenido de nuevo
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-body-muted">
-              Ingresa tus credenciales para acceder a tus postulaciones.
+              Ingresa tus credenciales para acceder a la plataforma.
             </p>
           </div>
 
+          {/* Alerta de error de autenticación */}
+          {authError && (
+            <div className="mt-6 rounded-2xl border border-terracotta/30 bg-terracotta/10 p-3.5 text-xs font-semibold text-terracotta-dark flex items-center gap-2.5">
+              <i className="bx bx-error-circle text-lg shrink-0" />
+              <span>{authError}</span>
+            </div>
+          )}
+
           {/* Form */}
-          <form className="mt-8" noValidate onSubmit={handleSubmit}>
+          <form className="mt-6" noValidate onSubmit={handleSubmit}>
             <div className="mb-4">
               <label className="mb-2 block text-sm font-bold text-ink" htmlFor="login-email">
                 Correo electrónico
@@ -153,7 +215,58 @@ export default function LoginPage() {
             Google
           </button>
 
-          <p className="mt-6 text-center text-sm text-body-muted">
+          {/* Demostración: Acceso rápido por rol */}
+          <div className="mt-6 rounded-2xl border border-sand-line bg-sand/30 p-3.5">
+            <p className="m-0 mb-2 text-center text-[0.68rem] font-bold uppercase tracking-wider text-secondary">
+              Acceso rápido para demostración por rol
+            </p>
+            <div className="flex flex-wrap justify-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleQuickFill('graduate')}
+                className="rounded-lg border border-sand-line bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-ink hover:bg-cream hover:text-cocoa transition-colors cursor-pointer"
+              >
+                Egresado
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('institution_advisor')}
+                className="rounded-lg border border-sand-line bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-ink hover:bg-cream hover:text-cocoa transition-colors cursor-pointer"
+              >
+                Asesor IES
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('institution_admin')}
+                className="rounded-lg border border-sand-line bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-ink hover:bg-cream hover:text-cocoa transition-colors cursor-pointer"
+              >
+                Admin IES
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('company_admin')}
+                className="rounded-lg border border-sand-line bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-ink hover:bg-cream hover:text-cocoa transition-colors cursor-pointer"
+              >
+                Admin Empresa
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('company_recruiter')}
+                className="rounded-lg border border-sand-line bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-ink hover:bg-cream hover:text-cocoa transition-colors cursor-pointer"
+              >
+                Reclutador
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('vincula_admin')}
+                className="rounded-lg border border-terracotta/30 bg-terracotta/10 px-2.5 py-1 text-[0.68rem] font-bold text-terracotta hover:bg-terracotta hover:text-white transition-colors cursor-pointer"
+              >
+                Admin Vincula
+              </button>
+            </div>
+          </div>
+
+          <p className="mt-5 text-center text-sm text-body-muted">
             ¿No tienes cuenta?{' '}
             <Link to="/" className="font-semibold text-green hover:text-green-dark no-underline">
               Regístrate aquí

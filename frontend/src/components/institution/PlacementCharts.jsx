@@ -259,7 +259,7 @@ export function PlacementTrendAreaChart({ data }) {
       <div className="flex items-center justify-between text-[0.72rem] text-secondary border-t border-line/60 pt-2.5">
         <span className="flex items-center gap-1.5">
           <span className="inline-block size-2 rounded-full bg-green-dark" />
-          <span>Tendencia longitudinal calculada sobre graduados registrados en el censo UTS.</span>
+          <span>Tendencia longitudinal calculada sobre graduados registrados en el censo institucional.</span>
         </span>
         <span className="font-semibold text-emerald-800">
           Crecimiento acumulado: +7.5% en 5 periodos

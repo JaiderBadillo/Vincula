@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
 import { getInitials, useProfile } from '../../hooks/useProfile.js';
+import UserAccountDropdown from '../common/UserAccountDropdown.jsx';
 
 function formatDashboardDate(date) {
   const formattedDate = new Intl.DateTimeFormat('es-CO', {
@@ -42,12 +42,15 @@ export default function DashboardTopbar({ onMenuToggle, mobileMenuOpen, menuButt
           <p className="truncate text-sm font-medium text-body-muted">{formatDashboardDate(new Date())}</p>
         </div>
 
-        <Link to="/dashboard/perfil" className="flex shrink-0 items-center gap-3 rounded-full py-1 pl-1 pr-3 no-underline transition-colors hover:bg-panel" aria-label={`Ir a mi perfil: ${profile.fullName}`}>
-          <span className="grid size-10 place-items-center overflow-hidden rounded-full border border-green/15 bg-panel font-display text-sm font-bold text-green" aria-hidden="true">
-            {profile.photo ? <img src={profile.photo} alt="" className="size-full object-cover" /> : getInitials(profile.fullName)}
-          </span>
-          <span className="hidden font-display text-sm font-semibold text-ink sm:inline">{profile.fullName}</span>
-        </Link>
+        {/* Menú de cuenta con desplegable (Configuración y Salir) */}
+        <UserAccountDropdown
+          role="graduate"
+          userName={profile.fullName}
+          userSubtitle="Cuenta de Egresado"
+          userAvatar={profile.photo}
+          userInitials={getInitials(profile.fullName)}
+          borderClass="border-line-soft"
+        />
       </div>
     </header>
   );

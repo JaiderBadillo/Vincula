@@ -42,7 +42,7 @@ export default function CompanyValidationDrawer({
                         ? 'bg-emerald-100 text-emerald-800'
                         : company.status === 'rejected'
                         ? 'bg-rose-100 text-rose-800'
-                        : 'bg-purple-100 text-purple-800'
+                        : 'bg-lime/25 text-ink border border-lime/60'
                     }`}
                   >
                     {company.status === 'approved'
@@ -74,7 +74,7 @@ export default function CompanyValidationDrawer({
               <button
                 type="button"
                 onClick={() => onApprove(company.id)}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-green-dark px-4 py-2.5 text-xs font-bold text-white shadow-2xs hover:bg-green-dark/90 transition-colors cursor-pointer"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-lime hover:bg-lime/85 text-ink px-4 py-2.5 text-xs font-bold shadow-xs transition-colors cursor-pointer"
               >
                 <i className="bx bx-check-circle text-base" />
                 <span>Aprobar y Formalizar Convenio</span>
@@ -218,7 +218,7 @@ export default function CompanyValidationDrawer({
               {company.targetPrograms && company.targetPrograms.length > 0 && (
                 <div className="pt-2 border-t border-green/15">
                   <span className="text-secondary text-[0.68rem] font-bold uppercase block mb-1.5">
-                    Programas Académicos UTS Beneficiados
+                    Programas Académicos Beneficiados
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {company.targetPrograms.map((prog) => (

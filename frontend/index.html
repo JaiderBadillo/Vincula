@@ -14,8 +14,13 @@
       try {
         localStorage.removeItem('vincula.theme');
         localStorage.removeItem('vincula.sidebar.theme');
+        localStorage.removeItem('vincula.institution.admin.theme');
         document.documentElement.classList.remove('dark');
         document.documentElement.setAttribute('data-theme', 'light');
+        if (window.location.pathname.startsWith('/institucion/admin')) {
+          var savedIesTheme = localStorage.getItem('vincula.ies.admin.theme.v2') || 'verde-oscuro';
+          document.documentElement.setAttribute('data-ies-theme', savedIesTheme);
+        }
       } catch (e) {}
     </script>
   </head>

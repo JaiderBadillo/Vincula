@@ -7,6 +7,8 @@ const toneMap = {
   violet: 'bg-violet-50 text-violet-700',
   rose: 'bg-rose-50 text-rose-700',
   ink: 'bg-ink text-lime',
+  terracotta: 'bg-terracotta/10 text-terracotta',
+  ochre: 'bg-ochre/15 text-ochre',
 };
 
 export function SectionCard({ id, icon, tone = 'green', title, subtitle, action, children, className = '' }) {

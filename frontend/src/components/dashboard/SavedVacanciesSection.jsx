@@ -5,7 +5,11 @@ export default function SavedVacanciesSection({ onOpenJob, onApplyJob, appliedJo
   const { savedJobs, savedCount, removeSaved } = useSavedJobs();
 
   return (
-    <section aria-labelledby="saved-vacancies-title" className="space-y-4">
+    <section
+      id="vacantes-guardadas"
+      aria-labelledby="saved-vacancies-title"
+      className="space-y-4 scroll-mt-24 transition-all duration-300"
+    >
       {/* ─── Encabezado de la Sección ─── */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-line pb-4">
         <div>
@@ -21,7 +25,7 @@ export default function SavedVacanciesSection({ onOpenJob, onApplyJob, appliedJo
             </span>
           </div>
           <p className="m-0 mt-1 text-xs sm:text-sm text-body-muted">
-            Oportunidades de empresas con convenio UTS que has guardado para preparar tu postulación.
+            Oportunidades de empresas con convenio institucional que has guardado para preparar tu postulación.
           </p>
         </div>
 
@@ -96,7 +100,7 @@ export default function SavedVacanciesSection({ onOpenJob, onApplyJob, appliedJo
 
                     <span className="inline-flex items-center gap-1 rounded-lg bg-lime/25 px-2.5 py-1 text-[0.72rem] font-extrabold text-ink border border-lime/40">
                       <i className="bx bxs-bolt text-xs text-green-dark" />
-                      {job.utsMatch}% Match UTS
+                      {job.utsMatch}% Match Perfil
                     </span>
                   </div>
 
@@ -130,7 +134,7 @@ export default function SavedVacanciesSection({ onOpenJob, onApplyJob, appliedJo
                         ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                         : 'bg-green hover:bg-green-dark text-white shadow-2xs'
                     }`}
-                    title={isApplied ? 'Ya te postulaste' : 'Postulación rápida con perfil UTS'}
+                    title={isApplied ? 'Ya te postulaste' : 'Postulación rápida con perfil verificado'}
                   >
                     <i className={`bx ${isApplied ? 'bx-check' : 'bx-send'} text-sm`} />
                     <span>{isApplied ? 'Postulado' : 'Postularme'}</span>

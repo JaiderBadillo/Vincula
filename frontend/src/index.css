@@ -3,7 +3,7 @@
 @import 'bootstrap/dist/css/bootstrap.min.css' layer(bootstrap);
 @import "tailwindcss";
 
-@theme inline {
+@theme {
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-display: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --color-ink: #001a23;
@@ -18,10 +18,316 @@
   --color-secondary: #718188;
   --color-line: #dce4e6;
   --color-line-soft: #e8edef;
+  /* Paleta del portal */
+  --color-cream: #fbf6ee;
+  --color-sand: #f1e7d6;
+  --color-sand-line: #e6d8c0;
+  --color-terracotta: #c4572a;
+  --color-terracotta-dark: #9f431d;
+  --color-ochre: #e2a336;
+  --color-cocoa: #2b1a10;
   --radius-card: 16px;
   --radius-control: 12px;
   --shadow-card: 0 8px 24px rgba(0, 26, 35, 0.045);
   --shadow-hero: 0 26px 65px rgba(0, 0, 0, 0.3);
+}
+
+/* ========================================================
+   PORTAL ADMINISTRADOR DE EMPRESA
+   Paleta corporativa cálida original definida por Sonnet:
+   Terracota (#c4572a), Cacao (#2b1a10), Arena (#f1e7d6),
+   Crema (#fbf6ee), Ocre (#e2a336).
+   Aislado permanentemente de los temas institucionales.
+   ======================================================== */
+[data-company-admin="true"],
+[data-portal="company"] {
+  --color-terracotta: #c4572a !important;
+  --color-terracotta-dark: #9f431d !important;
+  --color-sand: #f1e7d6 !important;
+  --color-sand-line: #e6d8c0 !important;
+  --color-cream: #fbf6ee !important;
+  --color-cocoa: #2b1a10 !important;
+  --color-ochre: #e2a336 !important;
+  --color-page: #fbf6ee !important;
+}
+
+[data-company-admin="true"] .bg-terracotta\/10,
+[data-portal="company"] .bg-terracotta\/10 {
+  background-color: color-mix(in srgb, #c4572a 10%, transparent) !important;
+}
+
+[data-company-admin="true"] .border-terracotta\/25,
+[data-portal="company"] .border-terracotta\/25 {
+  border-color: color-mix(in srgb, #c4572a 25%, transparent) !important;
+}
+
+[data-company-admin="true"] .border-terracotta\/40,
+[data-portal="company"] .border-terracotta\/40 {
+  border-color: color-mix(in srgb, #c4572a 40%, transparent) !important;
+}
+
+[data-company-admin="true"] .border-terracotta\/50,
+[data-portal="company"] .border-terracotta\/50 {
+  border-color: color-mix(in srgb, #c4572a 50%, transparent) !important;
+}
+
+[data-company-admin="true"] .hover\:border-terracotta\/40:hover,
+[data-portal="company"] .hover\:border-terracotta\/40:hover {
+  border-color: color-mix(in srgb, #c4572a 40%, transparent) !important;
+}
+
+[data-company-admin="true"] .hover\:border-terracotta\/50:hover,
+[data-portal="company"] .hover\:border-terracotta\/50:hover {
+  border-color: color-mix(in srgb, #c4572a 50%, transparent) !important;
+}
+
+[data-company-admin="true"] .bg-cream\/30, [data-portal="company"] .bg-cream\/30 {
+  background-color: color-mix(in srgb, #fbf6ee 30%, transparent) !important;
+}
+[data-company-admin="true"] .bg-cream\/40, [data-portal="company"] .bg-cream\/40 {
+  background-color: color-mix(in srgb, #fbf6ee 40%, transparent) !important;
+}
+[data-company-admin="true"] .bg-cream\/50, [data-portal="company"] .bg-cream\/50 {
+  background-color: color-mix(in srgb, #fbf6ee 50%, transparent) !important;
+}
+[data-company-admin="true"] .bg-cream\/60, [data-portal="company"] .bg-cream\/60 {
+  background-color: color-mix(in srgb, #fbf6ee 60%, transparent) !important;
+}
+[data-company-admin="true"] .bg-cream\/70, [data-portal="company"] .bg-cream\/70 {
+  background-color: color-mix(in srgb, #fbf6ee 70%, transparent) !important;
+}
+[data-company-admin="true"] .bg-cream\/95, [data-portal="company"] .bg-cream\/95 {
+  background-color: color-mix(in srgb, #fbf6ee 95%, transparent) !important;
+}
+
+[data-company-admin="true"] .bg-sand\/30, [data-portal="company"] .bg-sand\/30 {
+  background-color: color-mix(in srgb, #f1e7d6 30%, transparent) !important;
+}
+[data-company-admin="true"] .bg-sand\/50, [data-portal="company"] .bg-sand\/50 {
+  background-color: color-mix(in srgb, #f1e7d6 50%, transparent) !important;
+}
+[data-company-admin="true"] .bg-sand\/60, [data-portal="company"] .bg-sand\/60 {
+  background-color: color-mix(in srgb, #f1e7d6 60%, transparent) !important;
+}
+
+[data-company-admin="true"] .bg-cocoa\/55, [data-portal="company"] .bg-cocoa\/55 {
+  background-color: color-mix(in srgb, #2b1a10 55%, transparent) !important;
+}
+[data-company-admin="true"] .bg-cocoa\/60, [data-portal="company"] .bg-cocoa\/60 {
+  background-color: color-mix(in srgb, #2b1a10 60%, transparent) !important;
+}
+[data-company-admin="true"] .bg-cocoa\/65, [data-portal="company"] .bg-cocoa\/65 {
+  background-color: color-mix(in srgb, #2b1a10 65%, transparent) !important;
+}
+[data-company-admin="true"] .bg-cocoa\/80, [data-portal="company"] .bg-cocoa\/80 {
+  background-color: color-mix(in srgb, #2b1a10 80%, transparent) !important;
+}
+[data-company-admin="true"] .bg-cocoa\/85, [data-portal="company"] .bg-cocoa\/85 {
+  background-color: color-mix(in srgb, #2b1a10 85%, transparent) !important;
+}
+
+/* ========================================================
+   TEMAS INSTITUCIONALES - PORTAL IES (ASESOR Y ADMIN)
+   Por defecto: Verde Institucional UTS (#1b4d2e)
+   (Sin azules ni morados)
+   Exclusivo para [data-ies-portal="true"] y [data-ies-theme]
+   ======================================================== */
+[data-ies-portal="true"][data-ies-theme="verde-oscuro"],
+[data-admin-ies="true"][data-ies-theme="verde-oscuro"],
+[data-ies-theme="verde-oscuro"]:not([data-company-admin]):not([data-portal="company"]) {
+  --color-green: #336f24 !important;
+  --color-green-dark: #28571d !important;
+  --color-lime: #b1cc74 !important;
+  --color-page: #fbfcf9 !important;
+  --color-terracotta: #1b4d2e !important;
+  --color-terracotta-dark: #113820 !important;
+  --color-sand: #e6eee3 !important;
+  --color-sand-line: #cadac6 !important;
+  --color-cream: #f6faf5 !important;
+  --color-cocoa: #12281c !important;
+  --color-ochre: #2e7d32 !important;
+}
+
+[data-ies-portal="true"][data-ies-theme="verde-esmeralda"],
+[data-admin-ies="true"][data-ies-theme="verde-esmeralda"],
+[data-ies-theme="verde-esmeralda"]:not([data-company-admin]):not([data-portal="company"]) {
+  --color-green: #1e6f43 !important;
+  --color-green-dark: #134e2e !important;
+  --color-lime: #6ee7b7 !important;
+  --color-page: #f3f9f5 !important;
+  --color-terracotta: #1e6f43 !important;
+  --color-terracotta-dark: #134e2e !important;
+  --color-sand: #e1f0e7 !important;
+  --color-sand-line: #c2ded0 !important;
+  --color-cream: #f3f9f5 !important;
+  --color-cocoa: #0d281a !important;
+  --color-ochre: #43a047 !important;
+}
+
+[data-ies-portal="true"][data-ies-theme="cafe-ebano"],
+[data-admin-ies="true"][data-ies-theme="cafe-ebano"],
+[data-ies-theme="cafe-ebano"]:not([data-company-admin]):not([data-portal="company"]) {
+  --color-green: #4a2e1b !important;
+  --color-green-dark: #321e10 !important;
+  --color-lime: #ddb892 !important;
+  --color-page: #f9f5f0 !important;
+  --color-terracotta: #4a2e1b !important;
+  --color-terracotta-dark: #321e10 !important;
+  --color-sand: #ede3dc !important;
+  --color-sand-line: #ded0c5 !important;
+  --color-cream: #f9f5f0 !important;
+  --color-cocoa: #24140b !important;
+  --color-ochre: #8d6e63 !important;
+}
+
+[data-ies-portal="true"][data-ies-theme="ambar-dorado"],
+[data-admin-ies="true"][data-ies-theme="ambar-dorado"],
+[data-ies-theme="ambar-dorado"]:not([data-company-admin]):not([data-portal="company"]) {
+  --color-green: #9a6813 !important;
+  --color-green-dark: #7b4f09 !important;
+  --color-lime: #fde047 !important;
+  --color-page: #fbf8f0 !important;
+  --color-terracotta: #9a6813 !important;
+  --color-terracotta-dark: #7b4f09 !important;
+  --color-sand: #f4ecd6 !important;
+  --color-sand-line: #e6d8b5 !important;
+  --color-cream: #fbf8f0 !important;
+  --color-cocoa: #2e1d08 !important;
+  --color-ochre: #b78103 !important;
+}
+
+[data-ies-portal="true"][data-ies-theme="burdeos-academico"],
+[data-admin-ies="true"][data-ies-theme="burdeos-academico"],
+[data-ies-theme="burdeos-academico"]:not([data-company-admin]):not([data-portal="company"]) {
+  --color-green: #7a2336 !important;
+  --color-green-dark: #581423 !important;
+  --color-lime: #fbcfe8 !important;
+  --color-page: #fbf5f6 !important;
+  --color-terracotta: #7a2336 !important;
+  --color-terracotta-dark: #581423 !important;
+  --color-sand: #f2e1e4 !important;
+  --color-sand-line: #e2c7cc !important;
+  --color-cream: #fbf5f6 !important;
+  --color-cocoa: #2e0d14 !important;
+  --color-ochre: #880e4f !important;
+}
+
+[data-ies-portal="true"][data-ies-theme="terracota-calido"],
+[data-admin-ies="true"][data-ies-theme="terracota-calido"],
+[data-ies-theme="terracota-calido"]:not([data-company-admin]):not([data-portal="company"]) {
+  --color-green: #c4572a !important;
+  --color-green-dark: #9f431d !important;
+  --color-lime: #fed7aa !important;
+  --color-page: #fbf6ee !important;
+  --color-terracotta: #c4572a !important;
+  --color-terracotta-dark: #9f431d !important;
+  --color-sand: #f1e7d6 !important;
+  --color-sand-line: #e6d8c0 !important;
+  --color-cream: #fbf6ee !important;
+  --color-cocoa: #2b1a10 !important;
+  --color-ochre: #e2a336 !important;
+}
+
+/* Forzar resolución dinámica para clases de opacidad en Admin IES */
+[data-ies-portal="true"] .bg-terracotta\/10,
+[data-admin-ies="true"] .bg-terracotta\/10,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .bg-terracotta\/10 {
+  background-color: color-mix(in srgb, var(--color-terracotta) 10%, transparent) !important;
+}
+[data-ies-portal="true"] .border-terracotta\/25,
+[data-admin-ies="true"] .border-terracotta\/25,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .border-terracotta\/25 {
+  border-color: color-mix(in srgb, var(--color-terracotta) 25%, transparent) !important;
+}
+[data-ies-portal="true"] .border-terracotta\/40,
+[data-admin-ies="true"] .border-terracotta\/40,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .border-terracotta\/40 {
+  border-color: color-mix(in srgb, var(--color-terracotta) 40%, transparent) !important;
+}
+[data-ies-portal="true"] .border-terracotta\/50,
+[data-admin-ies="true"] .border-terracotta\/50,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .border-terracotta\/50 {
+  border-color: color-mix(in srgb, var(--color-terracotta) 50%, transparent) !important;
+}
+[data-ies-portal="true"] .hover\:border-terracotta\/40:hover,
+[data-admin-ies="true"] .hover\:border-terracotta\/40:hover,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .hover\:border-terracotta\/40:hover {
+  border-color: color-mix(in srgb, var(--color-terracotta) 40%, transparent) !important;
+}
+[data-ies-portal="true"] .hover\:border-terracotta\/50:hover,
+[data-admin-ies="true"] .hover\:border-terracotta\/50:hover,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .hover\:border-terracotta\/50:hover {
+  border-color: color-mix(in srgb, var(--color-terracotta) 50%, transparent) !important;
+}
+[data-ies-portal="true"] .bg-cream\/30,
+[data-admin-ies="true"] .bg-cream\/30,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .bg-cream\/30 {
+  background-color: color-mix(in srgb, var(--color-cream) 30%, transparent) !important;
+}
+[data-ies-portal="true"] .bg-cream\/40,
+[data-admin-ies="true"] .bg-cream\/40,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .bg-cream\/40 {
+  background-color: color-mix(in srgb, var(--color-cream) 40%, transparent) !important;
+}
+[data-ies-portal="true"] .bg-cream\/50,
+[data-admin-ies="true"] .bg-cream\/50,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .bg-cream\/50 {
+  background-color: color-mix(in srgb, var(--color-cream) 50%, transparent) !important;
+}
+[data-ies-portal="true"] .bg-cream\/60,
+[data-admin-ies="true"] .bg-cream\/60,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .bg-cream\/60 {
+  background-color: color-mix(in srgb, var(--color-cream) 60%, transparent) !important;
+}
+[data-ies-portal="true"] .bg-cream\/70,
+[data-admin-ies="true"] .bg-cream\/70,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .bg-cream\/70 {
+  background-color: color-mix(in srgb, var(--color-cream) 70%, transparent) !important;
+}
+[data-ies-portal="true"] .bg-cream\/95,
+[data-admin-ies="true"] .bg-cream\/95,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .bg-cream\/95 {
+  background-color: color-mix(in srgb, var(--color-cream) 95%, transparent) !important;
+}
+[data-ies-portal="true"] .bg-sand\/30,
+[data-admin-ies="true"] .bg-sand\/30,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .bg-sand\/30 {
+  background-color: color-mix(in srgb, var(--color-sand) 30%, transparent) !important;
+}
+[data-ies-portal="true"] .bg-sand\/50,
+[data-admin-ies="true"] .bg-sand\/50,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .bg-sand\/50 {
+  background-color: color-mix(in srgb, var(--color-sand) 50%, transparent) !important;
+}
+[data-ies-portal="true"] .bg-sand\/60,
+[data-admin-ies="true"] .bg-sand\/60,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .bg-sand\/60 {
+  background-color: color-mix(in srgb, var(--color-sand) 60%, transparent) !important;
+}
+[data-ies-portal="true"] .bg-cocoa\/55,
+[data-admin-ies="true"] .bg-cocoa\/55,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .bg-cocoa\/55 {
+  background-color: color-mix(in srgb, var(--color-cocoa) 55%, transparent) !important;
+}
+[data-ies-portal="true"] .bg-cocoa\/60,
+[data-admin-ies="true"] .bg-cocoa\/60,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .bg-cocoa\/60 {
+  background-color: color-mix(in srgb, var(--color-cocoa) 60%, transparent) !important;
+}
+[data-ies-portal="true"] .bg-cocoa\/65,
+[data-admin-ies="true"] .bg-cocoa\/65,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .bg-cocoa\/65 {
+  background-color: color-mix(in srgb, var(--color-cocoa) 65%, transparent) !important;
+}
+[data-ies-portal="true"] .bg-cocoa\/80,
+[data-admin-ies="true"] .bg-cocoa\/80,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .bg-cocoa\/80 {
+  background-color: color-mix(in srgb, var(--color-cocoa) 80%, transparent) !important;
+}
+[data-ies-portal="true"] .bg-cocoa\/85,
+[data-admin-ies="true"] .bg-cocoa\/85,
+[data-ies-theme]:not([data-company-admin]):not([data-portal="company"]) .bg-cocoa\/85 {
+  background-color: color-mix(in srgb, var(--color-cocoa) 85%, transparent) !important;
 }
 
 @layer base {
@@ -151,6 +457,24 @@
 
   .showcase-image-shade--side {
     background: linear-gradient(90deg, rgba(0, 26, 35, 0.68), rgba(0, 26, 35, 0.03));
+  }
+
+  /* Sombras cálidas para fotos del portal de empresas */
+  .company-shade--bottom {
+    background: linear-gradient(to top, rgba(43, 26, 16, 0.88), rgba(43, 26, 16, 0.28) 62%, rgba(43, 26, 16, 0.04));
+  }
+
+  .company-shade--side {
+    background: linear-gradient(90deg, rgba(43, 26, 16, 0.82), rgba(43, 26, 16, 0.18) 70%, transparent);
+  }
+
+  /* Sombras institucionales para fotos del portal IES (verde oscuro y sobriedad académica) */
+  .ies-shade--bottom {
+    background: linear-gradient(to top, rgba(14, 34, 22, 0.94), rgba(14, 34, 22, 0.44) 62%, rgba(14, 34, 22, 0.05));
+  }
+
+  .ies-shade--side {
+    background: linear-gradient(90deg, rgba(14, 34, 22, 0.88), rgba(14, 34, 22, 0.28) 68%, transparent);
   }
 
   /* ─── Perfil & CV ─── */
