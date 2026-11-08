@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { primaryButton } from '../utils/classes.js';
 import { useAuthCredentials } from '../hooks/useAuthCredentials.js';
@@ -10,6 +10,13 @@ export default function LoginPage() {
   const { credentials } = useAuthCredentials();
 
   const isLogout = searchParams.get('logout') === '1';
+
+  // Si se ingresa con ?logout=1, asegurar la limpieza completa de la sesión local
+  useEffect(() => {
+    if (isLogout) {
+      authService.logout();
+    }
+  }, [isLogout]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,9 +32,15 @@ export default function LoginPage() {
     switch (rol) {
       case 'superadmin_vincula':
       case 'superadmin':
+      case 'vincula_admin':
+      case 'admin':
         return '/admin/dashboard';
       case 'admin_empresa':
       case 'empresa_admin':
+      case 'company_admin':
+      case 'company_quarantine':
+      case 'empresa_aprobada':
+      case 'empresa':
         if (estadoValidacion === 'pendiente') {
           return '/empresa/admin/actividad';
         }
@@ -35,14 +48,18 @@ export default function LoginPage() {
       case 'reclutador_empresa':
       case 'empresa_reclutador':
       case 'reclutador':
+      case 'company_recruiter':
         return '/empresa/reclutador/dashboard';
       case 'admin_ies':
       case 'institucion_admin':
+      case 'institution_admin':
         return '/institucion/admin/perfil';
       case 'asesor_ies':
       case 'institucion_asesor':
+      case 'institution_advisor':
         return '/institucion/dashboard';
       case 'egresado':
+      case 'graduate':
       default:
         return '/dashboard';
     }
@@ -73,8 +90,16 @@ export default function LoginPage() {
       // 1. Intentar autenticación real contra FastAPI en vivo
       const data = await authService.login(trimmedEmail, password);
       setIsLoading(false);
+
+      // Si el usuario intentaba acceder a una URL específica previa (por ejemplo, desde ProtectedRoute)
+      const redirectUrl = searchParams.get('redirect');
+      if (redirectUrl && redirectUrl.startsWith('/')) {
+        navigate(redirectUrl, { replace: true });
+        return;
+      }
+
       const targetRoute = routeForRole(data.rol, data.estado_validacion);
-      navigate(targetRoute);
+      navigate(targetRoute, { replace: true });
     } catch (apiErr) {
       setIsLoading(false);
 
@@ -99,7 +124,23 @@ export default function LoginPage() {
       );
 
       if (matchedRole && matchedRole.password === password) {
-        navigate(matchedRole.portalRoute || '/dashboard');
+        authService.saveSession({
+          access_token: 'local-session-' + matchedRole.roleId,
+          user_id: matchedRole.roleId,
+          nombre: matchedRole.name,
+          correo: matchedRole.email,
+          rol: matchedRole.roleId,
+          estado_validacion: matchedRole.roleId === 'company_quarantine' ? 'pendiente' : 'aprobado',
+          id_entidad: 'local-entidad',
+        });
+
+        const redirectUrl = searchParams.get('redirect');
+        if (redirectUrl && redirectUrl.startsWith('/')) {
+          navigate(redirectUrl, { replace: true });
+          return;
+        }
+
+        navigate(matchedRole.portalRoute || '/dashboard', { replace: true });
         return;
       }
 

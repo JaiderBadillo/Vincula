@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { getInitials, useProfile } from '../../hooks/useProfile.js';
+import { authService } from '../../services/authService.js';
 
 /* ─── Brand Logo ─── */
 
@@ -180,10 +181,13 @@ function SidebarFooter({ onNavigate, collapsed = false }) {
         className={`flex min-h-9 items-center rounded-lg text-[0.75rem] font-medium text-secondary hover:bg-page hover:text-red-600 no-underline transition-colors ${
           collapsed ? 'justify-center px-0' : 'gap-3 px-3'
         }`}
-        to="/login"
+        to="/login?logout=1"
         aria-label="Cerrar sesión"
         title={collapsed ? 'Cerrar sesión' : undefined}
-        onClick={onNavigate}
+        onClick={() => {
+          authService.logout();
+          if (onNavigate) onNavigate();
+        }}
       >
         <i className="bx bx-log-out shrink-0 text-base" aria-hidden="true" />
         <span className={collapsed ? 'sr-only' : ''}>Cerrar sesión</span>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AccountSettingsModal from './AccountSettingsModal.jsx';
 import { useAuthCredentials } from '../../hooks/useAuthCredentials.js';
+import { authService } from '../../services/authService.js';
 
 export default function UserAccountDropdown({
   role = 'company_admin',
@@ -51,6 +52,7 @@ export default function UserAccountDropdown({
   }, [isOpen]);
 
   function handleLogout() {
+    authService.logout();
     setIsOpen(false);
     navigate('/login?logout=1');
   }
