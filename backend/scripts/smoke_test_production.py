@@ -86,12 +86,13 @@ def run_smoke_tests(base_url: str):
         assert_check("DB Health check", False, f"Error: {e}")
 
     # 6. Catálogo de Vacantes Públicas
-    print("\n6. Verificando Endpoints de Negocio (/api/v1/vacantes/publicas)...")
+    print("\n6. Verificando Endpoints de Negocio (/api/v1/vacantes)...")
     try:
-        r = requests.get(f"{base_url}/api/v1/vacantes/publicas", timeout=15)
-        assert_check("GET /api/v1/vacantes/publicas responde HTTP 200", r.status_code == 200, f"({r.status_code})")
-        vacantes = r.json()
-        assert_check("Retorna listado de vacantes", isinstance(vacantes, list), f"({len(vacantes)} vacantes encontradas)")
+        r = requests.get(f"{base_url}/api/v1/vacantes", timeout=15)
+        assert_check("GET /api/v1/vacantes responde HTTP 200", r.status_code == 200, f"({r.status_code})")
+        data = r.json()
+        items = data.get("items", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+        assert_check("Retorna listado de vacantes activas", len(items) > 0, f"({len(items)} vacantes encontradas, total: {data.get('total', len(items))})")
     except Exception as e:
         assert_check("Vacantes públicas", False, f"Error: {e}")
 

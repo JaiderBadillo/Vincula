@@ -8,22 +8,113 @@ const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:800
 export const AUTH_TOKEN_KEY = 'vincula.auth.token';
 export const AUTH_USER_KEY = 'vincula.auth.user';
 
+const FIELD_NAMES_ES = {
+  correo: 'Correo electrónico',
+  email: 'Correo electrónico',
+  password: 'Contraseña',
+  contrasena: 'Contraseña',
+  confirm_password: 'Confirmación de contraseña',
+  nombre: 'Nombre completo',
+  telefono: 'Teléfono',
+  documento_identidad: 'Documento de identidad',
+  numero_documento: 'Número de documento',
+  tipo_documento: 'Tipo de documento',
+  nit: 'NIT',
+  razon_social: 'Razón social',
+};
+
+/**
+ * Traduce un error individual de Pydantic/FastAPI a un mensaje amigable en español.
+ */
+function translatePydanticError(err) {
+  if (!err || typeof err !== 'object') return null;
+
+  const loc = Array.isArray(err.loc) ? err.loc : [];
+  const fieldKey = loc.length > 0 ? String(loc[loc.length - 1]).toLowerCase() : '';
+  const fieldName = FIELD_NAMES_ES[fieldKey] || fieldKey || 'El campo';
+
+  const type = String(err.type || '');
+  const msg = String(err.msg || '');
+  const ctx = err.ctx || {};
+
+  // Validaciones de Contraseña
+  if (fieldKey === 'password' || fieldKey === 'contrasena') {
+    if (type === 'string_too_short' || msg.includes('at least')) {
+      const min = ctx.min_length || 6;
+      return `La contraseña debe tener al menos ${min} caracteres.`;
+    }
+    if (type === 'missing') {
+      return 'Por favor ingresa tu contraseña.';
+    }
+  }
+
+  // Validaciones de Correo
+  if (fieldKey === 'correo' || fieldKey === 'email') {
+    if (type.includes('value_error') || msg.includes('valid email')) {
+      return 'Por favor ingresa un correo electrónico con formato válido.';
+    }
+    if (type === 'missing') {
+      return 'Por favor ingresa tu correo electrónico.';
+    }
+  }
+
+  // Reglas generales de campos Pydantic
+  if (type === 'string_too_short') {
+    return `${fieldName} debe tener al menos ${ctx.min_length || 1} caracteres.`;
+  }
+  if (type === 'string_too_long') {
+    return `${fieldName} no puede exceder ${ctx.max_length} caracteres.`;
+  }
+  if (type === 'missing') {
+    return `${fieldName} es un campo obligatorio.`;
+  }
+  if (msg.includes('at least')) {
+    return `${fieldName} no cumple con la longitud mínima requerida.`;
+  }
+  if (msg.includes('valid email')) {
+    return 'El formato del correo electrónico no es válido.';
+  }
+
+  return msg ? `${fieldName}: ${msg}` : null;
+}
+
 /**
  * Extrae y formatea mensajes de error enriquecidos provenientes de la API de FastAPI.
- * Muestra el por qué ocurre el error y la acción sugerida en lugar de un error en seco.
+ * Muestra el por qué ocurre el error de forma clara para el usuario final.
  */
 export function extractErrorMessage(errorData, fallback = 'Ha ocurrido un error inesperado.') {
   if (!errorData) return fallback;
   if (typeof errorData === 'string') return errorData;
+
   const detail = errorData.detail ?? errorData.mensaje ?? errorData.message;
-  if (typeof detail === 'string') return detail;
+
+  // 1. Si detail es una cadena directa
+  if (typeof detail === 'string') {
+    return detail;
+  }
+
+  // 2. Si detail es un Array (Típico de errores de validación 422 de Pydantic)
+  if (Array.isArray(detail)) {
+    const translatedMessages = detail
+      .map(translatePydanticError)
+      .filter(Boolean);
+
+    if (translatedMessages.length > 0) {
+      return translatedMessages.join(' · ');
+    }
+  }
+
+  // 3. Si detail es un objeto estructurado
   if (typeof detail === 'object' && detail !== null) {
     if (detail.mensaje && detail.motivo) {
       const sugerencia = detail.accion_sugerida ? ` → ${detail.accion_sugerida}` : '';
       return `${detail.mensaje} (${detail.motivo})${sugerencia}`;
     }
-    return detail.mensaje || detail.motivo || detail.codigo || JSON.stringify(detail);
+    if (detail.mensaje) return detail.mensaje;
+    if (detail.motivo) return detail.motivo;
+    if (detail.msg) return translatePydanticError(detail) || detail.msg;
   }
+
   return fallback;
 }
 

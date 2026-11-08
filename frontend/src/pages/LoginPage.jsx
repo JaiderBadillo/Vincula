@@ -54,7 +54,18 @@ export default function LoginPage() {
     setAuthError(null);
 
     const trimmedEmail = email.trim();
-    if (!trimmedEmail || !password) return;
+    if (!trimmedEmail) {
+      setAuthError('Por favor ingresa tu correo electrónico.');
+      return;
+    }
+    if (!password) {
+      setAuthError('Por favor ingresa tu contraseña.');
+      return;
+    }
+    if (password.length < 6) {
+      setAuthError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
 
     setIsLoading(true);
 
@@ -70,6 +81,12 @@ export default function LoginPage() {
       // Si fue error de credenciales explícito desde FastAPI (401)
       if (apiErr.status === 401) {
         setAuthError(apiErr.message || 'Correo o contraseña incorrectos.');
+        return;
+      }
+
+      // Si fue error de validación de campos desde FastAPI (422)
+      if (apiErr.status === 422) {
+        setAuthError(apiErr.message || 'Los datos ingresados no cumplen con los requisitos mínimos.');
         return;
       }
 
