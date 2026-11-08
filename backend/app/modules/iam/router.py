@@ -19,6 +19,7 @@ from app.modules.iam.schemas import (
     UserMeResponse,
 )
 from app.modules.iam.services import IAMService
+from app.integrations.email_service import EmailService
 
 router = APIRouter(prefix="/auth", tags=["IAM - Autenticación y Registro"])
 
@@ -214,3 +215,23 @@ async def get_me(current_user: Dict[str, Any] = Depends(get_current_user)):
         id_entidad=current_user.get("id_entidad"),
         es_cuenta_aprobada=(estado == "aprobado")
     )
+
+
+@router.post("/test-email")
+async def test_email(destinatario: str):
+    """
+    Endpoint de prueba para verificar la conectividad de Gmail SMTP.
+    Envía un correo de prueba de bienvenida al destinatario suministrado.
+    """
+    res = await EmailService.send_graduate_welcome_email(
+        to_email=destinatario,
+        name="Usuario de Prueba",
+        career="Ingeniería de Sistemas (UTS)"
+    )
+    if not res.get("success"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Fallo enviando correo: {res.get('error') or res.get('reason')}"
+        )
+    return {"success": True, "mensaje": f"Correo enviado exitosamente a {destinatario}"}
+

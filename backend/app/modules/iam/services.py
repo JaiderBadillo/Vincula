@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.integrations.supabase_storage import SupabaseStorageService
 from app.integrations.n8n_webhooks import N8nWebhookDispatcher
+from app.integrations.email_service import EmailService
 from app.modules.iam.models import Usuario
 from app.modules.companies.models import Empresa, ReclutadorEmpresa, DocumentoEmpresa
 from app.modules.institutions.models import Institucion, AsesorIES, DocumentoInstitucion
@@ -194,6 +195,16 @@ class IAMService:
             }
         )
 
+        # 4. Enviar correo de bienvenida directo por Gmail SMTP (gratuito e instantáneo)
+        try:
+            await EmailService.send_graduate_welcome_email(
+                to_email=data.correo.lower(),
+                name=data.nombre_completo,
+                career=data.carrera
+            )
+        except Exception as mail_err:
+            print(f"[AVISO CORREO EGRESADO] No se pudo enviar el correo de bienvenida: {mail_err}")
+
         return {
             "success": True,
             "mensaje": "Pre-registro de egresado exitoso. Tu cuenta está activa.",
@@ -356,6 +367,16 @@ class IAMService:
             }
         )
 
+        # Enviar correo de radicación empresarial directo por Gmail SMTP (gratuito e instantáneo)
+        try:
+            await EmailService.send_company_welcome_email(
+                to_email=data.correo_contacto.lower(),
+                company_name=data.razon_social or data.nombre_comercial,
+                radicado=radicado
+            )
+        except Exception as mail_err:
+            print(f"[AVISO CORREO EMPRESA] No se pudo enviar el correo de radicación: {mail_err}")
+
         return {
             "success": True,
             "radicado": radicado,
@@ -503,6 +524,16 @@ class IAMService:
         await session.commit()
 
         radicado = f"RAD-IES-2026-{str(nueva_ies.id)[:8].upper()}"
+
+        # Enviar correo de radicación institucional vía Gmail SMTP (gratuito e instantáneo)
+        try:
+            await EmailService.send_institution_welcome_email(
+                to_email=data.correo_institucional.lower(),
+                institution_name=data.nombre_institucion,
+                radicado=radicado
+            )
+        except Exception as mail_err:
+            print(f"[AVISO CORREO IES] No se pudo enviar el correo institucional: {mail_err}")
 
         return {
             "success": True,

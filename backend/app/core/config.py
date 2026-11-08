@@ -62,6 +62,14 @@ class Settings(BaseSettings):
     N8N_WEBHOOK_BASE_URL: str = ""
     N8N_WEBHOOK_SECRET: str = ""
 
+    # Correo Electrónico Transaccional (Gmail SMTP)
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 465
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_NAME: str = "Vincula - Red de Empleabilidad IES"
+    SMTP_FROM_EMAIL: str = ""
+
     # Google Gemini AI (Matching Semántico Vectorial)
     GEMINI_API_KEY: str = ""
 
