@@ -149,7 +149,7 @@ class EmailService:
     def _send_sync(to_email: str, subject: str, html_body: str, plain_body: str) -> Dict[str, Any]:
         """Envío síncrono del correo mediante smtplib (se ejecuta en un thread separado)."""
         smtp_user = settings.SMTP_USER.strip()
-        smtp_pass = settings.SMTP_PASSWORD.strip()
+        smtp_pass = settings.SMTP_PASSWORD.strip().replace(" ", "")
         smtp_host = settings.SMTP_HOST.strip() or "smtp.gmail.com"
         smtp_port = int(settings.SMTP_PORT) if settings.SMTP_PORT else 465
         from_name = settings.SMTP_FROM_NAME or "Vincula - Red de Empleabilidad"
@@ -353,3 +353,4 @@ Equipo Vincula & Alianza IES
         """.strip()
 
         return await cls.send_email(to_email, subject, html_body, plain_body)
+
