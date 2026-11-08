@@ -6,6 +6,8 @@ import CampusModal from '../components/institution/CampusModal.jsx';
 import { initialAdvisors } from '../data/institutionAdminData.js';
 import { useInstitutionCampuses } from '../hooks/useInstitutionCampuses.js';
 import { institutionPhotos } from '../data/institutionImages.js';
+import { institutionService } from '../services/institutionService.js';
+import { authService } from '../services/authService.js';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ADVISORS_STORAGE_KEY = 'vincula.institution.advisors.v1';
@@ -124,6 +126,39 @@ export default function InstitutionAdminAdvisorsPage() {
       setActiveView('asesores');
     }
   }, [searchParams, activeView]);
+
+  // Sincronización con el Backend de FastAPI / Supabase
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchAdvisorsFromBackend() {
+      if (!authService.isAuthenticated()) return;
+      try {
+        const data = await institutionService.getAsesores();
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          const mapped = data.map((item) => ({
+            id: item.id,
+            fullName: item.nombre_completo,
+            email: item.correo_institucional,
+            phone: item.telefono || '',
+            position: item.cargo || 'Asesor de Enlace y Prácticas',
+            campusIds: item.id_sede ? [item.id_sede] : (campuses[0] ? [campuses[0].id] : ['sede-bga-principal']),
+            status: item.estado === 'activo' ? 'active' : 'inactive',
+            lastAccess: 'Hoy',
+            avatar: null,
+            assignedProgramsCount: item.programas_asignados_count || 0,
+          }));
+          setAdvisors(mapped);
+          writeStoredAdvisors(mapped);
+        }
+      } catch {
+        // Fallback local silencioso si no hay conexión o sesión no es IES
+      }
+    }
+    fetchAdvisorsFromBackend();
+    return () => {
+      isMounted = false;
+    };
+  }, [campuses]);
 
   function notify(msg) {
     setToast(msg);
@@ -279,7 +314,7 @@ export default function InstitutionAdminAdvisorsPage() {
     return Object.keys(next).length === 0;
   }
 
-  function handleSaveAdvisor(e) {
+  async function handleSaveAdvisor(e) {
     e.preventDefault();
     if (!validateAdvisor()) return;
 
@@ -301,8 +336,28 @@ export default function InstitutionAdminAdvisorsPage() {
       writeStoredAdvisors(updated);
       notify(`Se actualizaron los datos y cobertura de ${form.fullName.trim()}.`);
     } else {
+      let createdId = `adv-${Date.now().toString().slice(-4)}`;
+      if (authService.isAuthenticated()) {
+        try {
+          const payload = {
+            correo: form.email.trim().toLowerCase(),
+            password: 'Asesor2026*', // Contraseña inicial de cuenta IAM para el asesor
+            nombre_completo: form.fullName.trim(),
+            telefono: form.phone.trim() || null,
+            cargo: form.position.trim() || 'Asesor de Enlace y Prácticas',
+            id_sede: form.campusIds?.[0]?.startsWith('sede-') ? null : form.campusIds?.[0],
+          };
+          const backendResult = await institutionService.createAsesor(payload);
+          if (backendResult?.id) {
+            createdId = backendResult.id;
+          }
+        } catch (err) {
+          console.warn('Registro en backend no completado, operando en fallback:', err);
+        }
+      }
+
       const newAdv = {
-        id: `adv-${Date.now().toString().slice(-4)}`,
+        id: createdId,
         fullName: form.fullName.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),

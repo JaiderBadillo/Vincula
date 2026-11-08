@@ -1,4 +1,8 @@
 import { useMemo, useState } from 'react';
+import Chart from 'react-apexcharts';
+import LegacyGraduatesTrackingAnalyticsChart from '../legacy_charts/LegacyGraduatesTrackingAnalyticsChart.jsx';
+
+export { LegacyGraduatesTrackingAnalyticsChart };
 
 export default function GraduatesTrackingAnalyticsChart({
   graduates = [],
@@ -6,6 +10,7 @@ export default function GraduatesTrackingAnalyticsChart({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewMode, setViewMode] = useState('byProgram'); // 'byProgram' | 'byCohort' | 'vinculaImpact'
+  const [chartEngine, setChartEngine] = useState('apex'); // 'apex' | 'legacy'
 
   // Filtros internos del módulo gráfico
   const [chartCohort, setChartCohort] = useState('all');
@@ -14,6 +19,39 @@ export default function GraduatesTrackingAnalyticsChart({
   const [chartStatus, setChartStatus] = useState('all'); // 'all' | 'employed' | 'seeking'
 
   const [hoveredItem, setHoveredItem] = useState(null);
+
+  if (chartEngine === 'legacy') {
+    return (
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50/70 p-2.5 text-xs">
+          <span className="font-bold text-amber-900 flex items-center gap-1.5">
+            <span className="size-2 rounded-full bg-amber-500" />
+            Visualizando versión anterior (SVG Puro Manual)
+          </span>
+          <div className="inline-flex rounded-lg border border-amber-300 bg-white p-0.5 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setChartEngine('apex')}
+              className="rounded-md px-2.5 py-1 text-xs font-bold text-ink hover:bg-amber-100 transition-all cursor-pointer"
+            >
+              ⚡ Ver versión ApexCharts (Nueva)
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartEngine('legacy')}
+              className="rounded-md bg-amber-600 text-white px-2.5 py-1 text-xs font-bold cursor-pointer shadow-2xs"
+            >
+              🏛️ SVG Anterior
+            </button>
+          </div>
+        </div>
+        <LegacyGraduatesTrackingAnalyticsChart
+          graduates={graduates}
+          onApplyFilterToTable={onApplyFilterToTable}
+        />
+      </div>
+    );
+  }
 
   // Listas únicas para dropdowns
   const availableCohorts = useMemo(() => {
@@ -182,9 +220,8 @@ export default function GraduatesTrackingAnalyticsChart({
     >
       {/* ─── Encabezado Principal y Toggle Expandir/Contraer ─── */}
       <div
-        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:px-6 bg-page/40 transition-colors ${
-          isExpanded ? 'border-b border-line-soft' : ''
-        }`}
+        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 sm:px-6 bg-page/40 transition-colors ${isExpanded ? 'border-b border-line-soft' : ''
+          }`}
       >
         <div className="flex items-center gap-3">
           <div className="grid size-10 place-items-center rounded-xl bg-ink text-lime text-xl shrink-0 shadow-xs">
@@ -209,11 +246,10 @@ export default function GraduatesTrackingAnalyticsChart({
               <button
                 type="button"
                 onClick={() => setViewMode('byProgram')}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                  viewMode === 'byProgram'
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${viewMode === 'byProgram'
                     ? 'bg-ink text-white font-bold shadow-xs'
                     : 'text-secondary hover:text-ink'
-                }`}
+                  }`}
                 title="Ver gráfico comparativo por Carreras / Programas"
               >
                 <i className="bx bx-book mr-1" />
@@ -222,11 +258,10 @@ export default function GraduatesTrackingAnalyticsChart({
               <button
                 type="button"
                 onClick={() => setViewMode('byCohort')}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                  viewMode === 'byCohort'
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${viewMode === 'byCohort'
                     ? 'bg-ink text-white font-bold shadow-xs'
                     : 'text-secondary hover:text-ink'
-                }`}
+                  }`}
                 title="Ver gráfico comparativo por Cortes / Cohortes de graduación"
               >
                 <i className="bx bx-calendar mr-1" />
@@ -235,11 +270,10 @@ export default function GraduatesTrackingAnalyticsChart({
               <button
                 type="button"
                 onClick={() => setViewMode('vinculaImpact')}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                  viewMode === 'vinculaImpact'
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${viewMode === 'vinculaImpact'
                     ? 'bg-ink text-white font-bold shadow-xs'
                     : 'text-secondary hover:text-ink'
-                }`}
+                  }`}
                 title="Ver impacto del canal Vincula (Bolsa de Empleo)"
               >
                 <i className="bx bx-pie-chart-alt-2 mr-1" />
@@ -247,6 +281,30 @@ export default function GraduatesTrackingAnalyticsChart({
               </button>
             </div>
           )}
+
+          {/* Switcher Antes/Después */}
+          <div className="inline-flex rounded-lg border border-line bg-white p-0.5 text-xs shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setChartEngine('apex')}
+              className={`rounded-md px-2.5 py-1 font-bold text-xs transition-all cursor-pointer ${
+                chartEngine === 'apex' ? 'bg-[#051F26] text-white shadow-2xs' : 'text-secondary hover:text-ink'
+              }`}
+              title="Versión moderna con ApexCharts"
+            >
+              ⚡ ApexCharts
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartEngine('legacy')}
+              className={`rounded-md px-2.5 py-1 font-bold text-xs transition-all cursor-pointer ${
+                chartEngine === 'legacy' ? 'bg-[#051F26] text-white shadow-2xs' : 'text-secondary hover:text-ink'
+              }`}
+              title="Ver versión previa construida con SVG manual"
+            >
+              🏛️ SVG Anterior
+            </button>
+          </div>
 
           {/* Botón claro de colapsar/expandir */}
           <button
@@ -413,12 +471,12 @@ export default function GraduatesTrackingAnalyticsChart({
               </div>
             </div>
 
-            {/* Colocados por Vincula UTS */}
+            {/* Colocados por Vincula */}
             <div className="rounded-xl border border-lime/70 bg-gradient-to-br from-lime/15 via-white to-white p-3.5 flex items-center justify-between shadow-2xs">
               <div>
                 <span className="text-[0.68rem] font-bold uppercase tracking-wider text-green-dark block flex items-center gap-1">
                   <i className="bx bxs-badge-check text-green" />
-                  Vía Vincula UTS
+                  Vía Vincula
                 </span>
                 <span className="text-2xl font-black font-display text-ink block mt-0.5">
                   {stats.vinculaCount}
@@ -455,7 +513,7 @@ export default function GraduatesTrackingAnalyticsChart({
               <span className="font-semibold text-ink text-xs">Convención de colores:</span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="size-3 rounded-sm bg-lime border border-ink/40 shadow-2xs" />
-                <span className="text-ink font-semibold">Conseguido por Vincula UTS</span>
+                <span className="text-ink font-semibold">Conseguido por Vincula</span>
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="size-3 rounded-sm bg-emerald-600" />
@@ -474,7 +532,9 @@ export default function GraduatesTrackingAnalyticsChart({
 
           {/* ─── ÁREA DEL GRÁFICO SVG INTERACTIVO ─── */}
 
-          {/* VISTA 1: BARRAS COMPARATIVAS POR CARRERA / PROGRAMA */}
+          <style>{`@keyframes vcSegGrow { from { transform: scaleX(0); } to { transform: scaleX(1); } }`}</style>
+
+          {/* VISTA 1: BARRAS COMPARATIVAS POR CARRERA / PROGRAMA (ordenadas por tasa de empleo) */}
           {viewMode === 'byProgram' && (
             <div className="space-y-4">
               {programGroups.length === 0 ? (
@@ -483,108 +543,112 @@ export default function GraduatesTrackingAnalyticsChart({
                 </div>
               ) : (
                 <div className="space-y-3.5">
-                  {programGroups.map((p) => {
-                    const rate = p.total > 0 ? Math.round((p.employed / p.total) * 100) : 0;
-                    const vinculaPct = p.total > 0 ? (p.vincula / p.total) * 100 : 0;
-                    const externalPct = p.total > 0 ? (p.external / p.total) * 100 : 0;
-                    const seekingPct = p.total > 0 ? (p.seeking / p.total) * 100 : 0;
+                  {[...programGroups]
+                    .sort((a, b) => b.employed / b.total - a.employed / a.total)
+                    .map((p) => {
+                      const rate = p.total > 0 ? Math.round((p.employed / p.total) * 100) : 0;
+                      const vinculaPct = p.total > 0 ? (p.vincula / p.total) * 100 : 0;
+                      const externalPct = p.total > 0 ? (p.external / p.total) * 100 : 0;
+                      const seekingPct = p.total > 0 ? (p.seeking / p.total) * 100 : 0;
 
-                    const isHovered = hoveredItem === p.name;
+                      const isHovered = hoveredItem === p.name;
 
-                    return (
-                      <div
-                        key={p.name}
-                        onMouseEnter={() => setHoveredItem(p.name)}
-                        onMouseLeave={() => setHoveredItem(null)}
-                        className={`rounded-xl border p-4 transition-all duration-200 ${
-                          isHovered
-                            ? 'border-green-dark bg-emerald-50/20 shadow-xs'
-                            : 'border-line bg-white hover:border-line-soft'
-                        }`}
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
-                          <div className="flex items-center gap-2">
-                            <span className="font-display text-sm font-bold text-ink">
-                              {p.name}
-                            </span>
-                            <span className="rounded-full bg-page border border-line px-2 py-0.2 text-[0.65rem] font-bold text-secondary">
-                              {p.total} {p.total === 1 ? 'egresado' : 'egresados'}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-3 text-xs">
-                            <span className="text-secondary font-medium">
-                              Tasa de Empleo: <strong className="text-ink">{rate}%</strong>
-                            </span>
-                            <span className="inline-flex items-center gap-1 rounded-md bg-lime/30 px-2 py-0.5 text-[0.68rem] font-bold text-ink border border-lime/60">
-                              <i className="bx bxs-bolt text-xs" />
-                              {p.vincula} vía Vincula
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Barra Apilada Proporcional */}
+                      return (
                         <div
-                          className="relative h-6 w-full rounded-lg bg-page overflow-hidden flex shadow-inner cursor-pointer"
-                          title={`${p.name}: ${p.vincula} por Vincula, ${p.external} externos, ${p.seeking} en búsqueda`}
+                          key={p.name}
+                          onMouseEnter={() => setHoveredItem(p.name)}
+                          onMouseLeave={() => setHoveredItem(null)}
+                          className={`rounded-xl border p-4 transition-all duration-200 ${isHovered
+                              ? 'border-green-dark bg-emerald-50/20 shadow-xs'
+                              : 'border-line bg-white hover:border-line-soft'
+                            }`}
                         >
-                          {/* Segmento 1: Vincula UTS (Verde Lima) */}
-                          {vinculaPct > 0 && (
-                            <div
-                              style={{ width: `${vinculaPct}%` }}
-                              className="h-full bg-lime border-r border-ink/20 flex items-center justify-center text-[0.65rem] font-black text-ink transition-all duration-500 hover:brightness-105"
-                            >
-                              {vinculaPct >= 12 && `${p.vincula} Vincula`}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-display text-sm font-bold text-ink">
+                                {p.name}
+                              </span>
+                              <span className="rounded-full bg-page border border-line px-2 py-0.5 text-[0.65rem] font-bold text-secondary">
+                                {p.total} {p.total === 1 ? 'egresado' : 'egresados'}
+                              </span>
                             </div>
-                          )}
 
-                          {/* Segmento 2: Externo (Verde Esmeralda) */}
-                          {externalPct > 0 && (
-                            <div
-                              style={{ width: `${externalPct}%` }}
-                              className="h-full bg-emerald-600 border-r border-white/20 flex items-center justify-center text-[0.65rem] font-bold text-white transition-all duration-500 hover:brightness-105"
-                            >
-                              {externalPct >= 12 && `${p.external} Ext.`}
+                            <div className="flex items-center gap-3 text-xs">
+                              <span className="text-secondary font-medium">
+                                Tasa de Empleo: <strong className="text-ink">{rate}%</strong>
+                              </span>
+                              <span className="inline-flex items-center gap-1 rounded-md bg-lime/30 px-2 py-0.5 text-[0.68rem] font-bold text-ink border border-lime/60">
+                                <i className="bx bxs-bolt text-xs" />
+                                {p.vincula} vía Vincula
+                              </span>
                             </div>
-                          )}
-
-                          {/* Segmento 3: En Búsqueda (Ámbar) */}
-                          {seekingPct > 0 && (
-                            <div
-                              style={{ width: `${seekingPct}%` }}
-                              className="h-full bg-amber-500 flex items-center justify-center text-[0.65rem] font-bold text-white transition-all duration-500 hover:brightness-105"
-                            >
-                              {seekingPct >= 12 && `${p.seeking} Buscando`}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Resumen al pie de la barra */}
-                        <div className="mt-2 flex items-center justify-between text-[0.7rem] text-secondary">
-                          <div className="flex items-center gap-3">
-                            <span className="text-ink">
-                              <strong>{p.employed}</strong> con trabajo ({p.vincula} Vincula · {p.external} externo)
-                            </span>
-                            <span>•</span>
-                            <span className="text-amber-700">
-                              <strong>{p.seeking}</strong> en búsqueda activa
-                            </span>
                           </div>
 
-                          {onApplyFilterToTable && (
-                            <button
-                              type="button"
-                              onClick={() => onApplyFilterToTable({ program: p.name })}
-                              className="text-xs text-green-dark hover:underline font-semibold cursor-pointer inline-flex items-center gap-1"
-                            >
-                              <span>Ver egresados en tabla</span>
-                              <i className="bx bx-right-arrow-alt" />
-                            </button>
-                          )}
+                          {/* Barra Apilada Proporcional */}
+                          <div
+                            className="relative h-6 w-full rounded-lg bg-page overflow-hidden flex shadow-inner cursor-pointer"
+                            title={`${p.name}: ${p.vincula} por Vincula, ${p.external} externos, ${p.seeking} en búsqueda`}
+                          >
+                            {/* Segmento 1: Vincula (Verde Lima) */}
+                            {vinculaPct > 0 && (
+                              <div
+                                title={`Vía Vincula: ${p.vincula} (${Math.round(vinculaPct)}%)`}
+                                style={{ width: `${vinculaPct}%`, transformOrigin: 'left', animation: 'vcSegGrow .6s ease-out both' }}
+                                className="h-full bg-lime border-r border-ink/20 flex items-center justify-center text-[0.65rem] font-black text-ink transition-all duration-500 hover:brightness-105"
+                              >
+                                {vinculaPct >= 12 && `${p.vincula} Vincula`}
+                              </div>
+                            )}
+
+                            {/* Segmento 2: Externo (Verde Esmeralda) */}
+                            {externalPct > 0 && (
+                              <div
+                                title={`Empleo externo: ${p.external} (${Math.round(externalPct)}%)`}
+                                style={{ width: `${externalPct}%`, transformOrigin: 'left', animation: 'vcSegGrow .6s .08s ease-out both' }}
+                                className="h-full bg-emerald-600 border-r border-white/20 flex items-center justify-center text-[0.65rem] font-bold text-white transition-all duration-500 hover:brightness-105"
+                              >
+                                {externalPct >= 12 && `${p.external} Ext.`}
+                              </div>
+                            )}
+
+                            {/* Segmento 3: En Búsqueda (Ámbar) */}
+                            {seekingPct > 0 && (
+                              <div
+                                title={`En búsqueda: ${p.seeking} (${Math.round(seekingPct)}%)`}
+                                style={{ width: `${seekingPct}%`, transformOrigin: 'left', animation: 'vcSegGrow .6s .16s ease-out both' }}
+                                className="h-full bg-amber-500 flex items-center justify-center text-[0.65rem] font-bold text-white transition-all duration-500 hover:brightness-105"
+                              >
+                                {seekingPct >= 12 && `${p.seeking} Buscando`}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Resumen al pie de la barra */}
+                          <div className="mt-2 flex items-center justify-between text-[0.7rem] text-secondary">
+                            <div className="flex items-center gap-3">
+                              <span className="text-ink">
+                                <strong>{p.employed}</strong> con trabajo ({p.vincula} Vincula · {p.external} externo)
+                              </span>
+                              <span>•</span>
+                              <span className="text-amber-700">
+                                <strong>{p.seeking}</strong> en búsqueda activa
+                              </span>
+                            </div>
+
+                            {onApplyFilterToTable && (
+                              <button
+                                type="button"
+                                onClick={() => onApplyFilterToTable({ program: p.name })}
+                                className="text-xs text-green-dark hover:underline font-semibold cursor-pointer inline-flex items-center gap-1"
+                              >
+                                <span>Ver egresados en tabla</span>
+                                <i className="bx bx-right-arrow-alt" />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               )}
             </div>
@@ -636,8 +700,8 @@ export default function GraduatesTrackingAnalyticsChart({
                               <strong>{c.employed}</strong>
                             </div>
                             <div className="flex items-center justify-between text-ink pl-3 border-l-2 border-lime">
-                              <span className="text-[0.68rem] text-secondary">Vía Vincula UTS:</span>
-                              <span className="font-bold text-xs bg-lime/30 px-1.5 py-0.2 rounded text-ink border border-lime/60">
+                              <span className="text-[0.68rem] text-secondary">Vía Vincula:</span>
+                              <span className="font-bold text-xs bg-lime/30 px-1.5 py-0.5 rounded text-ink border border-lime/60">
                                 {c.vincula} ({vinculaPct}%)
                               </span>
                             </div>
@@ -688,90 +752,111 @@ export default function GraduatesTrackingAnalyticsChart({
             </div>
           )}
 
-          {/* VISTA 3: CANAL DE VINCULACIÓN & EFECTIVIDAD VINCULA UTS */}
+          {/* VISTA 3: CANAL DE VINCULACIÓN & EFECTIVIDAD Vincula */}
           {viewMode === 'vinculaImpact' && (
             <div className="grid gap-6 lg:grid-cols-12 items-center">
-              {/* Gráfico Donut SVG */}
-              <div className="lg:col-span-5 flex flex-col items-center justify-center p-4 rounded-xl border border-line bg-page/30">
-                <div className="relative size-56 sm:size-60">
-                  <svg className="size-full -rotate-90 transform" viewBox="0 0 100 100">
-                    {/* Donut Background Circle */}
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      className="text-page stroke-current"
-                      strokeWidth="15"
-                      fill="transparent"
-                    />
+              {/* Gráfico Donut con ApexCharts */}
+              {(() => {
+                const donutSeries = [stats.vinculaCount, stats.externalCount, stats.seekingCount];
+                const donutLabels = ['Vía Vincula', 'Empleo externo / directo', 'En búsqueda activa'];
+                const donutColors = ['#84cc16', '#059669', '#f59e0b'];
+                const tenth = Math.round(stats.vinculaShareOfEmployed / 10);
 
-                    {/* Segmento 1: Vincula UTS */}
-                    {stats.total > 0 && (
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        stroke="#D2F800"
-                        strokeWidth="15"
-                        fill="transparent"
-                        strokeDasharray={`${(stats.vinculaCount / stats.total) * 251.32} 251.32`}
-                        strokeDashoffset="0"
-                        className="transition-all duration-700 ease-out"
-                      />
+                const donutOptions = {
+                  chart: {
+                    type: 'donut',
+                    fontFamily: 'inherit',
+                  },
+                  labels: donutLabels,
+                  colors: donutColors,
+                  stroke: { width: 2, colors: ['#ffffff'] },
+                  plotOptions: {
+                    pie: {
+                      donut: {
+                        size: '72%',
+                        labels: {
+                          show: true,
+                          name: {
+                            show: true,
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: '#64748b',
+                            offsetY: -4,
+                          },
+                          value: {
+                            show: true,
+                            fontSize: '22px',
+                            fontWeight: 900,
+                            color: '#0f172a',
+                            offsetY: 4,
+                            formatter: (val) => `${val}`,
+                          },
+                          total: {
+                            show: true,
+                            showAlways: true,
+                            label: 'Impacto Vincula',
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            color: '#64748b',
+                            formatter: () => `${stats.vinculaShareOfEmployed}%`,
+                          },
+                        },
+                      },
+                    },
+                  },
+                  dataLabels: { enabled: false },
+                  legend: { show: false },
+                  tooltip: {
+                    theme: 'light',
+                    y: {
+                      formatter: (val) =>
+                        `${val} egresados (${stats.total > 0 ? Math.round((val / stats.total) * 100) : 0}%)`,
+                    },
+                  },
+                };
+
+                const defs = [
+                  { id: 'vincula', label: 'Vía Vincula', count: stats.vinculaCount, color: '#84cc16' },
+                  { id: 'external', label: 'Empleo externo / directo', count: stats.externalCount, color: '#059669' },
+                  { id: 'seeking', label: 'En búsqueda activa', count: stats.seekingCount, color: '#f59e0b' },
+                ];
+
+                return (
+                  <div className="lg:col-span-5 flex flex-col items-center justify-center p-4 rounded-xl border border-line bg-page/30">
+                    <div className="w-full max-w-[270px] aspect-square flex items-center justify-center">
+                      <Chart options={donutOptions} series={donutSeries} type="donut" height={260} width="100%" />
+                    </div>
+
+                    {/* Leyenda con conteos */}
+                    <div className="mt-3 w-full space-y-1.5">
+                      {defs.map((s) => {
+                        const pct = stats.total > 0 ? Math.round((s.count / stats.total) * 100) : 0;
+                        return (
+                          <div
+                            key={s.id}
+                            className="flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors hover:bg-white/70"
+                          >
+                            <span className="flex items-center gap-2 font-semibold text-ink">
+                              <span className="size-2.5 rounded-sm border border-ink/10" style={{ backgroundColor: s.color }} />
+                              {s.label}
+                            </span>
+                            <span className="font-bold text-ink">
+                              {s.count}
+                              <span className="ml-1.5 font-medium text-secondary">({pct}%)</span>
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {stats.employedCount > 0 && (
+                      <p className="m-0 mt-3 text-center text-xs text-body-muted">
+                        <strong className="text-ink">{tenth} de cada 10</strong> egresados contratados llegó por Vincula.
+                      </p>
                     )}
-
-                    {/* Segmento 2: Externo */}
-                    {stats.total > 0 && (
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        stroke="#10B981"
-                        strokeWidth="15"
-                        fill="transparent"
-                        strokeDasharray={`${(stats.externalCount / stats.total) * 251.32} 251.32`}
-                        strokeDashoffset={`-${(stats.vinculaCount / stats.total) * 251.32}`}
-                        className="transition-all duration-700 ease-out"
-                      />
-                    )}
-
-                    {/* Segmento 3: En Búsqueda */}
-                    {stats.total > 0 && (
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        stroke="#F59E0B"
-                        strokeWidth="15"
-                        fill="transparent"
-                        strokeDasharray={`${(stats.seekingCount / stats.total) * 251.32} 251.32`}
-                        strokeDashoffset={`-${((stats.vinculaCount + stats.externalCount) / stats.total) * 251.32}`}
-                        className="transition-all duration-700 ease-out"
-                      />
-                    )}
-                  </svg>
-
-                  {/* Centro del Donut */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
-                    <span className="text-[0.62rem] font-bold uppercase tracking-wider text-secondary">
-                      Impacto Vincula
-                    </span>
-                    <span className="font-display text-3xl font-black text-ink leading-none mt-1">
-                      {stats.vinculaShareOfEmployed}%
-                    </span>
-                    <span className="text-[0.65rem] text-body-muted mt-1">
-                      de los contratados
-                    </span>
                   </div>
-                </div>
-
-                <div className="mt-3 text-center">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-lime/30 border border-lime/70 px-3 py-1 text-xs font-bold text-ink">
-                    <i className="bx bxs-award text-sm text-green-dark" />
-                    Bolsa de Empleo UTS Líder
-                  </span>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* Tarjetas Descriptivas de Resultados */}
               <div className="lg:col-span-7 space-y-3.5">
@@ -782,7 +867,7 @@ export default function GraduatesTrackingAnalyticsChart({
                         Colocación Directa por la Plataforma Vincula
                       </h4>
                       <p className="m-0 text-xs text-body-muted mt-1 leading-relaxed">
-                        <strong>{stats.vinculaCount} egresados</strong> fueron vinculados gracias a convenios marco institucionales y postulaciones dentro de Vincula UTS, representando el <strong>{stats.vinculaShareOfEmployed}%</strong> de todas las contrataciones registradas.
+                        <strong>{stats.vinculaCount} egresados</strong> fueron vinculados gracias a convenios marco institucionales y postulaciones dentro de Vincula, representando el <strong>{stats.vinculaShareOfEmployed}%</strong> de todas las contrataciones registradas.
                       </p>
                     </div>
                     <span className="rounded-xl bg-ink text-lime text-base font-black px-2.5 py-1.5 font-display shrink-0">

@@ -352,7 +352,7 @@ export default function GridVacancyDetailModal({
                     Factores de Coincidencia Analizados
                   </h4>
                   <div className="space-y-3">
-                    {job.utsMatchReasons.map((reason, idx) => (
+                    {(job.utsMatchReasons || []).map((reason, idx) => (
                       <div
                         key={idx}
                         className="rounded-xl border border-line bg-white p-4 sm:p-5 flex items-start gap-3.5 shadow-2xs"
@@ -367,6 +367,47 @@ export default function GridVacancyDetailModal({
                     ))}
                   </div>
                 </div>
+
+                {/* Competencias Coincidentes & Brechas */}
+                {Array.isArray(job.skillsMatch) && job.skillsMatch.length > 0 && (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5 space-y-3">
+                    <h5 className="m-0 text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-2">
+                      <i className="bx bx-check-circle text-emerald-700 text-base" />
+                      Competencias Validadas en tu Perfil ({job.skillsMatch.length})
+                    </h5>
+                    <div className="flex flex-wrap gap-2">
+                      {job.skillsMatch.map((skill) => (
+                        <span
+                          key={skill}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-white border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-2xs"
+                        >
+                          <i className="bx bx-check text-emerald-600 text-sm" />
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {Array.isArray(job.missingSkills) && job.missingSkills.length > 0 && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-5 space-y-3">
+                    <h5 className="m-0 text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-2">
+                      <i className="bx bx-trending-up text-amber-700 text-base" />
+                      Habilidades Recomendadas a Fortalecer ({job.missingSkills.length})
+                    </h5>
+                    <div className="flex flex-wrap gap-2">
+                      {job.missingSkills.map((skill) => (
+                        <span
+                          key={skill}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-white border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-800 shadow-2xs"
+                        >
+                          <i className="bx bx-plus text-amber-600 text-sm" />
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Garantías del Convenio UTS */}
                 <div className="rounded-2xl border border-line bg-page/60 p-5 sm:p-6 space-y-2 text-xs sm:text-sm">

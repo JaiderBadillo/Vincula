@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { primaryButton } from '../utils/classes.js';
 import { useAuthCredentials } from '../hooks/useAuthCredentials.js';
+import { authService } from '../services/authService.js';
 
 export default function LoginPage() {
   const [searchParams] = useSearchParams();
@@ -15,11 +16,39 @@ export default function LoginPage() {
   const [submitted, setSubmitted] = useState(false);
   const [authError, setAuthError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const fieldClasses =
     'min-h-12 w-full rounded-[0.75rem] border border-line bg-white px-4 py-3.5 text-sm text-ink outline-none placeholder:text-secondary focus:border-green focus:ring-4 focus:ring-green/10 transition-all';
 
-  function handleSubmit(event) {
+  function routeForRole(rol, estadoValidacion) {
+    switch (rol) {
+      case 'superadmin_vincula':
+      case 'superadmin':
+        return '/admin/dashboard';
+      case 'admin_empresa':
+      case 'empresa_admin':
+        if (estadoValidacion === 'pendiente') {
+          return '/empresa/admin/actividad';
+        }
+        return '/empresa/admin/perfil';
+      case 'reclutador_empresa':
+      case 'empresa_reclutador':
+      case 'reclutador':
+        return '/empresa/reclutador/dashboard';
+      case 'admin_ies':
+      case 'institucion_admin':
+        return '/institucion/admin/perfil';
+      case 'asesor_ies':
+      case 'institucion_asesor':
+        return '/institucion/dashboard';
+      case 'egresado':
+      default:
+        return '/dashboard';
+    }
+  }
+
+  async function handleSubmit(event) {
     event.preventDefault();
     setSubmitted(true);
     setAuthError(null);
@@ -27,23 +56,38 @@ export default function LoginPage() {
     const trimmedEmail = email.trim();
     if (!trimmedEmail || !password) return;
 
-    // Buscar si las credenciales coinciden con algún rol configurado
-    const matchedRole = Object.values(credentials).find(
-      (c) => c.email.toLowerCase() === trimmedEmail.toLowerCase()
-    );
+    setIsLoading(true);
 
-    if (!matchedRole) {
-      setAuthError('No encontramos una cuenta con este correo electrónico.');
-      return;
+    try {
+      // 1. Intentar autenticación real contra FastAPI en vivo
+      const data = await authService.login(trimmedEmail, password);
+      setIsLoading(false);
+      const targetRoute = routeForRole(data.rol, data.estado_validacion);
+      navigate(targetRoute);
+    } catch (apiErr) {
+      setIsLoading(false);
+
+      // Si fue error de credenciales explícito desde FastAPI (401)
+      if (apiErr.status === 401) {
+        setAuthError(apiErr.message || 'Correo o contraseña incorrectos.');
+        return;
+      }
+
+      // Si el backend FastAPI no está corriendo (error de conexión)
+      // se intenta el fallback local de contingencia para no interrumpir el flujo del usuario
+      console.warn('Backend FastAPI no respondió, verificando credenciales locales:', apiErr.message);
+
+      const matchedRole = Object.values(credentials).find(
+        (c) => c.email.toLowerCase() === trimmedEmail.toLowerCase()
+      );
+
+      if (matchedRole && matchedRole.password === password) {
+        navigate(matchedRole.portalRoute || '/dashboard');
+        return;
+      }
+
+      setAuthError(apiErr.message || 'No fue posible conectar con el servidor backend.');
     }
-
-    if (matchedRole.password !== password) {
-      setAuthError('Contraseña incorrecta. Por favor verifica tus credenciales.');
-      return;
-    }
-
-    // Redirige al portal respectivo del rol
-    navigate(matchedRole.portalRoute || '/dashboard');
   }
 
   function handleQuickFill(roleKey) {
@@ -193,9 +237,19 @@ export default function LoginPage() {
               )}
             </div>
 
-            <button className={`${primaryButton} w-full justify-between px-6 py-4 shadow-sm text-sm sm:text-base`} type="submit">
-              <span>Iniciar sesión</span>
-              <i className="bx bx-right-arrow-alt text-xl" aria-hidden="true" />
+            <button
+              className={`${primaryButton} w-full justify-between px-6 py-4 shadow-sm text-sm sm:text-base ${
+                isLoading ? 'opacity-80 cursor-wait' : ''
+              }`}
+              type="submit"
+              disabled={isLoading}
+            >
+              <span>{isLoading ? 'Conectando con Supabase...' : 'Iniciar sesión'}</span>
+              {isLoading ? (
+                <i className="bx bx-loader-alt animate-spin text-xl" aria-hidden="true" />
+              ) : (
+                <i className="bx bx-right-arrow-alt text-xl" aria-hidden="true" />
+              )}
             </button>
           </form>
 
@@ -218,7 +272,7 @@ export default function LoginPage() {
           {/* Demostración: Acceso rápido por rol */}
           <div className="mt-6 rounded-2xl border border-sand-line bg-sand/30 p-3.5">
             <p className="m-0 mb-2 text-center text-[0.68rem] font-bold uppercase tracking-wider text-secondary">
-              Acceso rápido para demostración por rol
+              Acceso rápido para demostración (Cuentas Supabase PostgreSQL)
             </p>
             <div className="flex flex-wrap justify-center gap-1.5">
               <button
@@ -247,7 +301,15 @@ export default function LoginPage() {
                 onClick={() => handleQuickFill('company_admin')}
                 className="rounded-lg border border-sand-line bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-ink hover:bg-cream hover:text-cocoa transition-colors cursor-pointer"
               >
-                Admin Empresa
+                Empresa Aprobada
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('company_quarantine')}
+                className="rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-[0.68rem] font-bold text-amber-900 hover:bg-amber-100 transition-colors cursor-pointer"
+                title="Empresa en modo cuarentena pendiente de auditoría SLA 72h"
+              >
+                Empresa Cuarentena
               </button>
               <button
                 type="button"

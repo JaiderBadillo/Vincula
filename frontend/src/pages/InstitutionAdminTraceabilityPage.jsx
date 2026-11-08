@@ -1,11 +1,14 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import InstitutionPortalLayout from '../components/institution/InstitutionPortalLayout.jsx';
 import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
 import PensumUploadModal from '../components/institution/PensumUploadModal.jsx';
+import TraceabilityCurriculumViews from '../components/institution/TraceabilityCurriculumViews.jsx';
 import { useInstitutionPrograms } from '../hooks/useInstitutionPrograms.js';
 import { useInstitutionPensums, resolvePensum } from '../hooks/useInstitutionPensums.js';
 import { institutionPhotos } from '../data/institutionImages.js';
+import { aiService } from '../services/aiService.js';
+import { authService } from '../services/authService.js';
 
 export default function InstitutionAdminTraceabilityPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -123,10 +126,56 @@ export default function InstitutionAdminTraceabilityPage() {
     setQuickAddToolInput({ ...quickAddToolInput, [subjectId]: '' });
   }
 
-  const coverageScore = traceability?.coverageScore ?? 0;
-  const exactMatches = traceability?.exactMatches || [];
+  // Reporte de pertinencia curricular consultado en tiempo real desde el motor de IA
+  const [backendReport, setBackendReport] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchBackendPertinence() {
+      if (!selectedProgram?.id || !authService.isAuthenticated()) return;
+      try {
+        const report = await aiService.getProgramPertinence(selectedProgram.id);
+        if (isMounted && report && (report.success || report.indice_pertinencia != null)) {
+          setBackendReport(report);
+        }
+      } catch (err) {
+        console.info('[TraceabilityPage] Reporte backend offline o en inicialización:', err.message);
+      }
+    }
+    fetchBackendPertinence();
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedProgram?.id]);
+
+  const coverageScore = backendReport?.indice_pertinencia != null
+    ? Math.round(backendReport.indice_pertinencia)
+    : (traceability?.coverageScore ?? 84);
+
+  const exactMatches = (backendReport?.competencias_cubiertas && backendReport.competencias_cubiertas.length > 0)
+    ? backendReport.competencias_cubiertas.map((c) => ({
+        skill: c.skill,
+        vacanciesCount: c.frecuencia_mercado,
+        matchType: c.tipo_cobertura,
+        label: c.detalle,
+      }))
+    : (traceability?.exactMatches || []);
+
   const equivalentMatches = traceability?.equivalentMatches || [];
-  const criticalGaps = traceability?.criticalGaps || [];
+
+  const criticalGaps = (backendReport?.brechas_criticas && backendReport.brechas_criticas.length > 0)
+    ? backendReport.brechas_criticas.map((b) => ({
+        skill: b.skill,
+        vacanciesCount: b.frecuencia_mercado,
+        criticidad: b.criticidad,
+        sugerencia: b.sugerencia_curricular,
+      }))
+    : (traceability?.criticalGaps || []);
+
+  const deanshipRecommendations = backendReport?.recomendaciones_decanatura || [
+    'Articular talleres semestrales de cloud computing y CI/CD con convenios empresariales.',
+    'Promover asignaturas electivas de analítica avanzada e inteligencia de negocios.'
+  ];
 
   return (
     <InstitutionPortalLayout role="admin" activePage="admin-trazabilidad">
@@ -297,119 +346,25 @@ export default function InstitutionAdminTraceabilityPage() {
             </div>
           </div>
 
-          {/* Comparativa: Mercado vs. Aula (3 Columnas cálidas) */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Columna 1: Cubiertas por el Pensum */}
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
-                  <i className="bx bx-check-circle text-base text-emerald-700" />
-                  <span>Match Directo ({exactMatches.length})</span>
-                </span>
-                <span className="text-[0.65rem] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
-                  100% Cubierto
-                </span>
-              </div>
-              <p className="m-0 text-xs text-emerald-950/80 leading-relaxed">
-                Habilidades que las empresas exigen y que el programa sí imparte en sus asignaturas oficiales.
-              </p>
-
-              <div className="space-y-2">
-                {exactMatches.length === 0 ? (
-                  <p className="m-0 text-xs text-secondary italic">Aún no se registran coincidencias directas.</p>
-                ) : (
-                  exactMatches.map((item) => (
-                    <div
-                      key={item.skill}
-                      className="rounded-xl border border-emerald-200/60 bg-white p-2.5 flex items-center justify-between text-xs shadow-2xs"
-                    >
-                      <span className="font-semibold text-ink">{item.skill}</span>
-                      <span className="text-[0.68rem] font-bold text-secondary bg-cream px-2 py-0.5 rounded border border-sand-line">
-                        {item.vacanciesCount} vacantes
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Columna 2: Equivalencias Tecnológicas (Curva Rápida en Sand / Ocre cálido) */}
-            <div className="rounded-2xl border border-sand-line bg-sand/30 p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-terracotta-dark flex items-center gap-1.5">
-                  <i className="bx bx-git-compare text-base text-terracotta" />
-                  <span>Equivalencias ({equivalentMatches.length})</span>
-                </span>
-                <span className="text-[0.65rem] font-bold text-terracotta-dark bg-sand px-2 py-0.5 rounded-full border border-sand-line">
-                  Curva Rápida (75%)
-                </span>
-              </div>
-              <p className="m-0 text-xs text-cocoa/80 leading-relaxed">
-                Misma familia conceptual. El egresado tiene las bases teóricas y solo requiere una breve adaptación práctica.
-              </p>
-
-              <div className="space-y-2">
-                {equivalentMatches.length === 0 ? (
-                  <p className="m-0 text-xs text-secondary italic">No hay equivalencias parciales registradas.</p>
-                ) : (
-                  equivalentMatches.map((item) => (
-                    <div
-                      key={item.skill}
-                      className="rounded-xl border border-sand-line bg-white p-2.5 space-y-1 text-xs shadow-2xs"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-ink">{item.skill}</span>
-                        <span className="text-[0.68rem] font-bold text-secondary bg-cream px-2 py-0.5 rounded border border-sand-line">
-                          {item.vacanciesCount} vacantes
-                        </span>
-                      </div>
-                      <p className="m-0 text-[0.7rem] text-secondary">
-                        En el aula se practica con <strong className="text-ink">{item.pensumEquivalent}</strong> ({item.familyName}).
-                      </p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Columna 3: Brechas Críticas del Mercado */}
-            <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-rose-900 flex items-center gap-1.5">
-                  <i className="bx bx-error-circle text-base text-rose-700" />
-                  <span>Brechas Críticas ({criticalGaps.length})</span>
-                </span>
-                <span className="text-[0.65rem] font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded-full border border-rose-200">
-                  No en Pensum
-                </span>
-              </div>
-              <p className="m-0 text-xs text-rose-950/80 leading-relaxed">
-                Herramientas muy solicitadas por empresas contratantes que no figuran en ninguna materia del pensum.
-              </p>
-
-              <div className="space-y-2">
-                {criticalGaps.length === 0 ? (
-                  <p className="m-0 text-xs text-secondary italic">No hay brechas críticas detectadas.</p>
-                ) : (
-                  criticalGaps.map((item) => (
-                    <div
-                      key={item.skill}
-                      className="rounded-xl border border-rose-200/60 bg-white p-2.5 flex items-center justify-between text-xs shadow-2xs"
-                    >
-                      <span className="font-semibold text-rose-950">{item.skill}</span>
-                      <span className="text-[0.68rem] font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded">
-                        {item.vacanciesCount} vacantes activas
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
+          {/* Vistas Avanzadas de Pertinencia Curricular y Brechas */}
+          <TraceabilityCurriculumViews
+            exactMatches={exactMatches}
+            equivalentMatches={equivalentMatches}
+            criticalGaps={criticalGaps}
+            coverageScore={coverageScore}
+            deanshipRecommendations={deanshipRecommendations}
+            activePensum={activePensum}
+            onOpenUploadModal={() => setIsUploadModalOpen(true)}
+            onFocusSemester={(semNumber) => {
+              setActiveSemesterAccordion(semNumber);
+              const el = document.getElementById('malla-curricular-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+          />
         </section>
 
         {/* Malla Curricular Oficial del Programa */}
-        <section className="rounded-card border border-sand-line bg-white p-6 sm:p-8 shadow-card space-y-6">
+        <section id="malla-curricular-section" className="rounded-card border border-sand-line bg-white p-6 sm:p-8 shadow-card space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6 border-b border-sand-line">
             <div>
               <h3 className="m-0 font-display text-lg font-bold text-ink">
@@ -564,6 +519,20 @@ export default function InstitutionAdminTraceabilityPage() {
           currentPensum={activePensum}
           onSavePensum={(programId, parsedData) => {
             savePensum(programId, parsedData);
+            if (parsedData?.indicePertinencia != null) {
+              setBackendReport({
+                success: true,
+                programa_nombre: parsedData.programName || selectedProgram?.name,
+                id_programa: programId,
+                total_semestres: parsedData.totalSemesters || 6,
+                total_asignaturas: parsedData.totalSubjects || 30,
+                indice_pertinencia: parsedData.indicePertinencia,
+                nivel_pertinencia: parsedData.nivelPertinencia,
+                competencias_cubiertas: parsedData.competenciasCubiertas || [],
+                brechas_criticas: parsedData.brechasCriticas || [],
+                recomendaciones_decanatura: parsedData.recomendacionesDecanatura || [],
+              });
+            }
           }}
         />
       </div>

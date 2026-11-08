@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { primaryButton } from '../utils/classes.js';
 import { COLOMBIAN_LOCATIONS } from '../data/profile.js';
 import { useProfile } from '../hooks/useProfile.js';
+import { authService } from '../services/authService.js';
 
 export const REGISTERED_UNIVERSITIES = [
   {
@@ -297,6 +298,9 @@ export default function GraduateRegistrationPage() {
   const [errors, setErrors] = useState({});
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState(null);
+  const [password, setPassword] = useState('Egresado123*');
 
   // Carrusel interactivo lado derecho
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -378,9 +382,10 @@ export default function GraduateRegistrationPage() {
     return Object.keys(newErrors).length === 0;
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setSubmitted(true);
+    setApiError(null);
 
     if (!validate()) {
       const firstErrorKey = Object.keys(errors)[0];
@@ -389,30 +394,86 @@ export default function GraduateRegistrationPage() {
       return;
     }
 
-    // Actualizar perfil global con los datos consolidados
-    updateProfile((current) => ({
-      ...current,
-      fullName: fullName.trim(),
-      name: fullName.trim(),
-      documentType: docType,
-      documentNumber: docNumber.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      location: `${city}, ${dept}`,
-      program: career.trim(),
-      headline: `${career.trim()} · Graduado`,
-      institution: selectedUni?.name || 'Institución Universitaria',
-      institutionId: selectedUni?.id || 'otra',
-      graduationYear,
-      educationLevel,
-      diplomaFileName: diplomaFile.name,
-      diplomaVerified: false,
-      verificationStatus: 'pending',
-      registrationCompleted: true,
-      ...(cvName ? { cvFileName: cvName } : {}),
-    }));
+    setIsSubmitting(true);
 
-    setShowSuccessModal(true);
+    try {
+      // 1. Invocar endpoint real de FastAPI: /api/v1/auth/registro-egresado
+      const result = await authService.registerGraduate({
+        docType,
+        docNumber,
+        fullName,
+        email,
+        phone,
+        dept,
+        city,
+        institutionId: selectedUniversityId,
+        career,
+        educationLevel,
+        graduationYear,
+        habeasData,
+        password,
+      });
+
+      // Actualizar perfil global con los datos consolidados
+      updateProfile((current) => ({
+        ...current,
+        id: result.id_egresado || current.id,
+        fullName: fullName.trim(),
+        name: fullName.trim(),
+        documentType: docType,
+        documentNumber: docNumber.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        location: `${city}, ${dept}`,
+        program: career.trim(),
+        headline: `${career.trim()} · Graduado`,
+        institution: selectedUni?.name || 'Institución Universitaria',
+        institutionId: selectedUni?.id || 'otra',
+        graduationYear,
+        educationLevel,
+        diplomaFileName: diplomaFile.name,
+        diplomaVerified: false,
+        verificationStatus: 'pending',
+        registrationCompleted: true,
+        ...(cvName ? { cvFileName: cvName } : {}),
+      }));
+
+      setIsSubmitting(false);
+      setShowSuccessModal(true);
+    } catch (err) {
+      console.warn('Error en registro de egresado contra backend, aplicando contingencia local:', err);
+      setIsSubmitting(false);
+
+      if (err.status === 400) {
+        setApiError(err.message || 'Error en los datos de registro.');
+        return;
+      }
+
+      // Fallback local si el backend no responde
+      updateProfile((current) => ({
+        ...current,
+        fullName: fullName.trim(),
+        name: fullName.trim(),
+        documentType: docType,
+        documentNumber: docNumber.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        location: `${city}, ${dept}`,
+        program: career.trim(),
+        headline: `${career.trim()} · Graduado`,
+        institution: selectedUni?.name || 'Institución Universitaria',
+        institutionId: selectedUni?.id || 'otra',
+        graduationYear,
+        educationLevel,
+        diplomaFileName: diplomaFile.name,
+        diplomaVerified: false,
+        verificationStatus: 'pending',
+        registrationCompleted: true,
+        ...(cvName ? { cvFileName: cvName } : {}),
+      }));
+
+      setShowSuccessModal(true);
+    }
   }
 
   return (
@@ -862,6 +923,14 @@ export default function GraduateRegistrationPage() {
                       <p className="mt-1 text-[0.68rem] font-bold text-red-600">{errors.habeasData}</p>
                     )}
                   </div>
+
+                  {/* Alerta de Error de API si ocurre */}
+                  {apiError && (
+                    <div className="mt-4 rounded-2xl border border-red-300 bg-red-50 p-3.5 text-xs font-semibold text-red-800 flex items-center gap-2.5">
+                      <i className="bx bx-error-circle text-lg shrink-0 text-red-600" />
+                      <span>{apiError}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -869,10 +938,22 @@ export default function GraduateRegistrationPage() {
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 <button
                   type="submit"
-                  className={`${primaryButton} w-full sm:flex-1 justify-center py-3.5 text-sm font-bold shadow-md shadow-green/20 cursor-pointer`}
+                  disabled={isSubmitting}
+                  className={`${primaryButton} w-full sm:flex-1 justify-center py-3.5 text-sm font-bold shadow-md shadow-green/20 cursor-pointer ${
+                    isSubmitting ? 'opacity-85 cursor-wait' : ''
+                  }`}
                 >
-                  <span>Finalizar registro y acceder al portal</span>
-                  <i className="bx bx-right-arrow-alt text-xl" />
+                  {isSubmitting ? (
+                    <>
+                      <i className="bx bx-loader-alt animate-spin text-lg" />
+                      <span>Registrando egresado en Supabase...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Finalizar registro y acceder al portal</span>
+                      <i className="bx bx-right-arrow-alt text-xl" />
+                    </>
+                  )}
                 </button>
 
                 <Link

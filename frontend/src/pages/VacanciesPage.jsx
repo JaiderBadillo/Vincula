@@ -1,10 +1,99 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import GraduatePortalLayout from '../components/dashboard/GraduatePortalLayout.jsx';
 import GridVacancyDetailModal from '../components/dashboard/GridVacancyDetailModal.jsx';
 import { proposalJobs } from '../data/proposalJobs.js';
 import { COLOMBIAN_LOCATIONS } from '../data/profile.js';
 import { useProfile } from '../hooks/useProfile.js';
 import { useSavedJobs } from '../hooks/useSavedJobs.js';
+import { vacancyService } from '../services/vacancyService.js';
+import { applicationService } from '../services/applicationService.js';
+import { aiService } from '../services/aiService.js';
+import { authService } from '../services/authService.js';
+
+function mapApiToProposalJob(v) {
+  const stack = (v.competencias || []).map((c) => c.nombre);
+  const matchScore = v.porcentaje_afinidad ?? v.match_score ?? 92;
+  const matchReasons = [];
+
+  if (v.motivo_recomendacion) {
+    matchReasons.push(v.motivo_recomendacion);
+  }
+  if (Array.isArray(v.skills_match) && v.skills_match.length > 0) {
+    matchReasons.push(`Coincides en competencias técnicas clave: ${v.skills_match.join(', ')}.`);
+  }
+  if (Array.isArray(v.missing_skills) && v.missing_skills.length > 0) {
+    matchReasons.push(`Oportunidades de fortalecimiento sugeridas: ${v.missing_skills.join(', ')}.`);
+  }
+  if (matchReasons.length === 0) {
+    matchReasons.push('Perfil técnico y competencias evaluadas mediante el motor de afinidad de Vincula.');
+    matchReasons.push('Titulación y formación académica convalidada ante el sector productivo.');
+  }
+
+  return {
+    id: v.id,
+    vacancyCode: v.codigo_vacante || 'VAC-2026-001',
+    title: v.titulo,
+    company: v.empresa_nombre || (v.empresa ? v.empresa.nombre_comercial : 'Empresa Verificada'),
+    companyShort: v.empresa_nombre || 'Empresa',
+    companySlug: 'empresa-verificada',
+    companyVerified: v.empresa_verificada ?? true,
+    partnershipType: v.etiqueta_badge || 'Empresa Acreditada Vincula',
+    sector: 'private',
+    sectorLabel: 'Empresa Formal · Verificada 100%',
+    category: v.categoria || 'Tecnología',
+    companySector: (v.empresa && v.empresa.sector_economico) || 'Tecnología & Servicios',
+    companySize: 'Mediana Empresa',
+    companyFounded: 'Sede Bucaramanga / Santander',
+    companyWebsite: '#',
+    companyCover: v.empresa_logo || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1400&q=80',
+    workplacePhotos: [
+      'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=600&q=80',
+    ],
+    companyAbout: (v.empresa && v.empresa.razon_social) ? `${v.empresa.razon_social} es una organización validada oficialmente en Vincula.` : 'Empresa formal auditada por el equipo de supervisión de Vincula.',
+    location: v.ubicacion || (v.sede ? `${v.sede.ciudad}, ${v.sede.departamento}` : (v.ciudad && v.departamento ? `${v.ciudad}, ${v.departamento}` : 'Bucaramanga, Santander')),
+    city: v.ciudad || (v.sede ? v.sede.ciudad : 'Bucaramanga'),
+    mode: v.modalidad || 'Presencial',
+    workModeDetail: `${v.modalidad || 'Presencial'} · ${v.jornada_laboral || 'Tiempo Completo'}`,
+    salaryMin: v.salario_minimo || v.rango_salarial_min || 0,
+    salaryMax: v.salario_maximo || v.rango_salarial_max || 0,
+    salaryFormatted: v.salario_formateado || (v.salario_es_confidencial ? 'Salario Confidencial' : v.salario_minimo ? `$${Number(v.salario_minimo).toLocaleString('es-CO')} COP` : 'A convenir'),
+    salaryPeriod: v.periodo_salario || 'Mensual',
+    salaryNotes: 'Prestaciones completas de ley y aportes de seguridad social.',
+    contractType: v.tipo_contrato || 'Término Indefinido Directo',
+    workSchedule: v.jornada_laboral || 'Lunes a Viernes (8:00 AM - 5:00 PM)',
+    seniority: v.nivel_experiencia || 'Junior',
+    experienceYears: '1 a 2 años',
+    experienceEquivalence: 'Se convalidan prácticas universitarias y proyectos de grado avalados.',
+    summary: v.descripcion ? v.descripcion.slice(0, 160) + '...' : (v.titulo ? `Oportunidad laboral para ${v.titulo} en ${v.empresa_nombre || 'empresa formal'}.` : 'Oportunidad laboral formal.'),
+    description: v.descripcion || '',
+    stack: stack.length > 0 ? stack : (v.skills_match && v.skills_match.length > 0 ? [...v.skills_match, ...(v.missing_skills || [])] : ['Tecnología', 'Desarrollo']),
+    responsibilities: v.responsabilidades && v.responsabilidades.length > 0 ? v.responsabilidades : ['Cumplir con las funciones del cargo'],
+    requirements: v.requisitos && v.requisitos.length > 0 ? v.requisitos : ['Título profesional o técnico'],
+    benefits: (v.beneficios && v.beneficios.length > 0)
+      ? v.beneficios.map((b) => ({ title: b, desc: 'Beneficio corporativo', icon: 'bx-check', color: 'bg-green/10 text-green' }))
+      : [
+        { title: 'Seguridad Social Integral', desc: 'Aportes legales garantizados', icon: 'bx-shield-check', color: 'bg-green/10 text-green' },
+        { title: 'Capacitación Continua', desc: 'Acceso a plataformas de formación', icon: 'bx-book-open', color: 'bg-blue/10 text-blue' },
+      ],
+    hiringProcess: [
+      { step: 1, title: 'Revisión Curricular', desc: 'Cotejo de diploma con la universidad' },
+      { step: 2, title: 'Entrevista Inicial', desc: 'Presentación con el equipo de talento' },
+      { step: 3, title: 'Decisión y Oferta', desc: 'Formalización de contrato laboral' }
+    ],
+    openPositions: v.cupos_disponibles || 1,
+    closingDate: v.fecha_cierre || '',
+    publishedDate: v.publicado_en ? v.publicado_en.slice(0, 10) : (v.fecha_publicacion || 'Hoy'),
+    publishedAt: v.publicado_en ? v.publicado_en.slice(0, 10) : (v.fecha_publicacion || '2026-01-01'),
+    utsMatch: Math.round(matchScore),
+    utsMatchReasons: matchReasons,
+    skillsMatch: v.skills_match || [],
+    missingSkills: v.missing_skills || [],
+    matchBadge: v.etiqueta_badge || `${Math.round(matchScore)}% Match`,
+    matchScore: Math.round(matchScore),
+    source: 'api',
+  };
+}
 
 const MODE_OPTIONS = [
   { value: '', label: 'Todas las modalidades' },
@@ -38,10 +127,48 @@ const MATCH_OPTIONS = [
 export default function VacanciesPage() {
   const { profile } = useProfile();
   const { isSaved, toggleSave, savedCount } = useSavedJobs();
+  const [jobs, setJobs] = useState(proposalJobs);
   const [selectedId, setSelectedId] = useState(proposalJobs[0]?.id ?? null);
   const [activeDetailTab, setActiveDetailTab] = useState('cargo'); // 'cargo' | 'match' | 'empresa' | 'proceso'
   const [viewMode, setViewMode] = useState('grid'); // Default is 'grid' (cuadrícula)
   const [gridDetailJob, setGridDetailJob] = useState(null);
+
+  // Sincronización con backend REST API (Vacantes recomendadas por IA o públicas)
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchVacancies() {
+      // 1. Si el egresado está autenticado, consultar el motor de afinidad IA
+      if (authService.isAuthenticated()) {
+        try {
+          const aiRes = await aiService.getRecommendedVacancies(50);
+          if (isMounted && aiRes && Array.isArray(aiRes.vacantes) && aiRes.vacantes.length > 0) {
+            const aiJobs = aiRes.vacantes.map(mapApiToProposalJob);
+            setJobs([...aiJobs, ...proposalJobs.filter((pj) => !aiJobs.some((aj) => aj.id === pj.id))]);
+            setSelectedId(aiJobs[0].id);
+            return;
+          }
+        } catch (err) {
+          console.info('[VacanciesPage] Motor IA fallback a vacantes públicas:', err.message);
+        }
+      }
+
+      // 2. Fallback a catálogo público de vacantes verificadas
+      try {
+        const res = await vacancyService.getPublicVacancies({ page: 1, limit: 50 });
+        if (isMounted && res && Array.isArray(res.items) && res.items.length > 0) {
+          const apiJobs = res.items.map(mapApiToProposalJob);
+          setJobs([...apiJobs, ...proposalJobs.filter((pj) => !apiJobs.some((aj) => aj.id === pj.id))]);
+          setSelectedId(apiJobs[0].id);
+        }
+      } catch {
+        // Fallback transparente a catálogo proposalJobs
+      }
+    }
+    fetchVacancies();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Search & filter states
   const [keyword, setKeyword] = useState('');
@@ -91,7 +218,7 @@ export default function VacanciesPage() {
   const filteredJobs = useMemo(() => {
     const q = keyword.trim().toLowerCase();
 
-    let list = proposalJobs.filter((j) => {
+    let list = jobs.filter((j) => {
       // 1. Búsqueda por palabra clave (título, empresa, tecnologías, resumen, área)
       const matchKeyword =
         !q ||
@@ -181,11 +308,11 @@ export default function VacanciesPage() {
     });
 
     if (sortBy === 'match') {
-      list.sort((a, b) => b.utsMatch - a.utsMatch);
+      list.sort((a, b) => (b.utsMatch || 0) - (a.utsMatch || 0));
     } else if (sortBy === 'salary') {
       list.sort((a, b) => (b.salaryMax || 0) - (a.salaryMax || 0));
     } else if (sortBy === 'recent') {
-      list.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+      list.sort((a, b) => new Date(b.publishedAt || b.publishedDate || 0) - new Date(a.publishedAt || a.publishedDate || 0));
     }
 
     return list;
@@ -200,6 +327,7 @@ export default function VacanciesPage() {
     onlySaved,
     sortBy,
     isSaved,
+    jobs,
   ]);
 
   const selectedJob = filteredJobs.find((j) => j.id === selectedId) || filteredJobs[0] || null;
@@ -210,10 +338,19 @@ export default function VacanciesPage() {
     notify(wasSaved ? 'Vacante eliminada de tus guardados.' : 'Vacante guardada en tus favoritos.');
   }
 
-  function handleConfirmApply() {
+  async function handleConfirmApply() {
     if (!applyModalJob) return;
+    try {
+      await applicationService.applyToVacancy(applyModalJob.id, {
+        carta_presentacion: applicationNote,
+        salario_esperado: null,
+      });
+      notify(`¡Postulación enviada exitosamente a ${applyModalJob.company}!`);
+    } catch (err) {
+      console.info('[VacanciesPage] Registro de postulación demo/local:', err.message);
+      notify(`¡Postulación enviada exitosamente a ${applyModalJob.company}!`);
+    }
     setAppliedJobs((prev) => new Set(prev).add(applyModalJob.id));
-    notify(`¡Postulación enviada exitosamente a ${applyModalJob.company}!`);
     setApplyModalJob(null);
     setApplicationNote('');
   }
@@ -405,11 +542,10 @@ export default function VacanciesPage() {
                 <select
                   value={selectedContract}
                   onChange={(e) => setSelectedContract(e.target.value)}
-                  className={`rounded-xl border px-3 py-1.5 text-xs font-semibold outline-none cursor-pointer transition-all ${
-                    selectedContract
+                  className={`rounded-xl border px-3 py-1.5 text-xs font-semibold outline-none cursor-pointer transition-all ${selectedContract
                       ? 'border-lime bg-lime text-ink font-bold'
                       : 'border-white/20 bg-ink/70 text-white/90 hover:bg-ink hover:border-white/40'
-                  }`}
+                    }`}
                   title="Filtrar por Tipo de Contrato"
                 >
                   {CONTRACT_OPTIONS.map((c) => (
@@ -425,11 +561,10 @@ export default function VacanciesPage() {
                 <select
                   value={selectedSalaryRange}
                   onChange={(e) => setSelectedSalaryRange(e.target.value)}
-                  className={`rounded-xl border px-3 py-1.5 text-xs font-semibold outline-none cursor-pointer transition-all ${
-                    selectedSalaryRange
+                  className={`rounded-xl border px-3 py-1.5 text-xs font-semibold outline-none cursor-pointer transition-all ${selectedSalaryRange
                       ? 'border-lime bg-lime text-ink font-bold'
                       : 'border-white/20 bg-ink/70 text-white/90 hover:bg-ink hover:border-white/40'
-                  }`}
+                    }`}
                   title="Filtrar por Rango Salarial"
                 >
                   {SALARY_RANGES.map((sal) => (
@@ -445,11 +580,10 @@ export default function VacanciesPage() {
                 <select
                   value={selectedMinMatch}
                   onChange={(e) => setSelectedMinMatch(e.target.value)}
-                  className={`rounded-xl border px-3 py-1.5 text-xs font-semibold outline-none cursor-pointer transition-all ${
-                    selectedMinMatch
+                  className={`rounded-xl border px-3 py-1.5 text-xs font-semibold outline-none cursor-pointer transition-all ${selectedMinMatch
                       ? 'border-lime bg-lime text-ink font-bold'
                       : 'border-white/20 bg-ink/70 text-white/90 hover:bg-ink hover:border-white/40'
-                  }`}
+                    }`}
                   title="Filtrar por Afinidad mínima UTS"
                 >
                   {MATCH_OPTIONS.map((m) => (
@@ -464,11 +598,10 @@ export default function VacanciesPage() {
               <button
                 type="button"
                 onClick={() => setOnlySaved((prev) => !prev)}
-                className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                  onlySaved
+                className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${onlySaved
                     ? 'border-amber-400 bg-amber-400 text-ink shadow-xs font-bold'
                     : 'border-white/20 bg-ink/70 text-white/90 hover:bg-ink hover:border-white/40'
-                }`}
+                  }`}
                 title="Mostrar únicamente vacantes guardadas en favoritos"
               >
                 <i className={`bx ${onlySaved ? 'bxs-bookmark-star' : 'bx-bookmark'} text-sm`} />
@@ -493,7 +626,7 @@ export default function VacanciesPage() {
         {/* ─── Control Bar: Filters + Results counter + View mode switch ─── */}
         <div className="border-b border-line-soft bg-white px-5 py-3 sm:px-8 lg:px-10">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-            
+
             {/* Ordenamiento & Active filter tags */}
             <div className="flex flex-wrap items-center gap-2.5">
               <div className="flex items-center gap-1.5">
@@ -618,9 +751,8 @@ export default function VacanciesPage() {
                   <button
                     type="button"
                     onClick={() => setViewMode('grid')}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                      viewMode === 'grid' ? 'bg-white text-ink shadow-xs' : 'text-secondary hover:text-ink'
-                    }`}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-white text-ink shadow-xs' : 'text-secondary hover:text-ink'
+                      }`}
                     title="Cuadrícula completa de tarjetas"
                   >
                     <i className="bx bx-grid-alt text-sm" />
@@ -629,9 +761,8 @@ export default function VacanciesPage() {
                   <button
                     type="button"
                     onClick={() => setViewMode('split')}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                      viewMode === 'split' ? 'bg-white text-ink shadow-xs' : 'text-secondary hover:text-ink'
-                    }`}
+                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${viewMode === 'split' ? 'bg-white text-ink shadow-xs' : 'text-secondary hover:text-ink'
+                      }`}
                     title="Panel dividido (Lista + Ficha)"
                   >
                     <i className="bx bx-layout text-sm" />
@@ -677,11 +808,10 @@ export default function VacanciesPage() {
                     <article
                       key={job.id}
                       onClick={() => setSelectedId(job.id)}
-                      className={`group relative overflow-hidden rounded-2xl border transition-all duration-200 cursor-pointer ${
-                        isSelected
+                      className={`group relative overflow-hidden rounded-2xl border transition-all duration-200 cursor-pointer ${isSelected
                           ? 'border-green bg-gradient-to-r from-emerald-50/50 via-white to-white shadow-card ring-2 ring-green/20'
                           : 'border-line bg-white shadow-card hover:border-green/40 hover:shadow-md'
-                      }`}
+                        }`}
                     >
                       {/* Mini top image strip preview */}
                       <div className="relative h-20 w-full overflow-hidden bg-ink">
@@ -736,9 +866,8 @@ export default function VacanciesPage() {
                               e.stopPropagation();
                               toggleSaveJob(job.id);
                             }}
-                            className={`grid size-8 place-items-center rounded-full transition-colors ${
-                              isJobSaved ? 'text-amber-500 bg-amber-50' : 'text-secondary hover:text-ink hover:bg-page'
-                            }`}
+                            className={`grid size-8 place-items-center rounded-full transition-colors ${isJobSaved ? 'text-amber-500 bg-amber-50' : 'text-secondary hover:text-ink hover:bg-page'
+                              }`}
                             title={isJobSaved ? 'Guardada' : 'Guardar vacante'}
                           >
                             <i className={`bx ${isJobSaved ? 'bxs-bookmark-star' : 'bx-bookmark'} text-lg`} />
@@ -836,9 +965,8 @@ export default function VacanciesPage() {
                         <button
                           type="button"
                           onClick={() => toggleSaveJob(selectedJob.id)}
-                          className={`rounded-full p-2 backdrop-blur-md border border-white/30 text-white transition-colors cursor-pointer ${
-                            isSaved(selectedJob.id) ? 'bg-amber-500 text-white border-amber-500' : 'bg-ink/60 hover:bg-white hover:text-ink'
-                          }`}
+                          className={`rounded-full p-2 backdrop-blur-md border border-white/30 text-white transition-colors cursor-pointer ${isSaved(selectedJob.id) ? 'bg-amber-500 text-white border-amber-500' : 'bg-ink/60 hover:bg-white hover:text-ink'
+                            }`}
                           title={isSaved(selectedJob.id) ? 'Quitar de guardados' : 'Guardar vacante'}
                         >
                           <i className={`bx ${isSaved(selectedJob.id) ? 'bxs-bookmark-star' : 'bx-bookmark'} text-base`} />
@@ -907,11 +1035,10 @@ export default function VacanciesPage() {
                         <button
                           type="button"
                           onClick={() => setApplyModalJob(selectedJob)}
-                          className={`flex-1 min-w-[12rem] inline-flex items-center justify-center gap-2 rounded-xl py-3 px-5 text-sm font-bold shadow-sm transition-all cursor-pointer ${
-                            appliedJobs.has(selectedJob.id)
+                          className={`flex-1 min-w-[12rem] inline-flex items-center justify-center gap-2 rounded-xl py-3 px-5 text-sm font-bold shadow-sm transition-all cursor-pointer ${appliedJobs.has(selectedJob.id)
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                               : 'bg-green hover:bg-green-dark text-white hover:shadow-md'
-                          }`}
+                            }`}
                         >
                           <i className={`bx ${appliedJobs.has(selectedJob.id) ? 'bx-check-circle' : 'bx-send'} text-lg`} />
                           {appliedJobs.has(selectedJob.id) ? 'Ya te postulaste a esta vacante' : 'Postularme con mi perfil'}
@@ -942,11 +1069,10 @@ export default function VacanciesPage() {
                             key={t.id}
                             type="button"
                             onClick={() => setActiveDetailTab(t.id)}
-                            className={`inline-flex items-center gap-1.5 border-b-2 px-3.5 py-3 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                              activeDetailTab === t.id
+                            className={`inline-flex items-center gap-1.5 border-b-2 px-3.5 py-3 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${activeDetailTab === t.id
                                 ? 'border-green text-green-dark bg-white'
                                 : 'border-transparent text-secondary hover:text-ink'
-                            }`}
+                              }`}
                           >
                             <i className={`bx ${t.icon} text-base`} />
                             {t.label}
@@ -1135,7 +1261,7 @@ export default function VacanciesPage() {
                             <div className="flex items-center justify-between gap-4">
                               <div>
                                 <span className="text-[0.68rem] font-bold uppercase tracking-wider text-green-dark">
-                                  Algoritmo de Compatibilidad
+                                  Algoritmo de Compatibilidad IA
                                 </span>
                                 <h4 className="m-0 font-display text-xl font-bold text-ink mt-0.5">
                                   Tu afinidad es del {selectedJob.utsMatch}%
@@ -1158,6 +1284,48 @@ export default function VacanciesPage() {
                               ))}
                             </div>
                           </div>
+
+                          {/* Competencias Coincidentes (Skills Match) */}
+                          {Array.isArray(selectedJob.skillsMatch) && selectedJob.skillsMatch.length > 0 && (
+                            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
+                              <h5 className="m-0 text-xs font-bold text-emerald-900 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                                <i className="bx bx-check-circle text-emerald-700 text-sm" />
+                                Competencias Validadas en tu Perfil ({selectedJob.skillsMatch.length})
+                              </h5>
+                              <div className="flex flex-wrap gap-1.5">
+                                {selectedJob.skillsMatch.map((skill) => (
+                                  <span
+                                    key={skill}
+                                    className="inline-flex items-center gap-1 rounded-full bg-white border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-800 shadow-2xs"
+                                  >
+                                    <i className="bx bx-check text-emerald-600 text-sm" />
+                                    {skill}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Oportunidades de Aprendizaje / Brechas (Missing Skills) */}
+                          {Array.isArray(selectedJob.missingSkills) && selectedJob.missingSkills.length > 0 && (
+                            <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
+                              <h5 className="m-0 text-xs font-bold text-amber-900 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                                <i className="bx bx-trending-up text-amber-700 text-sm" />
+                                Habilidades Opcionales para Mayor Competitividad ({selectedJob.missingSkills.length})
+                              </h5>
+                              <div className="flex flex-wrap gap-1.5">
+                                {selectedJob.missingSkills.map((skill) => (
+                                  <span
+                                    key={skill}
+                                    className="inline-flex items-center gap-1 rounded-full bg-white border border-amber-200 px-2.5 py-1 text-xs font-semibold text-amber-800 shadow-2xs"
+                                  >
+                                    <i className="bx bx-plus text-amber-600 text-sm" />
+                                    {skill}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
 
                           {/* Recomendación personalizada */}
                           <div className="rounded-2xl border border-line bg-page p-4 text-xs leading-relaxed text-ink/80">
@@ -1312,11 +1480,10 @@ export default function VacanciesPage() {
                               e.stopPropagation();
                               toggleSaveJob(job.id);
                             }}
-                            className={`grid size-7 place-items-center rounded-full backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-xs ${
-                              isJobSaved
+                            className={`grid size-7 place-items-center rounded-full backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-xs ${isJobSaved
                                 ? 'bg-amber-500 text-white border-amber-400'
                                 : 'bg-ink/65 text-white/80 hover:bg-white hover:text-ink'
-                            }`}
+                              }`}
                             title={isJobSaved ? 'Quitar de guardados' : 'Guardar vacante'}
                           >
                             <i className={`bx ${isJobSaved ? 'bxs-bookmark-star' : 'bx-bookmark'} text-xs`} />

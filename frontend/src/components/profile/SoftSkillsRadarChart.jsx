@@ -1,5 +1,29 @@
 import { useState, useMemo } from 'react';
+import Chart from 'react-apexcharts';
 import { skillLevels, skillSuggestions } from '../../data/profile.js';
+import LegacySoftSkillsRadarChart from '../legacy_charts/LegacySoftSkillsRadarChart.jsx';
+
+export { LegacySoftSkillsRadarChart };
+
+/**
+ * Divide de forma equilibrada etiquetas largas en 2 renglones para evitar
+ * desbordamientos del contenedor en gráficos de radar.
+ */
+function formatRadarCategory(name, isCustom) {
+  const tag = isCustom ? '' : ' *';
+  const words = name.trim().split(' ');
+  if (words.length === 1) {
+    return name + tag;
+  }
+  if (words.length === 2) {
+    return [words[0], words[1] + tag];
+  }
+  if (words.length === 3) {
+    return [`${words[0]} ${words[1]}`, words[2] + tag];
+  }
+  const mid = Math.ceil(words.length / 2);
+  return [words.slice(0, mid).join(' '), words.slice(mid).join(' ') + tag];
+}
 
 /**
  * Gráfico Radial (Radar/Spider Chart) y Desglose de Habilidades Blandas
@@ -13,12 +37,49 @@ export default function SoftSkillsRadarChart({
   readOnly = false,
   className = '',
 }) {
-  const [hoveredSkill, setHoveredSkill] = useState(null);
   const [viewMode, setViewMode] = useState('both'); // 'both' | 'radar' | 'bars'
+  const [chartEngine, setChartEngine] = useState('apex'); // 'apex' | 'legacy'
 
   const softSkills = useMemo(() => {
     return skills.filter((s) => s.type === 'soft');
   }, [skills]);
+
+  if (chartEngine === 'legacy') {
+    return (
+      <div className={`space-y-3 ${className}`}>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50/70 p-2.5 text-xs">
+          <span className="font-bold text-amber-900 flex items-center gap-1.5">
+            <span className="size-2 rounded-full bg-amber-500" />
+            Visualizando versión anterior (SVG Puro Manual)
+          </span>
+          <div className="inline-flex rounded-lg border border-amber-300 bg-white p-0.5 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setChartEngine('apex')}
+              className="rounded-md px-2.5 py-1 text-xs font-bold text-ink hover:bg-amber-100 transition-all cursor-pointer"
+            >
+              ⚡ Ver versión ApexCharts (Nueva)
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartEngine('legacy')}
+              className="rounded-md bg-amber-600 text-white px-2.5 py-1 text-xs font-bold cursor-pointer shadow-2xs"
+            >
+              🏛️ SVG Anterior
+            </button>
+          </div>
+        </div>
+        <LegacySoftSkillsRadarChart
+          skills={skills}
+          onUpdateSkill={onUpdateSkill}
+          onRemoveSkill={onRemoveSkill}
+          onAddSkill={onAddSkill}
+          readOnly={readOnly}
+          className=""
+        />
+      </div>
+    );
+  }
 
   // Si hay menos de 3 habilidades blandas, completamos con sugerencias benchmark para que el radar siempre tenga forma geométrica
   const chartItems = useMemo(() => {
@@ -55,7 +116,7 @@ export default function SoftSkillsRadarChart({
         items.push({
           id: `bench-${sugg}`,
           name: sugg,
-          level: 1, // Benchmark sugerido inicial
+          level: 0, // Sugerida: sin dato registrado (no infla el polígono)
           isCustom: false,
         });
       }
@@ -63,65 +124,90 @@ export default function SoftSkillsRadarChart({
     return items;
   }, [softSkills]);
 
-  // Geometría del Radar SVG
-  const size = 320;
-  const center = size / 2;
-  const radius = 100;
-  const totalAxes = chartItems.length;
+  const radarSeries = useMemo(() => {
+    return [
+      {
+        name: 'Nivel Registrado',
+        data: chartItems.map((item) => item.level || 0),
+      },
+    ];
+  }, [chartItems]);
 
-  const points = useMemo(() => {
-    if (totalAxes === 0) return [];
-    return chartItems.map((item, index) => {
-      const angle = -Math.PI / 2 + (index * 2 * Math.PI) / totalAxes;
-      const normalizedLevel = (item.level || 1) / 4; // Escala 1 a 4
-      const r = radius * normalizedLevel;
-      const x = center + r * Math.cos(angle);
-      const y = center + r * Math.sin(angle);
-
-      // Posición de la etiqueta exterior
-      const labelDistance = radius + 28;
-      const labelX = center + labelDistance * Math.cos(angle);
-      const labelY = center + labelDistance * Math.sin(angle);
-
-      // Alineación de texto
-      let textAnchor = 'middle';
-      if (Math.cos(angle) > 0.25) textAnchor = 'start';
-      else if (Math.cos(angle) < -0.25) textAnchor = 'end';
-
-      return {
-        ...item,
-        angle,
-        x,
-        y,
-        labelX,
-        labelY,
-        textAnchor,
-      };
-    });
-  }, [chartItems, totalAxes, center, radius]);
-
-  // Coordenadas de los polígonos concéntricos (Niveles 1, 2, 3, 4)
-  const gridPolygons = useMemo(() => {
-    if (totalAxes === 0) return [];
-    return [1, 2, 3, 4].map((lvl) => {
-      const r = radius * (lvl / 4);
-      const polyPoints = Array.from({ length: totalAxes }).map((_, i) => {
-        const a = -Math.PI / 2 + (i * 2 * Math.PI) / totalAxes;
-        return `${center + r * Math.cos(a)},${center + r * Math.sin(a)}`;
-      });
-      return {
-        level: lvl,
-        label: skillLevels[lvl - 1],
-        points: polyPoints.join(' '),
-      };
-    });
-  }, [totalAxes, center, radius]);
-
-  // Polígono principal de las habilidades del egresado
-  const activePolygonPath = useMemo(() => {
-    if (points.length < 3) return '';
-    return points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
-  }, [points]);
+  const radarOptions = useMemo(() => {
+    return {
+      chart: {
+        type: 'radar',
+        height: 290,
+        toolbar: { show: false },
+        fontFamily: 'inherit',
+        parentHeightOffset: 0,
+        dropShadow: {
+          enabled: true,
+          blur: 3,
+          left: 1,
+          top: 1,
+          opacity: 0.08,
+        },
+      },
+      colors: ['#051F26'],
+      stroke: {
+        width: 2.5,
+        colors: ['#051F26'],
+      },
+      fill: {
+        opacity: 0.22,
+        colors: ['#051F26'],
+      },
+      markers: {
+        size: 4,
+        colors: ['#ffffff'],
+        strokeColors: '#051F26',
+        strokeWidth: 2,
+        hover: { size: 6.5 },
+      },
+      xaxis: {
+        categories: chartItems.map((item) => formatRadarCategory(item.name, item.isCustom)),
+        labels: {
+          show: true,
+          style: {
+            colors: chartItems.map((item) => (item.isCustom ? '#051F26' : '#718188')),
+            fontSize: '9.5px',
+            fontWeight: 600,
+            fontFamily: 'inherit',
+          },
+        },
+      },
+      yaxis: {
+        min: 0,
+        max: 4,
+        tickAmount: 4,
+        show: false,
+      },
+      plotOptions: {
+        radar: {
+          size: 58,
+          polygons: {
+            strokeColors: '#e2e8f0',
+            connectorColors: '#e2e8f0',
+            fill: {
+              colors: ['#f8fafc', '#ffffff'],
+            },
+          },
+        },
+      },
+      tooltip: {
+        theme: 'light',
+        y: {
+          formatter: (val, { dataPointIndex }) => {
+            const item = chartItems[dataPointIndex];
+            if (!val || val === 0) return 'Sin registrar (sugerida)';
+            const lvlName = skillLevels[val - 1] || `Nivel ${val}`;
+            return `${lvlName} (${val} de 4)`;
+          },
+        },
+      },
+    };
+  }, [chartItems]);
 
   return (
     <div className={`rounded-2xl border border-line bg-gradient-to-br from-[#051F26]/[0.02] via-white to-panel/30 p-5 shadow-xs ${className}`}>
@@ -146,162 +232,117 @@ export default function SoftSkillsRadarChart({
           </div>
         </div>
 
-        {/* Alternador de vista */}
-        <div className="inline-flex rounded-lg border border-line bg-page p-0.5 text-xs font-semibold">
-          <button
-            type="button"
-            onClick={() => setViewMode('both')}
-            className={`rounded-md px-2.5 py-1 transition-all ${
-              viewMode === 'both' ? 'bg-[#051F26] text-white shadow-xs font-bold' : 'text-secondary hover:text-ink'
-            }`}
-          >
-            Completo
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('radar')}
-            className={`rounded-md px-2.5 py-1 transition-all ${
-              viewMode === 'radar' ? 'bg-[#051F26] text-white shadow-xs font-bold' : 'text-secondary hover:text-ink'
-            }`}
-          >
-            Radar
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('bars')}
-            className={`rounded-md px-2.5 py-1 transition-all ${
-              viewMode === 'bars' ? 'bg-[#051F26] text-white shadow-xs font-bold' : 'text-secondary hover:text-ink'
-            }`}
-          >
-            Barras
-          </button>
+        {/* Controles: Switcher Antes/Después + Alternador de vista */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Switcher Antes/Después */}
+          <div className="inline-flex rounded-lg border border-line bg-page p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setChartEngine('apex')}
+              className={`rounded-md px-2.5 py-1 font-bold transition-all cursor-pointer ${
+                chartEngine === 'apex' ? 'bg-[#051F26] text-white shadow-2xs' : 'text-secondary hover:text-ink'
+              }`}
+              title="Versión moderna interactiva con ApexCharts"
+            >
+              ⚡ ApexCharts
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartEngine('legacy')}
+              className={`rounded-md px-2.5 py-1 font-bold transition-all cursor-pointer ${
+                chartEngine === 'legacy' ? 'bg-[#051F26] text-white shadow-2xs' : 'text-secondary hover:text-ink'
+              }`}
+              title="Ver versión anterior construida con SVG manual"
+            >
+              🏛️ SVG Anterior
+            </button>
+          </div>
+
+          {/* Alternador de vista */}
+          <div className="inline-flex rounded-lg border border-line bg-page p-0.5 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setViewMode('both')}
+              className={`rounded-md px-2.5 py-1 transition-all cursor-pointer ${
+                viewMode === 'both' ? 'bg-[#051F26] text-white shadow-xs font-bold' : 'text-secondary hover:text-ink'
+              }`}
+            >
+              Completo
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('radar')}
+              className={`rounded-md px-2.5 py-1 transition-all cursor-pointer ${
+                viewMode === 'radar' ? 'bg-[#051F26] text-white shadow-xs font-bold' : 'text-secondary hover:text-ink'
+              }`}
+            >
+              Radar
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('bars')}
+              className={`rounded-md px-2.5 py-1 transition-all cursor-pointer ${
+                viewMode === 'bars' ? 'bg-[#051F26] text-white shadow-xs font-bold' : 'text-secondary hover:text-ink'
+              }`}
+            >
+              Barras
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Resumen calculado del perfil */}
+      {softSkills.length > 0 &&
+        (() => {
+          const levels = softSkills.map((s) => s.level || 2);
+          const avg = levels.reduce((a, b) => a + b, 0) / levels.length;
+          const top = softSkills.reduce((b, s) => ((s.level || 2) > (b.level || 2) ? s : b), softSkills[0]);
+          const low = softSkills.reduce((b, s) => ((s.level || 2) < (b.level || 2) ? s : b), softSkills[0]);
+          return (
+            <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
+              <div className="rounded-xl border border-line-soft bg-white px-3 py-2">
+                <p className="m-0 text-[0.65rem] font-bold uppercase tracking-wider text-secondary">Nivel promedio</p>
+                <p className="m-0 mt-0.5 font-display text-base font-bold text-[#051F26]">
+                  {avg.toFixed(1)}<span className="text-xs font-semibold text-secondary"> / 4</span>
+                </p>
+              </div>
+              <div className="rounded-xl border border-line-soft bg-white px-3 py-2">
+                <p className="m-0 text-[0.65rem] font-bold uppercase tracking-wider text-secondary">Mayor fortaleza</p>
+                <p className="m-0 mt-0.5 truncate font-bold text-[#051F26]">{top.name}</p>
+              </div>
+              <div className="rounded-xl border border-line-soft bg-white px-3 py-2">
+                <p className="m-0 text-[0.65rem] font-bold uppercase tracking-wider text-secondary">A fortalecer</p>
+                <p className="m-0 mt-0.5 truncate font-bold text-[#051F26]">
+                  {softSkills.length > 1 && low.id !== top.id ? low.name : '—'}
+                </p>
+              </div>
+            </div>
+          );
+        })()}
 
       {/* Contenedor principal de visualizaciones */}
       <div className={`mt-5 grid items-center gap-6 ${
         viewMode === 'both' ? 'lg:grid-cols-12' : 'grid-cols-1'
       }`}>
-        {/* GRÁFICO 1: RADAR / SPIDER CHART SVG */}
+        {/* GRÁFICO 1: RADAR / SPIDER CHART CON APEXCHARTS */}
         {(viewMode === 'both' || viewMode === 'radar') && (
-          <div className={`flex flex-col items-center justify-center rounded-xl border border-line-soft bg-white/95 p-4 shadow-2xs ${
-            viewMode === 'both' ? 'lg:col-span-6 xl:col-span-5' : 'max-w-md mx-auto w-full'
+          <div className={`flex flex-col items-center justify-between rounded-xl border border-line-soft bg-white/95 p-3 sm:p-4 shadow-2xs ${
+            viewMode === 'both' ? 'lg:col-span-5 xl:col-span-5' : 'max-w-md mx-auto w-full'
           }`}>
-            <div className="relative w-full max-w-[320px] aspect-square flex items-center justify-center">
-              <svg
-                viewBox={`0 0 ${size} ${size}`}
-                className="w-full h-full overflow-visible select-none"
-              >
-                {/* Cuadrícula concéntrica */}
-                {gridPolygons.map((g) => (
-                  <polygon
-                    key={g.level}
-                    points={g.points}
-                    fill={g.level % 2 === 0 ? 'rgba(5, 31, 38, 0.025)' : 'none'}
-                    stroke="#dce4e6"
-                    strokeWidth={g.level === 4 ? '1.5' : '1'}
-                    strokeDasharray={g.level === 4 ? 'none' : '3 3'}
-                  />
-                ))}
+            <div className="relative w-full flex items-center justify-center py-1">
+              <Chart options={radarOptions} series={radarSeries} type="radar" height={290} width="100%" />
 
-                {/* Ejes radiales (Spokes) */}
-                {points.map((p, idx) => (
-                  <line
-                    key={`spoke-${idx}`}
-                    x1={center}
-                    y1={center}
-                    x2={center + radius * Math.cos(p.angle)}
-                    y2={center + radius * Math.sin(p.angle)}
-                    stroke="#e8edef"
-                    strokeWidth="1.2"
-                  />
-                ))}
-
-                {/* Polígono de datos del egresado */}
-                {activePolygonPath && (
-                  <path
-                    d={activePolygonPath}
-                    fill="rgba(5, 31, 38, 0.16)"
-                    stroke="#051F26"
-                    strokeWidth="2.5"
-                    strokeLinejoin="round"
-                    className="transition-all duration-300"
-                  />
-                )}
-
-                {/* Vértices interactivos */}
-                {points.map((p) => {
-                  const isHovered = hoveredSkill?.id === p.id;
-                  return (
-                    <g
-                      key={`vertex-${p.id}`}
-                      className="cursor-pointer transition-transform"
-                      onMouseEnter={() => setHoveredSkill(p)}
-                      onMouseLeave={() => setHoveredSkill(null)}
-                    >
-                      {/* Halo al hacer hover */}
-                      {isHovered && (
-                        <circle
-                          cx={p.x}
-                          cy={p.y}
-                          r={10}
-                          fill="rgba(5, 31, 38, 0.18)"
-                          className="animate-ping"
-                        />
-                      )}
-                      <circle
-                        cx={p.x}
-                        cy={p.y}
-                        r={isHovered ? 6 : p.isCustom ? 4.5 : 3.5}
-                        fill={p.isCustom ? '#ffffff' : '#f1e7d6'}
-                        stroke={p.isCustom ? '#051F26' : '#718188'}
-                        strokeWidth={isHovered ? 3 : 2}
-                        className="transition-all"
-                      />
-                    </g>
-                  );
-                })}
-
-                {/* Etiquetas exteriores de habilidades */}
-                {points.map((p) => {
-                  const isHovered = hoveredSkill?.id === p.id;
-                  return (
-                    <text
-                      key={`label-${p.id}`}
-                      x={p.labelX}
-                      y={p.labelY}
-                      textAnchor={p.textAnchor}
-                      dominantBaseline="central"
-                      className={`text-[0.68rem] transition-colors ${
-                        isHovered
-                          ? 'font-black fill-[#051F26] font-display text-[0.75rem]'
-                          : p.isCustom
-                          ? 'font-bold fill-[#051F26]'
-                          : 'fill-secondary italic'
-                      }`}
-                    >
-                      {p.name.length > 18 ? `${p.name.substring(0, 16)}…` : p.name}
-                      {!p.isCustom && ' *'}
-                    </text>
-                  );
-                })}
-              </svg>
-
-              {/* Tooltip flotante al pasar el mouse por los puntos */}
-              {hoveredSkill && (
-                <div
-                  className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 z-10 rounded-xl border border-line bg-[#051F26] text-white px-3 py-1.5 text-xs shadow-lg flex items-center gap-2"
-                >
-                  <span className="font-bold">{hoveredSkill.name}</span>
-                  <span className="text-lime font-bold">
-                    {skillLevels[(hoveredSkill.level || 1) - 1]} ({hoveredSkill.level}/4)
+              {softSkills.length === 0 && (
+                <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                  <span className="rounded-lg border border-line bg-white/90 px-3 py-1.5 text-[0.7rem] font-semibold text-secondary shadow-xs">
+                    Agrega competencias para calibrar tu perfil
                   </span>
                 </div>
               )}
             </div>
 
             {/* Leyenda al pie del radar */}
-            <div className="mt-3 flex items-center gap-4 text-[0.7rem] text-secondary">
+            <div className="mt-2 flex items-center gap-4 text-[0.7rem] text-secondary">
               <span className="flex items-center gap-1.5">
                 <span className="size-2.5 rounded-full bg-[#051F26] inline-block" />
                 Registrada ({softSkills.length})
@@ -319,7 +360,7 @@ export default function SoftSkillsRadarChart({
         {/* GRÁFICO 2: BARRAS HORIZONTALES CON ESCALA DE COMPETENCIA */}
         {(viewMode === 'both' || viewMode === 'bars') && (
           <div className={`space-y-3 ${
-            viewMode === 'both' ? 'lg:col-span-6 xl:col-span-7' : 'w-full'
+            viewMode === 'both' ? 'lg:col-span-7 xl:col-span-7' : 'w-full'
           }`}>
             <div className="flex items-center justify-between pb-1">
               <span className="text-xs font-bold text-[#051F26] uppercase tracking-wider">

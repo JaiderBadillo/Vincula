@@ -62,8 +62,8 @@ export default function VinculaAdminCompaniesPage() {
     { label: 'Total Registradas', value: String(metrics.totalCompaniesCount) },
   ];
 
-  function handleApprove(id) {
-    approveCompany(id);
+  function handleApprove(id, notes) {
+    approveCompany(id, notes);
     setSelectedCompany(null);
     showToast('Empresa verificada y aprobada con éxito.');
   }
@@ -239,6 +239,11 @@ export default function VinculaAdminCompaniesPage() {
                           </div>
 
                           <p className="m-0 text-xs text-secondary flex items-center gap-2 flex-wrap">
+                            {comp.radicado && (
+                              <span className="font-mono bg-sand/80 px-2 py-0.5 rounded text-ink font-bold text-[0.68rem]">
+                                {comp.radicado}
+                              </span>
+                            )}
                             <span>NIT: <strong className="text-ink">{comp.nit}</strong></span>
                             <span>•</span>
                             <span>{comp.city}</span>
@@ -257,7 +262,7 @@ export default function VinculaAdminCompaniesPage() {
                         )}
                         {isPending && (
                           <span className="rounded-full bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 text-[0.68rem] font-bold">
-                            ⏳ Pendiente ({comp.daysWaiting}d en espera)
+                            ⏳ SLA 72h: {comp.slaText || `${comp.slaHoursRemaining ?? 72}h restantes`}
                           </span>
                         )}
                         {isCorrection && (

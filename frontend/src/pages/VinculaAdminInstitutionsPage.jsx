@@ -52,8 +52,8 @@ export default function VinculaAdminInstitutionsPage() {
     { label: 'Total en Plataforma', value: String(metrics.totalInstitutionsCount) },
   ];
 
-  function handleApprove(id) {
-    approveInstitution(id);
+  function handleApprove(id, notes) {
+    approveInstitution(id, notes);
     setSelectedInstitution(null);
     showToast('Institución incorporada a la red Vincula exitosamente.');
   }
@@ -206,6 +206,11 @@ export default function VinculaAdminInstitutionsPage() {
                           </div>
 
                           <p className="m-0 text-xs text-secondary flex items-center gap-2 flex-wrap">
+                            {ies.radicado && (
+                              <span className="font-mono bg-sand/80 px-2 py-0.5 rounded text-ink font-bold text-[0.68rem]">
+                                {ies.radicado}
+                              </span>
+                            )}
                             <span>Código SNIES: <strong className="text-ink">{ies.sniesCode}</strong></span>
                             <span>•</span>
                             <span>{ies.academicCharacter}</span>
@@ -226,7 +231,7 @@ export default function VinculaAdminInstitutionsPage() {
                         )}
                         {isPending && (
                           <span className="rounded-full bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 text-[0.68rem] font-bold">
-                            ⏳ Pendiente ({ies.daysWaiting}d en espera)
+                            ⏳ SLA 72h: {ies.slaText || `${ies.slaHoursRemaining ?? 72}h restantes`}
                           </span>
                         )}
                         {isCorrection && (

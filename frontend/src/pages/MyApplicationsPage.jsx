@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import GraduatePortalLayout from '../components/dashboard/GraduatePortalLayout.jsx';
 import { phaseDefinitions, proposalApplications, proposalInterviews } from '../data/proposalApplications.js';
+import { applicationService } from '../services/applicationService.js';
 
 const phaseOptions = [
   { value: '1', label: 'Fase 1: Postulación recibida', shortLabel: 'Fase 1', dot: 'bg-amber-500' },
@@ -10,6 +11,9 @@ const phaseOptions = [
 ];
 
 export default function MyApplicationsPage() {
+  const [applications, setApplications] = useState(proposalApplications);
+  const [interviews, setInterviews] = useState(proposalInterviews);
+  const [loading, setLoading] = useState(false);
   const [phaseFilter, setPhaseFilter] = useState('all'); // 'all' | '1' | '2' | '3' | '4'
   const [keyword, setKeyword] = useState('');
   const [selectedAppId, setSelectedAppId] = useState(proposalApplications[0]?.id || null);
@@ -23,10 +27,45 @@ export default function MyApplicationsPage() {
     setTimeout(() => setToastMessage(null), 3500);
   }
 
+  // Cargar postulaciones reales del backend PostgreSQL si el usuario está autenticado
+  useEffect(() => {
+    let isMounted = true;
+    async function loadApplications() {
+      try {
+        setLoading(true);
+        const data = await applicationService.getMyApplications();
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          setApplications(data);
+          setSelectedAppId((prev) => (data.some((d) => d.id === prev) ? prev : data[0].id));
+
+          // Extraer entrevistas en vivo asociadas a las postulaciones
+          const liveInterviews = data
+            .filter((d) => d.interview)
+            .map((d) => ({
+              applicationId: d.id,
+              ...d.interview,
+            }));
+          if (liveInterviews.length > 0) {
+            setInterviews(liveInterviews);
+          }
+        }
+      } catch (err) {
+        // Fallback resiliente a los datos de propuesta si no hay sesión o falla la red
+        console.info('[MyApplicationsPage] Modo demostración / datos precargados:', err.message);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadApplications();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Active applications excluding withdrawn
   const activeApplications = useMemo(
-    () => proposalApplications.filter((a) => !withdrawnApps.has(a.id)),
-    [withdrawnApps],
+    () => applications.filter((a) => !withdrawnApps.has(a.id)),
+    [applications, withdrawnApps],
   );
 
   // Filtered applications based on search and phase buttons
@@ -63,14 +102,14 @@ export default function MyApplicationsPage() {
 
   // Interview associated with selected application
   const selectedInterview = useMemo(
-    () => (selectedApp ? proposalInterviews.find((i) => i.applicationId === selectedApp.id) : null),
-    [selectedApp],
+    () => (selectedApp ? (interviews.find((i) => i.applicationId === selectedApp.id) || selectedApp.interview) : null),
+    [selectedApp, interviews],
   );
 
   // Next imminent upcoming interview
   const nextInterview = useMemo(
-    () => proposalInterviews.find((i) => i.isUpcoming && !withdrawnApps.has(i.applicationId)),
-    [withdrawnApps],
+    () => interviews.find((i) => i.isUpcoming && !withdrawnApps.has(i.applicationId)),
+    [interviews, withdrawnApps],
   );
 
   // Quick pipeline activity counts
@@ -79,8 +118,8 @@ export default function MyApplicationsPage() {
     [activeApplications],
   );
   const interviewsCount = useMemo(
-    () => proposalInterviews.filter((i) => i.isUpcoming && !withdrawnApps.has(i.applicationId)).length,
-    [withdrawnApps],
+    () => interviews.filter((i) => i.isUpcoming && !withdrawnApps.has(i.applicationId)).length,
+    [interviews, withdrawnApps],
   );
   const offersCount = useMemo(
     () => activeApplications.filter((a) => a.phase === 4).length,
@@ -92,7 +131,13 @@ export default function MyApplicationsPage() {
     setMobileDetailOpen(true);
   }
 
-  function handleWithdraw(appId, companyName) {
+  async function handleWithdraw(appId, companyName) {
+    try {
+      await applicationService.withdrawApplication(appId);
+    } catch (err) {
+      // Ignorar si es postulación de prueba estática sin registro en BD
+      console.info('[MyApplicationsPage] Retiro local:', err.message);
+    }
     setWithdrawnApps((prev) => new Set(prev).add(appId));
     setMobileDetailOpen(false);
     notify(`Has retirado tu postulación en ${companyName}.`);

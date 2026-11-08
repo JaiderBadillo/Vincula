@@ -1,49 +1,34 @@
 """
-Backend FastAPI - Vincula Bolsa de Empleo y Trazabilidad IES
-Servicio ligero, determinista y preparado para escalar sin costos de tokens.
+Punto de Entrada del Backend Vincula.
+Inicia el Monolito Modular Híbrido Asíncrono en FastAPI.
+Ejecutar con:
+    uvicorn app.main:app --reload --port 8000
+o directamente:
+    python main.py
 """
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from app.api.endpoints.traceability import router as traceability_router
+import sys
+import os
 
-app = FastAPI(
-    title="Vincula IES - API de Trazabilidad Curricular",
-    description="Servicio backend para extracción de pensums (PDF) y cálculo de pertinencia laboral.",
-    version="1.0.0"
-)
+# Asegurar que el directorio raíz de backend esté en el PYTHONPATH
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Permitir CORS para el frontend en Vite (puerto 5173 y afines)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "*"
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Incluir router de trazabilidad
-app.include_router(traceability_router, prefix="/api")
-
-
-@app.get("/")
-def root():
-    return {
-        "app": "Vincula IES API",
-        "status": "online",
-        "modules": {
-            "traceability": "/api/traceability/health",
-            "pdf_extractor": "/api/traceability/upload-pensum-pdf",
-            "curriculum_matcher": "/api/traceability/match"
-        }
-    }
-
+from app.main import app
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    from app.core.config import settings
+
+    print("============================================================================")
+    print(" INICIANDO VINCULA API - MONOLITO MODULAR HÍBRIDO ASÍNCRONO")
+    print(f" Servidor: http://{settings.HOST}:{settings.PORT}")
+    print(f" Documentación Swagger UI: http://localhost:{settings.PORT}/docs")
+    print(f" Documentación ReDoc: http://localhost:{settings.PORT}/redoc")
+    print("============================================================================")
+
+    uvicorn.run(
+        "app.main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=settings.DEBUG
+    )

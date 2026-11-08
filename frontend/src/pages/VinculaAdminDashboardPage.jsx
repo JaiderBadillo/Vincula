@@ -46,14 +46,14 @@ export default function VinculaAdminDashboardPage() {
     { label: 'Convenios Marco', value: String(metrics.activeAgreements) },
   ];
 
-  function handleApproveCompany(id) {
-    approveCompany(id);
+  function handleApproveCompany(id, notes) {
+    approveCompany(id, notes);
     setSelectedCompany(null);
     showToast('Empresa aprobada exitosamente y notificada.');
   }
 
-  function handleApproveInstitution(id) {
-    approveInstitution(id);
+  function handleApproveInstitution(id, notes) {
+    approveInstitution(id, notes);
     setSelectedInstitution(null);
     showToast('Institución incorporada a la red Vincula.');
   }
@@ -194,10 +194,11 @@ export default function VinculaAdminDashboardPage() {
                               {comp.businessName}
                             </h5>
                             <span className="rounded-full bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 text-[0.62rem] font-bold">
-                              {comp.daysWaiting}d en espera
+                              ⏳ {comp.slaText || `${comp.slaHoursRemaining ?? 72}h`}
                             </span>
                           </div>
                           <p className="m-0 text-[0.68rem] text-secondary">
+                            {comp.radicado && <span className="font-mono font-bold text-ink mr-1">{comp.radicado} ·</span>}
                             NIT: {comp.nit} · {comp.city}
                           </p>
                           <p className="m-0 text-[0.68rem] text-cocoa">
@@ -254,10 +255,11 @@ export default function VinculaAdminDashboardPage() {
                               {ies.shortName} · {ies.name}
                             </h5>
                             <span className="rounded-full bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 text-[0.62rem] font-bold">
-                              {ies.daysWaiting}d en espera
+                              ⏳ {ies.slaText || `${ies.slaHoursRemaining ?? 72}h`}
                             </span>
                           </div>
                           <p className="m-0 text-[0.68rem] text-secondary">
+                            {ies.radicado && <span className="font-mono font-bold text-ink mr-1">{ies.radicado} ·</span>}
                             SNIES: {ies.sniesCode} · {ies.city}
                           </p>
                           <p className="m-0 text-[0.68rem] text-cocoa">

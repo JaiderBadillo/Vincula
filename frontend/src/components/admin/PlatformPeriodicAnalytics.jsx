@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { MONTHLY_PERIODS_DATA, SEMESTRAL_PERIODS_DATA } from '../../data/vinculaAdminData.js';
 
 export default function PlatformPeriodicAnalytics() {
@@ -97,32 +97,64 @@ export default function PlatformPeriodicAnalytics() {
     document.body.removeChild(link);
   }
 
-  // Geometría del Gráfico SVG
+  // ── Geometría y escalas del gráfico ──
   const chartWidth = 720;
-  const chartHeight = 220;
-  const padding = { top: 25, right: 30, bottom: 40, left: 45 };
+  const chartHeight = 260;
+  const padding = { top: 26, right: 30, bottom: 40, left: 48 };
   const graphW = chartWidth - padding.left - padding.right;
   const graphH = chartHeight - padding.top - padding.bottom;
 
-  // Valor máximo dinámico para la escala
-  const maxBarValue = useMemo(() => {
-    if (activeDimension === 'companies') {
-      return Math.max(...seriesData.map((d) => d.newCompanies), 6);
-    }
-    if (activeDimension === 'vacancies') {
-      return Math.max(...seriesData.map((d) => d.newVacancies), 16);
-    }
-    if (activeDimension === 'institutions') {
-      return Math.max(...seriesData.map((d) => d.newInstitutions), 3);
-    }
-    if (activeDimension === 'graduates') {
-      return Math.max(...seriesData.map((d) => d.newGraduates), 220);
-    }
-    // 'all': escala normalizada sobre egresados
-    return Math.max(...seriesData.map((d) => d.newGraduates), 200);
-  }, [seriesData, activeDimension]);
+  const DIMS = [
+    { id: 'companies', key: 'newCompanies', label: 'Nuevas Empresas', color: '#c85a32' },
+    { id: 'vacancies', key: 'newVacancies', label: 'Nuevas Vacantes', color: '#d99b26' },
+    { id: 'institutions', key: 'newInstitutions', label: 'Nuevas IES', color: '#2b1810' },
+    { id: 'graduates', key: 'newGraduates', label: 'Nuevos Egresados', color: '#059669' },
+  ];
+  const isAll = activeDimension === 'all';
+  const activeDim = DIMS.find((d) => d.id === activeDimension) || null;
 
+  // Pico real de cada serie (base del índice relativo y de la escala individual)
+  const peaks = DIMS.reduce(
+    (acc, d) => ({ ...acc, [d.key]: Math.max(...seriesData.map((r) => r[d.key]), 1) }),
+    {}
+  );
+
+  const niceMax = (v) => {
+    const steps = 4;
+    const rough = v / steps;
+    const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+    const n = rough / mag;
+    const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+    return nice * mag * steps;
+  };
+
+  // Vista combinada = índice 0-100 (cada serie contra su propio pico, sin factores inventados)
+  // Vista individual = valores reales con escala propia
+  const axisMax = isAll ? 100 : niceMax(peaks[activeDim.key]);
   const stepX = graphW / Math.max(seriesData.length, 1);
+  const xAt = (i) => padding.left + i * stepX + stepX / 2;
+  const yAt = (v) => padding.top + graphH - (v / axisMax) * graphH;
+  const valueFor = (row, dim) => (isAll ? (row[dim.key] / peaks[dim.key]) * 100 : row[dim.key]);
+
+  const smoothPath = (pts) =>
+    pts.reduce((acc, p, i, arr) => {
+      if (i === 0) return `M ${p.x} ${p.y}`;
+      const prev = arr[i - 1];
+      const mx = (prev.x + p.x) / 2;
+      return `${acc} C ${mx} ${prev.y}, ${mx} ${p.y}, ${p.x} ${p.y}`;
+    }, '');
+
+  const activeAvg =
+    !isAll && seriesData.length
+      ? seriesData.reduce((s, r) => s + r[activeDim.key], 0) / seriesData.length
+      : 0;
+  const bestIdx = !isAll
+    ? seriesData.reduce((b, r, i, arr) => (r[activeDim.key] > arr[b][activeDim.key] ? i : b), 0)
+    : -1;
+
+  const hoveredRow = hoveredIndex !== null ? seriesData[hoveredIndex] : null;
+  const tipLeft =
+    hoveredIndex !== null ? Math.min(Math.max((xAt(hoveredIndex) / chartWidth) * 100, 16), 84) : 0;
 
   return (
     <section className="space-y-6">
@@ -344,14 +376,24 @@ export default function PlatformPeriodicAnalytics() {
           </div>
         </div>
 
-        {/* Visualizador SVG de Columnas Dinámicas */}
+        {/* Visualizador SVG interactivo */}
         <div className="relative w-full overflow-x-auto pb-2">
-          <div className="min-w-[620px]">
-            <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-auto overflow-visible">
-              {/* Líneas guía horizontales */}
+          <div className="relative min-w-[620px]">
+            <style>{`
+              @keyframes vcAdmCol { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+              @keyframes vcAdmLine { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+            `}</style>
+
+            <svg
+              key={`${selectedRange}-${activeDimension}`}
+              viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+              className="w-full h-auto overflow-visible select-none"
+              role="img"
+              aria-label="Evolución temporal de altas en la plataforma"
+            >
+              {/* Líneas guía + eje Y */}
               {[0, 0.25, 0.5, 0.75, 1].map((pct) => {
                 const y = padding.top + graphH * (1 - pct);
-                const labelVal = Math.round(maxBarValue * pct);
                 return (
                   <g key={pct}>
                     <line
@@ -360,173 +402,230 @@ export default function PlatformPeriodicAnalytics() {
                       x2={padding.left + graphW}
                       y2={y}
                       stroke="#f0e6dc"
-                      strokeDasharray="4 4"
+                      strokeDasharray={pct === 0 ? '0' : '4 4'}
                     />
-                    <text
-                      x={padding.left - 8}
-                      y={y + 3}
-                      textAnchor="end"
-                      className="fill-stone-400 text-[10px] font-mono"
-                    >
-                      {labelVal}
+                    <text x={padding.left - 8} y={y + 3} textAnchor="end" className="fill-stone-400 text-[10px] font-mono">
+                      {Math.round(axisMax * pct)}
                     </text>
                   </g>
                 );
               })}
 
-              {/* Columnas agrupadas por periodo */}
-              {seriesData.map((d, idx) => {
-                const centerX = padding.left + idx * stepX + stepX / 2;
-                const isHovered = hoveredIndex === idx;
+              {isAll && (
+                <text x={padding.left} y={padding.top - 10} className="fill-stone-500 text-[10px] font-semibold">
+                  Índice relativo · 100 = pico de cada serie (los valores reales aparecen al pasar el cursor)
+                </text>
+              )}
 
-                // Alturas de barras según la dimensión
-                const hGrads = (d.newGraduates / maxBarValue) * graphH;
-                const hVac = ((d.newVacancies * (activeDimension === 'vacancies' ? 1 : 8)) / maxBarValue) * graphH;
-                const hComp = ((d.newCompanies * (activeDimension === 'companies' ? 1 : 20)) / maxBarValue) * graphH;
-                const hInst = ((d.newInstitutions * (activeDimension === 'institutions' ? 1 : 60)) / maxBarValue) * graphH;
+              {/* Banda resaltada */}
+              {hoveredIndex !== null && (
+                <rect
+                  x={xAt(hoveredIndex) - stepX * 0.45}
+                  y={padding.top}
+                  width={stepX * 0.9}
+                  height={graphH}
+                  fill="rgba(217, 155, 38, 0.09)"
+                  rx={8}
+                />
+              )}
 
-                return (
-                  <g
-                    key={d.key}
+              {/* VISTA INDIVIDUAL: columnas con valores reales */}
+              {!isAll && (
+                <g>
+                  {seriesData.map((d, idx) => {
+                    const v = d[activeDim.key];
+                    const h = Math.max((v / axisMax) * graphH, v > 0 ? 3 : 0);
+                    const bw = Math.min(stepX * 0.5, 46);
+                    const isHover = hoveredIndex === idx;
+                    return (
+                      <g key={d.key}>
+                        <rect
+                          x={xAt(idx) - bw / 2}
+                          y={padding.top + graphH - h}
+                          width={bw}
+                          height={h}
+                          rx={6}
+                          fill={activeDim.color}
+                          opacity={hoveredIndex !== null && !isHover ? 0.45 : 1}
+                          className="transition-opacity duration-150"
+                          style={{
+                            transformBox: 'fill-box',
+                            transformOrigin: 'bottom',
+                            animation: `vcAdmCol .55s ${idx * 0.05}s ease-out both`,
+                          }}
+                        />
+                        <text
+                          x={xAt(idx)}
+                          y={padding.top + graphH - h - 6}
+                          textAnchor="middle"
+                          className={`text-[11px] font-bold ${isHover ? 'fill-stone-900' : 'fill-stone-600'}`}
+                        >
+                          {v}
+                        </text>
+                        {idx === bestIdx && v > 0 && (
+                          <text
+                            x={xAt(idx)}
+                            y={padding.top + graphH - h - 20}
+                            textAnchor="middle"
+                            className="text-[9px] font-bold fill-amber-600"
+                          >
+                            ★ máx.
+                          </text>
+                        )}
+                      </g>
+                    );
+                  })}
+
+                  {/* Promedio del periodo */}
+                  <line
+                    x1={padding.left}
+                    x2={padding.left + graphW}
+                    y1={yAt(activeAvg)}
+                    y2={yAt(activeAvg)}
+                    stroke={activeDim.color}
+                    strokeWidth="1.2"
+                    strokeDasharray="6 4"
+                    opacity="0.7"
+                  />
+                  <text
+                    x={padding.left + graphW}
+                    y={yAt(activeAvg) - 5}
+                    textAnchor="end"
+                    className="text-[10px] font-semibold"
+                    fill={activeDim.color}
+                  >
+                    Promedio {activeAvg.toFixed(1)}
+                  </text>
+                </g>
+              )}
+
+              {/* VISTA COMBINADA: líneas sobre el mismo índice */}
+              {isAll &&
+                DIMS.map((dim) => {
+                  const pts = seriesData.map((row, i) => ({ x: xAt(i), y: yAt(valueFor(row, dim)) }));
+                  return (
+                    <g key={dim.id}>
+                      <path
+                        d={smoothPath(pts)}
+                        fill="none"
+                        stroke={dim.color}
+                        strokeWidth="2.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        pathLength="1"
+                        strokeDasharray="1"
+                        style={{ animation: 'vcAdmLine .9s ease-out both' }}
+                      />
+                      {pts.map((p, i) => (
+                        <circle
+                          key={i}
+                          cx={p.x}
+                          cy={p.y}
+                          r={hoveredIndex === i ? 5.5 : 3.5}
+                          fill="#fff"
+                          stroke={dim.color}
+                          strokeWidth="2.4"
+                          className="transition-all duration-150"
+                        />
+                      ))}
+                    </g>
+                  );
+                })}
+
+              {/* Eje X + zonas sensibles (mouse + teclado) */}
+              {seriesData.map((d, idx) => (
+                <g key={`x-${d.key}`}>
+                  <text
+                    x={xAt(idx)}
+                    y={padding.top + graphH + 22}
+                    textAnchor="middle"
+                    className={`text-[11px] font-bold ${
+                      hoveredIndex === idx ? 'fill-terracotta' : 'fill-stone-600'
+                    }`}
+                  >
+                    {d.shortLabel}
+                  </text>
+                  <rect
+                    x={padding.left + idx * stepX}
+                    y={padding.top - 6}
+                    width={stepX}
+                    height={graphH + 40}
+                    fill="transparent"
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`${d.periodLabel}: ${d.newCompanies} empresas, ${d.newVacancies} vacantes, ${d.newInstitutions} IES, ${d.newGraduates} egresados`}
+                    className="cursor-pointer outline-none"
                     onMouseEnter={() => setHoveredIndex(idx)}
                     onMouseLeave={() => setHoveredIndex(null)}
-                    className="cursor-pointer transition-opacity"
-                  >
-                    {/* Área de hover / highlight */}
-                    <rect
-                      x={centerX - stepX * 0.42}
-                      y={padding.top}
-                      width={stepX * 0.84}
-                      height={graphH}
-                      fill={isHovered ? 'rgba(217, 155, 38, 0.08)' : 'transparent'}
-                      rx={8}
-                    />
+                    onFocus={() => setHoveredIndex(idx)}
+                    onBlur={() => setHoveredIndex(null)}
+                  />
+                </g>
+              ))}
+            </svg>
 
-                    {/* Barras según dimensión activa */}
-                    {activeDimension === 'all' ? (
-                      <g>
-                        {/* Barra Egresados (Fondo) */}
-                        <rect
-                          x={centerX - 16}
-                          y={padding.top + graphH - Math.max(hGrads, 4)}
-                          width={32}
-                          height={Math.max(hGrads, 4)}
-                          fill="#d1fae5"
-                          stroke="#10b981"
-                          strokeWidth={1}
-                          rx={4}
-                        />
-                        {/* Barra Vacantes */}
-                        <rect
-                          x={centerX - 11}
-                          y={padding.top + graphH - Math.max(hVac, 4)}
-                          width={22}
-                          height={Math.max(hVac, 4)}
-                          fill="#d99b26"
-                          rx={3}
-                        />
-                        {/* Barra Empresas */}
-                        <rect
-                          x={centerX - 6}
-                          y={padding.top + graphH - Math.max(hComp, 4)}
-                          width={12}
-                          height={Math.max(hComp, 4)}
-                          fill="#c85a32"
-                          rx={2}
-                        />
-                      </g>
-                    ) : (
-                      <rect
-                        x={centerX - 14}
-                        y={
-                          padding.top +
-                          graphH -
-                          Math.max(
-                            activeDimension === 'companies'
-                              ? hComp
-                              : activeDimension === 'vacancies'
-                              ? hVac
-                              : activeDimension === 'institutions'
-                              ? hInst
-                              : hGrads,
-                            6
-                          )
-                        }
-                        width={28}
-                        height={Math.max(
-                          activeDimension === 'companies'
-                            ? hComp
-                            : activeDimension === 'vacancies'
-                            ? hVac
-                            : activeDimension === 'institutions'
-                            ? hInst
-                            : hGrads,
-                          6
-                        )}
-                        fill={
-                          activeDimension === 'companies'
-                            ? '#c85a32'
-                            : activeDimension === 'vacancies'
-                            ? '#d99b26'
-                            : activeDimension === 'institutions'
-                            ? '#2b1810'
-                            : '#059669'
-                        }
-                        rx={5}
-                      />
-                    )}
-
-                    {/* Etiqueta del mes en el eje X */}
-                    <text
-                      x={centerX}
-                      y={padding.top + graphH + 20}
-                      textAnchor="middle"
-                      className={`text-[11px] font-bold ${
-                        isHovered ? 'fill-terracotta font-black' : 'fill-stone-600'
+            {/* Tooltip flotante con valores reales */}
+            {hoveredRow && (
+              <div
+                className="pointer-events-none absolute top-2 z-10 w-52 -translate-x-1/2 rounded-xl border border-sand-line bg-white px-3 py-2.5 text-xs shadow-lg"
+                style={{ left: `${tipLeft}%` }}
+              >
+                <p className="m-0 font-display font-bold text-cocoa">{hoveredRow.periodLabel}</p>
+                <div className="mt-1.5 space-y-1">
+                  {DIMS.map((dim) => (
+                    <p
+                      key={dim.id}
+                      className={`m-0 flex items-center justify-between ${
+                        !isAll && activeDimension !== dim.id ? 'opacity-50' : ''
                       }`}
                     >
-                      {d.shortLabel}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
+                      <span className="flex items-center gap-1.5 text-secondary">
+                        <span className="size-2 rounded-full" style={{ backgroundColor: dim.color }} />
+                        {dim.label}
+                      </span>
+                      <strong className="text-ink">+{hoveredRow[dim.key]}</strong>
+                    </p>
+                  ))}
+                  <p className="m-0 flex items-center justify-between border-t border-sand-line pt-1 mt-1">
+                    <span className="text-secondary">Postulaciones</span>
+                    <strong className="text-ink">{hoveredRow.totalApplications}</strong>
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Leyenda y Detalle al hacer Hover */}
+        {/* Leyenda interactiva y lectura rápida */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-sand-line pt-3">
-          <div className="flex flex-wrap items-center gap-4 text-xs">
-            <span className="flex items-center gap-1.5 font-semibold text-ink">
-              <span className="size-3 rounded-full bg-terracotta" />
-              <span>Nuevas Empresas</span>
-            </span>
-            <span className="flex items-center gap-1.5 font-semibold text-ink">
-              <span className="size-3 rounded-full bg-ochre" />
-              <span>Nuevas Vacantes</span>
-            </span>
-            <span className="flex items-center gap-1.5 font-semibold text-ink">
-              <span className="size-3 rounded-full bg-cocoa" />
-              <span>Nuevas IES</span>
-            </span>
-            <span className="flex items-center gap-1.5 font-semibold text-ink">
-              <span className="size-3 rounded-full bg-emerald-500" />
-              <span>Nuevos Egresados</span>
-            </span>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            {DIMS.map((dim) => (
+              <button
+                key={dim.id}
+                type="button"
+                onClick={() => setActiveDimension(activeDimension === dim.id ? 'all' : dim.id)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-semibold transition-all cursor-pointer ${
+                  activeDimension === dim.id
+                    ? 'border-cocoa bg-cocoa/5 text-ink'
+                    : 'border-sand-line text-ink hover:bg-sand/40'
+                }`}
+              >
+                <span className="size-2.5 rounded-full" style={{ backgroundColor: dim.color }} />
+                {dim.label}
+              </button>
+            ))}
           </div>
 
-          {hoveredIndex !== null && (
-            <div className="rounded-xl border border-ochre/40 bg-cream/70 px-3 py-1.5 text-xs text-ink flex items-center gap-3">
-              <strong className="text-cocoa font-display">
-                {seriesData[hoveredIndex].periodLabel}:
-              </strong>
-              <span>+{seriesData[hoveredIndex].newCompanies} empresas</span>
-              <span>•</span>
-              <span>+{seriesData[hoveredIndex].newVacancies} vacantes</span>
-              <span>•</span>
-              <span>+{seriesData[hoveredIndex].newGraduates} egresados</span>
-            </div>
-          )}
+          <p className="m-0 text-[0.72rem] text-secondary">
+            {isAll ? (
+              <>Cada línea se compara contra su propio máximo; elige una dimensión para ver cifras reales.</>
+            ) : (
+              <>
+                Máximo: <strong className="text-ink">{seriesData[bestIdx]?.[activeDim.key]}</strong> en{' '}
+                <strong className="text-ink">{seriesData[bestIdx]?.periodLabel}</strong>
+              </>
+            )}
+          </p>
         </div>
       </div>
 

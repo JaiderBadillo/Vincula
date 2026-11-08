@@ -1,0 +1,50 @@
+services:
+  - type: web
+    name: vincula-api
+    runtime: python
+    region: oregon
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --timeout-keep-alive 65
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: APP_NAME
+        value: Vincula API
+      - key: APP_VERSION
+        value: 2.0.0
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+      - key: CORS_ORIGINS
+        value: '["https://vincula.vercel.app","http://localhost:5173","http://127.0.0.1:5173"]'
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET_DOCS
+        value: vincula-documentos-auditoria
+      - key: SUPABASE_STORAGE_BUCKET_DIPLOMAS
+        value: vincula-diplomas-validados
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: N8N_WEBHOOK_BASE_URL
+        sync: false
+      - key: N8N_WEBHOOK_SECRET
+        sync: false

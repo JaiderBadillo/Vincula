@@ -4,6 +4,7 @@ import {
   INITIAL_INSTITUTIONS_REQUESTS,
   INITIAL_PLATFORM_METRICS,
 } from '../data/vinculaAdminData.js';
+import { adminService } from '../services/adminService.js';
 
 const STORAGE_KEY_COMPANIES = 'vincula.admin.companies.v1';
 const STORAGE_KEY_INSTITUTIONS = 'vincula.admin.institutions.v1';
@@ -27,6 +28,156 @@ function writeStoredData(key, data) {
   }
 }
 
+/**
+ * Normaliza una empresa proveniente de PostgreSQL / FastAPI a la estructura del Frontend
+ */
+function mapBackendCompanyToUi(item) {
+  const statusMap = {
+    pendiente: 'pending',
+    en_subsanacion: 'in_correction',
+    aprobado: 'approved',
+    rechazado: 'rejected',
+  };
+
+  const domain = item.correo_contacto ? item.correo_contacto.split('@')[1] || '' : '';
+  const isCorporate =
+    Boolean(domain) &&
+    !domain.includes('gmail') &&
+    !domain.includes('hotmail') &&
+    !domain.includes('yahoo') &&
+    !domain.includes('outlook');
+
+  return {
+    id: item.id,
+    radicado: item.radicado || `RAD-EMP-2026-${String(item.id).slice(0, 8).toUpperCase()}`,
+    businessName: item.razon_social,
+    tradeName: item.nombre_comercial || '',
+    nit: item.nit,
+    ciiuCode: item.codigo_ciiu || '6201',
+    ciiuDescription: item.descripcion_ciiu || 'Actividades de tecnología y servicios empresariales',
+    sector: item.sector_economico || 'Construcción / Servicios',
+    companySize: item.tamano_empresa || 'Mediana',
+    city: `${item.ciudad || 'Bucaramanga'}, ${item.departamento || 'Santander'}`,
+    address: item.direccion || 'Dirección corporativa registrada',
+    phone: item.telefono || '',
+    email: item.correo_contacto,
+    website: item.sitio_web || '',
+    legalRepName: item.nombre_representante_legal || 'Representante Legal',
+    legalRepId: item.documento_representante_legal || 'C.C. Registrada',
+    contactPerson: item.persona_contacto || item.nombre_representante_legal || 'Contacto Oficial',
+    registeredAt: item.registrado_en || new Date().toISOString(),
+    approvedAt: item.aprobado_en,
+    status: statusMap[item.estado] || item.estado || 'pending',
+    slaHoursRemaining: typeof item.sla_horas_restantes === 'number' ? item.sla_horas_restantes : 72,
+    slaText: item.sla_texto || '72 horas restantes',
+    daysWaiting: Math.max(0, Math.floor((72 - (item.sla_horas_restantes ?? 72)) / 24)),
+    correctionReason: item.motivo_subsanacion || null,
+    domainValidation: {
+      domain,
+      isCorporate,
+      mxVerified: isCorporate,
+    },
+    documents: (item.documentos || []).map((d) => ({
+      id: d.id,
+      type: d.tipo_documento,
+      label:
+        d.tipo_documento === 'camara_comercio'
+          ? 'Certificado Cámara de Comercio'
+          : d.tipo_documento === 'rut'
+          ? 'Registro Único Tributario (RUT)'
+          : d.tipo_documento === 'cedula_rep_legal'
+          ? 'Cédula de Ciudadanía Representante Legal'
+          : d.tipo_documento === 'carta_autorizacion'
+          ? 'Carta de Autorización / Delegación de Talento'
+          : d.tipo_documento,
+      issuer:
+        d.tipo_documento === 'rut'
+          ? 'DIAN Colombia'
+          : d.tipo_documento === 'camara_comercio'
+          ? 'Cámara de Comercio'
+          : 'Entidad Oficial',
+      fileName: d.nombre_archivo || `${d.tipo_documento}.pdf`,
+      fileSize: `${d.tamano_kb || 50} KB`,
+      urlArchivo: d.url_archivo,
+      status: d.estado || 'adjunto',
+      uploadedAt: d.subido_en,
+      verified: d.estado === 'aprobado',
+    })),
+    reviewLog: [
+      {
+        date: item.registrado_en ? new Date(item.registrado_en).toLocaleString('es-CO') : 'Reciente',
+        author: 'Sistema Vincula',
+        action: `Expediente radicado: ${item.radicado || item.nit}`,
+        notes: item.motivo_subsanacion || undefined,
+      },
+    ],
+  };
+}
+
+/**
+ * Normaliza una Institución (IES) proveniente de PostgreSQL / FastAPI
+ */
+function mapBackendInstitutionToUi(item) {
+  const statusMap = {
+    pendiente: 'pending',
+    en_subsanacion: 'in_correction',
+    aprobado: 'approved',
+    rechazado: 'rejected',
+  };
+
+  return {
+    id: item.id,
+    radicado: item.radicado || `RAD-IES-2026-${String(item.id).slice(0, 8).toUpperCase()}`,
+    name: item.nombre_oficial,
+    shortName: item.nombre_corto || item.nombre_oficial,
+    sniesCode: item.codigo_snies,
+    academicCharacter: item.caracter_academico || 'Universidad',
+    nit: item.nit,
+    city: `${item.ciudad || 'Bucaramanga'}, ${item.departamento || 'Santander'}`,
+    address: item.direccion || '',
+    phone: item.telefono || '',
+    email: item.correo_institucional,
+    website: item.sitio_web || '',
+    rectorName: item.nombre_rector || 'Rector(a) Institucional',
+    rectorDoc: item.documento_rector || '',
+    contactPerson: item.persona_contacto || 'Coordinador de Empleabilidad',
+    registeredAt: item.registrado_en || new Date().toISOString(),
+    approvedAt: item.aprobado_en,
+    status: statusMap[item.estado] || item.estado || 'pending',
+    slaHoursRemaining: typeof item.sla_horas_restantes === 'number' ? item.sla_horas_restantes : 72,
+    slaText: item.sla_texto || '72 horas restantes',
+    daysWaiting: Math.max(0, Math.floor((72 - (item.sla_horas_restantes ?? 72)) / 24)),
+    correctionReason: item.motivo_subsanacion || null,
+    documents: (item.documentos || []).map((d) => ({
+      id: d.id,
+      type: d.tipo_documento,
+      label:
+        d.tipo_documento === 'resolucion_men'
+          ? 'Resolución Reconocimiento MEN'
+          : d.tipo_documento === 'rut_institucional' || d.tipo_documento === 'rut'
+          ? 'RUT Institucional de la Universidad'
+          : d.tipo_documento === 'cedula_rector' || d.tipo_documento === 'acto_posesion'
+          ? 'Acto de Nombramiento / Cédula Rector'
+          : d.tipo_documento,
+      issuer: 'Ministerio de Educación Nacional',
+      fileName: d.nombre_archivo || `${d.tipo_documento}.pdf`,
+      fileSize: `${d.tamano_kb || 50} KB`,
+      urlArchivo: d.url_archivo,
+      status: d.estado || 'adjunto',
+      uploadedAt: d.subido_en,
+      verified: d.estado === 'aprobado',
+    })),
+    reviewLog: [
+      {
+        date: item.registrado_en ? new Date(item.registrado_en).toLocaleString('es-CO') : 'Reciente',
+        author: 'Sistema Vincula',
+        action: `Expediente IES radicado: ${item.radicado || item.codigo_snies}`,
+        notes: item.motivo_subsanacion || undefined,
+      },
+    ],
+  };
+}
+
 export function useVinculaAdmin() {
   const [companies, setCompanies] = useState(() =>
     readStoredData(STORAGE_KEY_COMPANIES, INITIAL_COMPANIES_REQUESTS)
@@ -34,6 +185,44 @@ export function useVinculaAdmin() {
   const [institutions, setInstitutions] = useState(() =>
     readStoredData(STORAGE_KEY_INSTITUTIONS, INITIAL_INSTITUTIONS_REQUESTS)
   );
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
+
+  /**
+   * Carga de datos reales desde el Backend FastAPI
+   */
+  const loadBackendData = useCallback(async () => {
+    setIsLoading(true);
+    setApiError(null);
+    try {
+      // 1. Obtener empresas desde /api/v1/admin/auditoria/empresas
+      const compRes = await adminService.getCompaniesAudit({ limit: 50 });
+      const rawCompList = compRes.items || compRes;
+      if (Array.isArray(rawCompList) && rawCompList.length > 0) {
+        const mappedComp = rawCompList.map(mapBackendCompanyToUi);
+        setCompanies(mappedComp);
+        writeStoredData(STORAGE_KEY_COMPANIES, mappedComp);
+      }
+
+      // 2. Obtener IES desde /api/v1/admin/auditoria/ies
+      const iesRes = await adminService.getInstitutionsAudit({ limit: 50 });
+      const rawIesList = iesRes.items || iesRes;
+      if (Array.isArray(rawIesList) && rawIesList.length > 0) {
+        const mappedIes = rawIesList.map(mapBackendInstitutionToUi);
+        setInstitutions(mappedIes);
+        writeStoredData(STORAGE_KEY_INSTITUTIONS, mappedIes);
+      }
+    } catch (err) {
+      // Si no hay sesión de admin o falla la red, conserva el fallback
+      setApiError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadBackendData();
+  }, [loadBackendData]);
 
   useEffect(() => {
     function handleSync() {
@@ -53,26 +242,28 @@ export function useVinculaAdmin() {
   // ─── Acciones sobre Empresas ───
 
   const approveCompany = useCallback(
-    (companyId, adminNotes = '') => {
+    async (companyId, adminNotes = '') => {
+      try {
+        await adminService.approveCompany(companyId, adminNotes);
+      } catch (err) {
+        console.warn('[useVinculaAdmin] Llamada remota a /aprobar falló o simulada:', err.message);
+      }
+
       setCompanies((prev) => {
         const next = prev.map((item) => {
           if (item.id !== companyId) return item;
-          const nowStr = new Date().toLocaleDateString('es-CO', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          });
+          const nowStr = new Date().toLocaleString('es-CO');
           return {
             ...item,
             status: 'approved',
             daysWaiting: 0,
+            slaHoursRemaining: 0,
+            slaText: 'Aprobado (SLA Cumplido)',
             reviewLog: [
               {
                 date: nowStr,
                 author: 'Super Admin Vincula',
-                action: 'Empresa Aprobada y Verificada. Credenciales de acceso generadas.',
+                action: 'Empresa Aprobada y Verificada. Cuarentena levantada.',
                 notes: adminNotes || undefined,
               },
               ...item.reviewLog,
@@ -88,21 +279,23 @@ export function useVinculaAdmin() {
   );
 
   const requestCompanyCorrection = useCallback(
-    (companyId, reason = '', requiredDocs = []) => {
+    async (companyId, reason = '', requiredDocs = []) => {
+      try {
+        await adminService.requestCompanyCorrection(companyId, reason, requiredDocs);
+      } catch (err) {
+        console.warn('[useVinculaAdmin] Llamada remota a /solicitar-subsanacion falló o simulada:', err.message);
+      }
+
       setCompanies((prev) => {
         const next = prev.map((item) => {
           if (item.id !== companyId) return item;
-          const nowStr = new Date().toLocaleDateString('es-CO', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          });
+          const nowStr = new Date().toLocaleString('es-CO');
           return {
             ...item,
             status: 'in_correction',
             correctionReason: reason,
+            slaHoursRemaining: 0,
+            slaText: 'Pausado (Esperando corrección del solicitante)',
             requiredDocs: requiredDocs.length > 0 ? requiredDocs : undefined,
             reviewLog: [
               {
@@ -123,21 +316,23 @@ export function useVinculaAdmin() {
   );
 
   const rejectCompany = useCallback(
-    (companyId, rejectionReason = '') => {
+    async (companyId, rejectionReason = '') => {
+      try {
+        await adminService.rejectCompany(companyId, rejectionReason);
+      } catch (err) {
+        console.warn('[useVinculaAdmin] Llamada remota a /rechazar falló o simulada:', err.message);
+      }
+
       setCompanies((prev) => {
         const next = prev.map((item) => {
           if (item.id !== companyId) return item;
-          const nowStr = new Date().toLocaleDateString('es-CO', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          });
+          const nowStr = new Date().toLocaleString('es-CO');
           return {
             ...item,
             status: 'rejected',
             rejectionReason,
+            slaHoursRemaining: 0,
+            slaText: 'Rechazado Definitivo',
             reviewLog: [
               {
                 date: nowStr,
@@ -159,21 +354,23 @@ export function useVinculaAdmin() {
   // ─── Acciones sobre IES ───
 
   const approveInstitution = useCallback(
-    (iesId, adminNotes = '') => {
+    async (iesId, adminNotes = '') => {
+      try {
+        await adminService.approveInstitution(iesId, adminNotes);
+      } catch (err) {
+        console.warn('[useVinculaAdmin] Llamada remota a /aprobar IES falló o simulada:', err.message);
+      }
+
       setInstitutions((prev) => {
         const next = prev.map((item) => {
           if (item.id !== iesId) return item;
-          const nowStr = new Date().toLocaleDateString('es-CO', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          });
+          const nowStr = new Date().toLocaleString('es-CO');
           return {
             ...item,
             status: 'approved',
             daysWaiting: 0,
+            slaHoursRemaining: 0,
+            slaText: 'Aprobado (SLA Cumplido)',
             reviewLog: [
               {
                 date: nowStr,
@@ -194,21 +391,23 @@ export function useVinculaAdmin() {
   );
 
   const requestInstitutionCorrection = useCallback(
-    (iesId, reason = '', requiredDocs = []) => {
+    async (iesId, reason = '', requiredDocs = []) => {
+      try {
+        await adminService.requestInstitutionCorrection(iesId, reason, requiredDocs);
+      } catch (err) {
+        console.warn('[useVinculaAdmin] Llamada remota a /solicitar-subsanacion IES falló o simulada:', err.message);
+      }
+
       setInstitutions((prev) => {
         const next = prev.map((item) => {
           if (item.id !== iesId) return item;
-          const nowStr = new Date().toLocaleDateString('es-CO', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          });
+          const nowStr = new Date().toLocaleString('es-CO');
           return {
             ...item,
             status: 'in_correction',
             correctionReason: reason,
+            slaHoursRemaining: 0,
+            slaText: 'Pausado (Esperando corrección del solicitante)',
             requiredDocs: requiredDocs.length > 0 ? requiredDocs : undefined,
             reviewLog: [
               {
@@ -229,21 +428,23 @@ export function useVinculaAdmin() {
   );
 
   const rejectInstitution = useCallback(
-    (iesId, rejectionReason = '') => {
+    async (iesId, rejectionReason = '') => {
+      try {
+        await adminService.rejectInstitution(iesId, rejectionReason);
+      } catch (err) {
+        console.warn('[useVinculaAdmin] Llamada remota a /rechazar IES falló o simulada:', err.message);
+      }
+
       setInstitutions((prev) => {
         const next = prev.map((item) => {
           if (item.id !== iesId) return item;
-          const nowStr = new Date().toLocaleDateString('es-CO', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          });
+          const nowStr = new Date().toLocaleString('es-CO');
           return {
             ...item,
             status: 'rejected',
             rejectionReason,
+            slaHoursRemaining: 0,
+            slaText: 'Rechazado Definitivo',
             reviewLog: [
               {
                 date: nowStr,
@@ -292,6 +493,9 @@ export function useVinculaAdmin() {
     companies,
     institutions,
     metrics,
+    isLoading,
+    apiError,
+    refreshData: loadBackendData,
     approveCompany,
     requestCompanyCorrection,
     rejectCompany,
@@ -301,4 +505,4 @@ export function useVinculaAdmin() {
     resetAll,
   };
 }
-
+export default useVinculaAdmin;

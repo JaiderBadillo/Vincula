@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { aiService } from '../../services/aiService.js';
 
 const KNOWLEDGE_FAMILIES = [
   'Contabilidad, Nómina y Sistemas ERP',
@@ -106,50 +107,45 @@ export default function PensumUploadModal({
     setFile(selectedFile);
     setIsProcessing(true);
     setApiError('');
-    setProgressStep('Conectando con el microservicio Python pypdf...');
-
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    formData.append('program_hint', program?.name || '');
+    setProgressStep('Analizando PDF con el motor de IA y pypdf...');
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/traceability/upload-pensum-pdf', {
-        method: 'POST',
-        body: formData,
-      });
+      const data = await aiService.analyzePensumPdf(selectedFile, program?.name || '', program?.id || null);
 
-      if (response.ok) {
-        const data = await response.json();
+      if (data && (data.success || data.semestres)) {
         setIsProcessing(false);
 
-        const mappedSemesters = (data.semesters || []).map((sem) => ({
-          semesterNumber: sem.semester_number,
-          label: sem.semester_label,
-          subjects: (sem.subjects || []).map((sub) => ({
+        const mappedSemesters = (data.semestres || []).map((sem) => ({
+          semesterNumber: sem.numero_semestre,
+          label: sem.etiqueta,
+          subjects: (sem.asignaturas || []).map((sub) => ({
             id: sub.id,
-            code: sub.code,
-            name: sub.name,
-            credits: sub.credits,
-            family: sub.family,
-            tools: sub.suggested_tools || [],
+            code: sub.codigo,
+            name: sub.nombre,
+            credits: sub.creditos,
+            family: sub.familia,
+            tools: sub.herramientas && sub.herramientas.length > 0 ? sub.herramientas : (sub.skills || []),
           })),
         }));
 
         setParsedData({
-          programName: data.program_name || program?.name,
+          programName: data.programa_nombre || program?.name,
           version: `Pensum Extraído (${selectedFile.name})`,
-          totalSemesters: mappedSemesters.length,
-          totalSubjects: data.total_subjects || mappedSemesters.reduce((acc, s) => acc + s.subjects.length, 0),
+          totalSemesters: data.total_semestres || mappedSemesters.length,
+          totalSubjects: data.total_asignaturas || mappedSemesters.reduce((acc, s) => acc + s.subjects.length, 0),
+          indicePertinencia: data.indice_pertinencia,
+          nivelPertinencia: data.nivel_pertinencia,
+          competenciasCubiertas: data.competencias_cubiertas || [],
+          brechasCriticas: data.brechas_criticas || [],
+          recomendacionesDecanatura: data.recomendaciones_decanatura || [],
           semesters: mappedSemesters,
         });
         setActiveTabSemester(mappedSemesters[0]?.semesterNumber || 1);
         return;
-      } else {
-        const errJson = await response.json().catch(() => ({}));
-        setApiError(errJson.detail || 'Error al procesar el archivo en el servidor.');
       }
-    } catch {
-      setApiError('No se pudo conectar con el servidor en http://127.0.0.1:8000. Utilizando procesamiento determinista local.');
+    } catch (err) {
+      console.warn('[PensumUploadModal] Fallo conexión API backend:', err.message);
+      setApiError('Procesamiento asistido con motor local de contingencia: ' + (err.message || ''));
     }
 
     setTimeout(() => {

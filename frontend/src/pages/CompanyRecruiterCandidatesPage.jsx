@@ -25,7 +25,13 @@ export default function CompanyRecruiterCandidatesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const vacancyParam = searchParams.get('vacancy') || '';
 
-  const { candidates, moveCandidateStage, discardCandidate, addCandidateNote } = useCompanyCandidates();
+  const {
+    candidates,
+    moveCandidateStage,
+    discardCandidate,
+    addCandidateNote,
+    loadLiveBoard,
+  } = useCompanyCandidates();
   const { vacancies } = useCompanyVacancies();
   const { sites } = useCompanySites();
 
@@ -46,6 +52,13 @@ export default function CompanyRecruiterCandidatesPage() {
       setSelectedVacancyFilter(vacancyParam);
     }
   }, [vacancyParam]);
+
+  // Cargar tablero en vivo desde el backend si se selecciona una vacante específica
+  useEffect(() => {
+    if (selectedVacancyFilter && selectedVacancyFilter !== 'all') {
+      loadLiveBoard(selectedVacancyFilter);
+    }
+  }, [selectedVacancyFilter, loadLiveBoard]);
 
   useEffect(() => {
     if (!toast) return undefined;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { adminService } from '../../services/adminService.js';
 
 export default function InstitutionVerificationDrawer({
   institution,
@@ -9,12 +10,20 @@ export default function InstitutionVerificationDrawer({
 }) {
   const [activeTab, setActiveTab] = useState('academic'); // 'academic' | 'documents' | 'history'
   const [previewDoc, setPreviewDoc] = useState(null);
+  const [securePdfUrl, setSecurePdfUrl] = useState(null);
+  const [loadingPdf, setLoadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState(null);
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+  const [approveNotes, setApproveNotes] = useState('');
 
   const open = Boolean(institution);
 
   useEffect(() => {
     if (!open) {
       setPreviewDoc(null);
+      setSecurePdfUrl(null);
+      setShowApproveConfirm(false);
+      setApproveNotes('');
       return undefined;
     }
     function handleKeyDown(e) {
@@ -23,6 +32,27 @@ export default function InstitutionVerificationDrawer({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open, onClose]);
+
+  async function handleInspectDoc(doc) {
+    setPreviewDoc(doc);
+    setPdfError(null);
+    setSecurePdfUrl(null);
+
+    if (doc?.id && !String(doc.id).startsWith('doc-')) {
+      setLoadingPdf(true);
+      try {
+        const secRes = await adminService.getDocumentSecureUrl(doc.id, 3600);
+        if (secRes && secRes.secure_url) {
+          setSecurePdfUrl(secRes.secure_url);
+        }
+      } catch (err) {
+        console.warn('[InstitutionVerificationDrawer] Error al obtener enlace seguro:', err);
+        setPdfError('No se pudo generar la URL firmada. Visualizando folio institucional simulado.');
+      } finally {
+        setLoadingPdf(false);
+      }
+    }
+  }
 
   if (!institution) return null;
 
@@ -58,8 +88,14 @@ export default function InstitutionVerificationDrawer({
                   </h2>
                 </div>
 
-                <p className="m-0 text-xs font-semibold text-cocoa">
-                  Código SNIES: {institution.sniesCode} · {institution.academicCharacter}
+                <p className="m-0 text-xs font-semibold text-cocoa flex items-center gap-2 flex-wrap">
+                  <span className="font-mono bg-sand/80 px-2 py-0.5 rounded text-ink font-bold">
+                    {institution.radicado || `RAD-IES-2026-${String(institution.id).slice(0, 8).toUpperCase()}`}
+                  </span>
+                  <span>·</span>
+                  <span>Código SNIES: {institution.sniesCode}</span>
+                  <span>·</span>
+                  <span>{institution.academicCharacter}</span>
                 </p>
 
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
@@ -72,13 +108,13 @@ export default function InstitutionVerificationDrawer({
                   {isPending && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-300 px-2.5 py-0.5 text-xs font-bold text-amber-900">
                       <i className="bx bx-time text-amber-700" />
-                      <span>Pendiente de Validación ({institution.daysWaiting}d en espera)</span>
+                      <span>SLA 72h: {institution.slaText || `${institution.slaHoursRemaining ?? 72} horas restantes`}</span>
                     </span>
                   )}
                   {isCorrection && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-ochre/20 border border-ochre/40 px-2.5 py-0.5 text-xs font-bold text-cocoa">
                       <i className="bx bx-error-circle text-ochre-dark" />
-                      <span>En Subsanación Documental</span>
+                      <span>En Subsanación (SLA Pausado)</span>
                     </span>
                   )}
                   {isRejected && (
@@ -261,7 +297,7 @@ export default function InstitutionVerificationDrawer({
 
                       <button
                         type="button"
-                        onClick={() => setPreviewDoc(doc)}
+                        onClick={() => handleInspectDoc(doc)}
                         className="inline-flex items-center gap-1 rounded-xl border border-sand-line bg-cream px-3 py-1.5 text-xs font-bold text-cocoa hover:bg-sand transition-colors cursor-pointer shrink-0"
                       >
                         <i className="bx bx-show text-sm" />
@@ -272,7 +308,7 @@ export default function InstitutionVerificationDrawer({
                 ))}
               </div>
 
-              {/* Visor simulado de soporte institucional */}
+              {/* Visor de soporte institucional (S3 Signed URL o Folio de Contingencia) */}
               {previewDoc && (
                 <div className="mt-4 rounded-2xl border border-sand-line bg-sand/30 p-4 space-y-3 animate-in fade-in">
                   <div className="flex items-center justify-between border-b border-sand-line pb-2">
@@ -282,42 +318,87 @@ export default function InstitutionVerificationDrawer({
                     </span>
                     <button
                       type="button"
-                      onClick={() => setPreviewDoc(null)}
+                      onClick={() => {
+                        setPreviewDoc(null);
+                        setSecurePdfUrl(null);
+                      }}
                       className="text-secondary hover:text-ink text-xs font-bold cursor-pointer"
                     >
                       Cerrar vista previa ✕
                     </button>
                   </div>
 
-                  <div className="relative rounded-xl border border-sand-line bg-white p-6 shadow-sm font-sans space-y-4">
-                    <div className="flex items-center justify-between border-b border-sand-line/60 pb-3">
-                      <div>
-                        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-secondary">
-                          {previewDoc.issuer}
-                        </span>
-                        <h5 className="m-0 font-display text-sm font-bold text-ink">
-                          {previewDoc.label}
-                        </h5>
+                  {loadingPdf ? (
+                    <div className="p-8 text-center bg-white rounded-xl border border-sand-line space-y-2">
+                      <i className="bx bx-loader-alt bx-spin text-3xl text-terracotta" />
+                      <p className="text-xs font-semibold text-cocoa">
+                        Generando enlace seguro temporal con Supabase Storage (SLA 72h)...
+                      </p>
+                    </div>
+                  ) : securePdfUrl ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-sand-line text-xs flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 text-[0.65rem] font-bold">
+                            ✓ Token S3 Temporal (1 hora)
+                          </span>
+                          <span className="text-[0.72rem] text-secondary font-mono truncate max-w-xs">
+                            {previewDoc.fileName}
+                          </span>
+                        </div>
+                        <a
+                          href={securePdfUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold hover:bg-emerald-800 transition-colors shadow-2xs"
+                        >
+                          <i className="bx bx-link-external" />
+                          <span>Abrir en nueva pestaña</span>
+                        </a>
                       </div>
-                      <span className="rounded-lg bg-sand px-2 py-1 text-[0.65rem] font-mono text-cocoa">
-                        SNIES #{institution.sniesCode}
-                      </span>
+                      <iframe
+                        src={`${securePdfUrl}#toolbar=1&navpanes=0`}
+                        title={previewDoc.label}
+                        className="w-full h-96 rounded-xl border border-sand-line bg-white shadow-inner"
+                      />
                     </div>
+                  ) : (
+                    /* Folio institucional con marca de agua oficial (fallback / dev) */
+                    <div className="relative rounded-xl border border-sand-line bg-white p-6 shadow-sm font-sans space-y-4">
+                      {pdfError && (
+                        <p className="text-[0.72rem] text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-200">
+                          {pdfError}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between border-b border-sand-line/60 pb-3">
+                        <div>
+                          <span className="text-[0.65rem] font-bold uppercase tracking-wider text-secondary">
+                            {previewDoc.issuer}
+                          </span>
+                          <h5 className="m-0 font-display text-sm font-bold text-ink">
+                            {previewDoc.label}
+                          </h5>
+                        </div>
+                        <span className="rounded-lg bg-sand px-2 py-1 text-[0.65rem] font-mono text-cocoa">
+                          SNIES #{institution.sniesCode}
+                        </span>
+                      </div>
 
-                    <div className="text-xs text-ink space-y-2 leading-relaxed">
-                      <p className="m-0">
-                        <strong>Certificación Oficial:</strong> Se hace constar que <strong>{institution.name}</strong> ({institution.shortName}) se encuentra facultada como <strong>{institution.academicCharacter}</strong> en Colombia, amparada por <strong>{previewDoc.number || 'Resolución del Ministerio de Educación Nacional'}</strong>.
-                      </p>
-                      <p className="m-0">
-                        <strong>Autoridad Facultada:</strong> El(la) Rector(a) <strong>{institution.rectorName}</strong> cuenta con plena capacidad jurídica para la suscripción de convenios interinstitucionales de prácticas empresariales e inserción laboral.
-                      </p>
-                    </div>
+                      <div className="text-xs text-ink space-y-2 leading-relaxed">
+                        <p className="m-0">
+                          <strong>Certificación Oficial:</strong> Se hace constar que <strong>{institution.name}</strong> ({institution.shortName}) se encuentra facultada como <strong>{institution.academicCharacter}</strong> en Colombia, amparada por <strong>{previewDoc.number || 'Resolución del Ministerio de Educación Nacional'}</strong>.
+                        </p>
+                        <p className="m-0">
+                          <strong>Autoridad Facultada:</strong> El(la) Rector(a) <strong>{institution.rectorName}</strong> cuenta con plena capacidad jurídica para la suscripción de convenios interinstitucionales de prácticas empresariales e inserción laboral.
+                        </p>
+                      </div>
 
-                    <div className="border-t border-sand-line/60 pt-3 flex items-center justify-between text-[0.68rem] text-secondary">
-                      <span>✓ Firma Digital y Radicado SNIES Verificado</span>
-                      <span className="font-bold text-emerald-800">RECONOCIMIENTO OFICIAL MEN</span>
+                      <div className="border-t border-sand-line/60 pt-3 flex items-center justify-between text-[0.68rem] text-secondary">
+                        <span>✓ Firma Digital y Radicado SNIES Verificado</span>
+                        <span className="font-bold text-emerald-800">RECONOCIMIENTO OFICIAL MEN</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
@@ -361,42 +442,81 @@ export default function InstitutionVerificationDrawer({
 
         {/* Footer: Acciones del Super Administrador */}
         <footer className="border-t border-sand-line bg-cream/40 p-4 sm:p-5 flex items-center justify-between gap-2.5 flex-wrap">
-          <div className="flex items-center gap-2">
-            {!isRejected && (
-              <button
-                type="button"
-                onClick={() => onReject(institution)}
-                className="rounded-xl border border-rose-300 bg-white px-3.5 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
-              >
-                Rechazar
-              </button>
-            )}
-
-            {!isApproved && (
-              <button
-                type="button"
-                onClick={() => onRequestCorrection(institution)}
-                className="rounded-xl border border-ochre/40 bg-white px-3.5 py-2 text-xs font-bold text-cocoa hover:bg-ochre/15 transition-colors cursor-pointer"
-              >
-                Solicitar Subsanación
-              </button>
-            )}
-          </div>
-
-          {!isApproved ? (
-            <button
-              type="button"
-              onClick={() => onApprove(institution.id)}
-              className="inline-flex items-center gap-2 rounded-xl bg-cocoa px-5 py-2 text-xs font-bold text-white hover:bg-cocoa/90 transition-all cursor-pointer shadow-xs"
-            >
-              <i className="bx bx-check-shield text-base" />
-              <span>Aprobar e Incorporar IES a la Red</span>
-            </button>
+          {showApproveConfirm ? (
+            <div className="w-full bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 space-y-2.5 animate-in fade-in">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-ink flex items-center gap-1.5">
+                  <i className="bx bxs-check-shield text-emerald-700 text-base" />
+                  <span>Confirmar Acreditación e Incorporación a la Red de Empleo</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowApproveConfirm(false)}
+                  className="text-xs font-semibold text-secondary hover:text-ink cursor-pointer"
+                >
+                  Cancelar
+                </button>
+              </div>
+              <input
+                type="text"
+                value={approveNotes}
+                onChange={(e) => setApproveNotes(e.target.value)}
+                placeholder="Notas de aprobación opcionales (ej: 'Personería jurídica y personería del Rector verificadas ante SNIES')..."
+                className="w-full rounded-lg border border-sand-line bg-cream/30 p-2 text-xs text-ink placeholder:text-stone-400 focus:border-terracotta focus:outline-none"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onApprove(institution.id, approveNotes);
+                    setShowApproveConfirm(false);
+                  }}
+                  className="rounded-lg bg-emerald-700 text-white px-4 py-1.5 text-xs font-bold hover:bg-emerald-800 transition-colors cursor-pointer shadow-xs"
+                >
+                  Confirmar Acreditación Institucional
+                </button>
+              </div>
+            </div>
           ) : (
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800">
-              <i className="bx bxs-check-circle text-base text-emerald-700" />
-              <span>IES incorporada y activa en la red</span>
-            </span>
+            <>
+              <div className="flex items-center gap-2">
+                {!isRejected && (
+                  <button
+                    type="button"
+                    onClick={() => onReject(institution)}
+                    className="rounded-xl border border-rose-300 bg-white px-3.5 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+                  >
+                    Rechazar
+                  </button>
+                )}
+
+                {!isApproved && (
+                  <button
+                    type="button"
+                    onClick={() => onRequestCorrection(institution)}
+                    className="rounded-xl border border-ochre/40 bg-white px-3.5 py-2 text-xs font-bold text-cocoa hover:bg-ochre/15 transition-colors cursor-pointer"
+                  >
+                    Solicitar Subsanación
+                  </button>
+                )}
+              </div>
+
+              {!isApproved ? (
+                <button
+                  type="button"
+                  onClick={() => setShowApproveConfirm(true)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-cocoa px-5 py-2 text-xs font-bold text-white hover:bg-cocoa/90 transition-all cursor-pointer shadow-xs"
+                >
+                  <i className="bx bx-check-shield text-base" />
+                  <span>Aprobar e Incorporar IES a la Red</span>
+                </button>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                  <i className="bx bxs-check-circle text-base text-emerald-700" />
+                  <span>IES incorporada y activa en la red</span>
+                </span>
+              )}
+            </>
           )}
         </footer>
       </div>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { initialCandidates } from '../data/companyCandidatesData.js';
+import { atsService } from '../services/atsService.js';
 
 const STORAGE_KEY = 'vincula.company.candidates.v1';
 const SYNC_EVENT = 'vincula:company-candidates-updated';
@@ -47,6 +48,11 @@ export function useCompanyCandidates() {
   }, []);
 
   const moveCandidateStage = useCallback((id, newStage, notes = null) => {
+    // Sincronizar en segundo plano con el backend de PostgreSQL
+    atsService.moveCandidateStage(id, newStage, null, notes).catch((err) => {
+      console.info('[useCompanyCandidates] Transición local o error API:', err.message);
+    });
+
     setCandidates((prev) => {
       const next = prev.map((c) => {
         if (c.id !== id) return c;
@@ -66,6 +72,11 @@ export function useCompanyCandidates() {
   }, []);
 
   const discardCandidate = useCallback((id, reason, notes = null) => {
+    // Sincronizar descarte con PostgreSQL
+    atsService.moveCandidateStage(id, 'discarded', reason, notes).catch((err) => {
+      console.info('[useCompanyCandidates] Descarte local o error API:', err.message);
+    });
+
     setCandidates((prev) => {
       const next = prev.map((c) => {
         if (c.id !== id) return c;
@@ -82,11 +93,62 @@ export function useCompanyCandidates() {
   }, []);
 
   const addCandidateNote = useCallback((id, noteText) => {
+    // Sincronizar nota con PostgreSQL
+    atsService.addCandidateNote(id, noteText).catch((err) => {
+      console.info('[useCompanyCandidates] Nota guardada localmente o error API:', err.message);
+    });
+
     setCandidates((prev) => {
       const next = prev.map((c) => (c.id === id ? { ...c, recruiterNotes: noteText } : c));
       writeCandidates(next);
       return next;
     });
+  }, []);
+
+  const scheduleInterview = useCallback((id, payload) => {
+    atsService.scheduleInterview(id, payload).catch((err) => {
+      console.info('[useCompanyCandidates] Entrevista programada localmente o error API:', err.message);
+    });
+
+    setCandidates((prev) => {
+      const next = prev.map((c) => {
+        if (c.id !== id) return c;
+        return {
+          ...c,
+          stage: 'interview',
+          interviewDate: `${payload.date || payload.fecha_entrevista}, ${payload.timeRange || payload.franja_horaria} (${payload.modality || payload.modalidad || 'Virtual'})`,
+        };
+      });
+      writeCandidates(next);
+      return next;
+    });
+  }, []);
+
+  const loadLiveBoard = useCallback(async (vacancyId) => {
+    if (!vacancyId) return;
+    try {
+      const boardData = await atsService.getKanbanBoard(vacancyId);
+      if (boardData && boardData.columnas) {
+        // Aplanar todas las columnas del ATS en la lista de candidatos
+        const flatCandidates = [];
+        Object.values(boardData.columnas).forEach((col) => {
+          if (Array.isArray(col.candidatos)) {
+            flatCandidates.push(...col.candidatos);
+          }
+        });
+        if (flatCandidates.length > 0) {
+          setCandidates((prev) => {
+            // Fusionar candidatos del backend sin borrar los de otras vacantes
+            const otherCandidates = prev.filter((c) => c.vacancyId !== vacancyId);
+            const merged = [...otherCandidates, ...flatCandidates];
+            writeCandidates(merged);
+            return merged;
+          });
+        }
+      }
+    } catch (err) {
+      console.info('[useCompanyCandidates] No se pudo cargar tablero remoto:', err.message);
+    }
   }, []);
 
   const resetCandidates = useCallback(() => {
@@ -100,7 +162,8 @@ export function useCompanyCandidates() {
     moveCandidateStage,
     discardCandidate,
     addCandidateNote,
+    scheduleInterview,
+    loadLiveBoard,
     resetCandidates,
   };
 }
-

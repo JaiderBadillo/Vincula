@@ -96,6 +96,8 @@ export default function App() {
         {/* Rol Administrador de Empresa (ver docs/ROADMAP_ADMIN_EMPRESA.md) */}
         <Route path="/empresa" element={<Navigate to="/empresa/admin/perfil" replace />} />
         <Route path="/empresa/admin" element={<Navigate to="/empresa/admin/perfil" replace />} />
+        <Route path="/empresa/dashboard" element={<Navigate to="/empresa/admin/actividad" replace />} />
+        <Route path="/empresa/actividad" element={<Navigate to="/empresa/admin/actividad" replace />} />
         <Route path="/empresa/admin/perfil" element={<CompanyAdminProfilePage />} />
         <Route path="/empresa/admin/sedes" element={<CompanyAdminSitesPage />} />
         <Route path="/empresa/admin/reclutadores" element={<CompanyAdminRecruitersPage />} />

@@ -1,431 +1,564 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import Chart from 'react-apexcharts';
+import * as Legacy from '../legacy_charts/LegacyPlacementCharts.jsx';
+
+export { Legacy };
+
+const TARGET_RATE = 75; // Meta de acreditación CNA
+const fmtMoney = (v) => `$${(v / 1000000).toFixed(2)}M COP`;
 
 /**
- * 1. Gráfico de Tendencia Histórica e Inserción (Area & Line Chart Interactivo)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * 1. Gráfico de Tendencia Histórica e Inserción (Area & Line Chart con ApexCharts)
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 export function PlacementTrendAreaChart({ data }) {
   const [activeMetric, setActiveMetric] = useState('rate'); // 'rate' | 'salary'
-  const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [chartEngine, setChartEngine] = useState('apex'); // 'apex' | 'legacy'
 
-  // Datos extendidos para mostrar la tendencia
-  const points = data || [
-    { period: '2024 - I', graduates: 1680, employed: 1210, rate: 72.0, avgSalary: 2450000 },
-    { period: '2024 - II', graduates: 1740, employed: 1290, rate: 74.1, avgSalary: 2580000 },
-    { period: '2025 - I', graduates: 1890, employed: 1435, rate: 75.9, avgSalary: 2710000 },
-    { period: '2025 - II', graduates: 1980, employed: 1544, rate: 78.0, avgSalary: 2840000 },
-    { period: '2026 - I (Corte)', graduates: 2020, employed: 1606, rate: 79.5, avgSalary: 2950000 },
-  ];
+  const points = useMemo(
+    () =>
+      data && data.length
+        ? data
+        : [
+            { period: '2024 - I', graduates: 1680, employed: 1210, rate: 72.0, avgSalary: 2450000 },
+            { period: '2024 - II', graduates: 1740, employed: 1290, rate: 74.1, avgSalary: 2580000 },
+            { period: '2025 - I', graduates: 1890, employed: 1435, rate: 75.9, avgSalary: 2710000 },
+            { period: '2025 - II', graduates: 1980, employed: 1544, rate: 78.0, avgSalary: 2840000 },
+          ],
+    [data]
+  );
 
-  // Geometría del SVG
-  const width = 640;
-  const height = 210;
-  const padding = { top: 25, right: 35, bottom: 35, left: 55 };
-  const chartW = width - padding.left - padding.right;
-  const chartH = height - padding.top - padding.bottom;
+  const isRate = activeMetric === 'rate';
+  const getVal = (p) => (isRate ? p.rate : p.avgSalary);
 
-  // Escalas
-  const minVal = activeMetric === 'rate' ? 65 : 2200000;
-  const maxVal = activeMetric === 'rate' ? 85 : 3200000;
+  const lastPoint = points[points.length - 1];
+  const prevPoint = points.length > 1 ? points[points.length - 2] : null;
+  const delta = prevPoint ? getVal(lastPoint) - getVal(prevPoint) : null;
 
-  const getY = (val) => {
-    const clamped = Math.max(minVal, Math.min(maxVal, val));
-    return padding.top + chartH - ((clamped - minVal) / (maxVal - minVal)) * chartH;
-  };
+  if (chartEngine === 'legacy') {
+    return (
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50/70 p-2.5 text-xs">
+          <span className="font-bold text-amber-900 flex items-center gap-1.5">
+            <span className="size-2 rounded-full bg-amber-500" />
+            Visualizando versión anterior (SVG Puro Manual)
+          </span>
+          <div className="inline-flex rounded-lg border border-amber-300 bg-white p-0.5 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setChartEngine('apex')}
+              className="rounded-md px-2.5 py-1 text-xs font-bold text-ink hover:bg-amber-100 transition-all cursor-pointer"
+            >
+              ⚡ Ver versión ApexCharts (Nueva)
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartEngine('legacy')}
+              className="rounded-md bg-amber-600 text-white px-2.5 py-1 text-xs font-bold cursor-pointer shadow-2xs"
+            >
+              🏛️ SVG Anterior
+            </button>
+          </div>
+        </div>
+        <Legacy.PlacementTrendAreaChart data={data} />
+      </div>
+    );
+  }
 
-  const getX = (idx) => {
-    return padding.left + (idx / (points.length - 1)) * chartW;
-  };
+  const chartOptions = useMemo(() => {
+    return {
+      chart: {
+        id: 'placement-trend-chart',
+        type: 'area',
+        height: 270,
+        toolbar: { show: false },
+        fontFamily: 'Inter, system-ui, sans-serif',
+        zoom: { enabled: false },
+        animations: {
+          enabled: true,
+          easing: 'easeinout',
+          speed: 600,
+        },
+      },
+      colors: [isRate ? '#28571d' : '#d99b26'],
+      dataLabels: {
+        enabled: true,
+        formatter: (val) => (isRate ? `${val.toFixed(1)}%` : `$${(val / 1000000).toFixed(2)}M`),
+        offsetY: -6,
+        style: {
+          fontSize: '11px',
+          fontWeight: 700,
+          colors: ['#051F26'],
+        },
+        background: {
+          enabled: true,
+          foreColor: '#051F26',
+          padding: 4,
+          borderRadius: 6,
+          borderWidth: 1,
+          borderColor: '#e2e8f0',
+          opacity: 0.9,
+        },
+      },
+      stroke: {
+        curve: 'smooth',
+        width: 3.5,
+      },
+      fill: {
+        type: 'gradient',
+        gradient: {
+          shadeIntensity: 1,
+          opacityFrom: 0.45,
+          opacityTo: 0.05,
+          stops: [0, 90, 100],
+        },
+      },
+      xaxis: {
+        categories: points.map((p) => p.period),
+        labels: {
+          style: { colors: '#64748b', fontSize: '12px', fontWeight: 600 },
+        },
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+      },
+      yaxis: {
+        min: isRate ? Math.max(0, Math.floor(Math.min(...points.map((p) => p.rate)) - 5)) : undefined,
+        max: isRate ? Math.min(100, Math.ceil(Math.max(...points.map((p) => p.rate)) + 5)) : undefined,
+        labels: {
+          formatter: (val) => (isRate ? `${val.toFixed(0)}%` : `$${(val / 1000000).toFixed(1)}M`),
+          style: { colors: '#64748b', fontSize: '11px', fontWeight: 600 },
+        },
+      },
+      annotations: isRate
+        ? {
+            yaxis: [
+              {
+                y: TARGET_RATE,
+                borderColor: '#b45309',
+                strokeDashArray: 5,
+                borderWidth: 1.8,
+                label: {
+                  text: `Meta CNA (${TARGET_RATE}%)`,
+                  position: 'left',
+                  textAnchor: 'start',
+                  offsetX: 10,
+                  style: {
+                    color: '#ffffff',
+                    background: '#b45309',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    padding: { left: 6, right: 6, top: 2, bottom: 2 },
+                  },
+                },
+              },
+            ],
+          }
+        : {},
+      tooltip: {
+        theme: 'light',
+        y: {
+          formatter: (val) =>
+            isRate ? `${val.toFixed(1)}% de graduados colocados` : `$${Number(val).toLocaleString('es-CO')} COP`,
+        },
+      },
+      grid: {
+        borderColor: '#f1f5f9',
+        strokeDashArray: 4,
+        padding: { left: 10, right: 15 },
+      },
+      markers: {
+        size: 5,
+        colors: [isRate ? '#28571d' : '#d99b26'],
+        strokeColors: '#ffffff',
+        strokeWidth: 2,
+        hover: { size: 7 },
+      },
+    };
+  }, [points, isRate]);
 
-  // Coordenadas
-  const coords = points.map((p, idx) => ({
-    x: getX(idx),
-    y: getY(activeMetric === 'rate' ? p.rate : p.avgSalary),
-    point: p,
-  }));
-
-  // Generador de curva Bezier suave
-  const linePath = coords.reduce((acc, curr, idx, arr) => {
-    if (idx === 0) return `M ${curr.x} ${curr.y}`;
-    const prev = arr[idx - 1];
-    const cpX1 = prev.x + (curr.x - prev.x) / 2;
-    const cpY1 = prev.y;
-    const cpX2 = prev.x + (curr.x - prev.x) / 2;
-    const cpY2 = curr.y;
-    return `${acc} C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${curr.x} ${curr.y}`;
-  }, '');
-
-  const areaPath = `${linePath} L ${coords[coords.length - 1].x} ${padding.top + chartH} L ${coords[0].x} ${padding.top + chartH} Z`;
-
-  // Línea de meta institucional 75% (solo para rate)
-  const targetY = activeMetric === 'rate' ? getY(75) : null;
-
-  // Ticks eje Y
-  const yTicks = activeMetric === 'rate'
-    ? [65, 70, 75, 80, 85]
-    : [2200000, 2500000, 2800000, 3100000];
-
-  const currentHover = hoveredIndex !== null ? coords[hoveredIndex] : coords[coords.length - 1];
+  const series = useMemo(
+    () => [
+      {
+        name: isRate ? 'Tasa de Colocación' : 'Salario Inicial Promedio',
+        data: points.map(getVal),
+      },
+    ],
+    [points, isRate]
+  );
 
   return (
     <div className="space-y-4">
-      {/* Controles de métrica */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-line pb-3">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveMetric('rate')}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-              activeMetric === 'rate'
-                ? 'bg-green-dark text-white shadow-2xs font-bold'
-                : 'bg-page text-secondary hover:text-ink border border-line'
-            }`}
-          >
-            Tasa de Colocación (%)
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveMetric('salary')}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-              activeMetric === 'salary'
-                ? 'bg-green-dark text-white shadow-2xs font-bold'
-                : 'bg-page text-secondary hover:text-ink border border-line'
-            }`}
-          >
-            Salario Promedio Inicial (COP)
-          </button>
-        </div>
+      {/* Controles + KPIs */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b border-line pb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Switcher Antes/Después */}
+          <div className="inline-flex rounded-lg border border-line bg-page p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setChartEngine('apex')}
+              className={`rounded-md px-2.5 py-1 font-bold transition-all cursor-pointer ${
+                chartEngine === 'apex' ? 'bg-[#051F26] text-white shadow-2xs' : 'text-secondary hover:text-ink'
+              }`}
+              title="Versión interactiva moderna con ApexCharts"
+            >
+              ⚡ ApexCharts
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartEngine('legacy')}
+              className={`rounded-md px-2.5 py-1 font-bold transition-all cursor-pointer ${
+                chartEngine === 'legacy' ? 'bg-[#051F26] text-white shadow-2xs' : 'text-secondary hover:text-ink'
+              }`}
+              title="Ver versión anterior construida con SVG manual"
+            >
+              🏛️ SVG Anterior
+            </button>
+          </div>
 
-        {/* Resumen del punto activo */}
-        <div className="flex items-center gap-3 text-xs">
-          <span className="text-secondary">
-            Periodo: <strong className="text-ink">{currentHover?.point.period}</strong>
-          </span>
-          <span className="font-bold text-green-dark bg-green/10 px-2 py-0.5 rounded border border-green/20">
-            {activeMetric === 'rate'
-              ? `${currentHover?.point.rate}% colocados`
-              : `$ ${(currentHover?.point.avgSalary / 1000000).toFixed(2)}M COP`}
-          </span>
-        </div>
-      </div>
-
-      {/* Contenedor del Gráfico SVG */}
-      <div className="relative w-full overflow-hidden">
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          className="w-full h-auto overflow-visible select-none"
-        >
-          <defs>
-            <linearGradient id="placementGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#28571d" stopOpacity="0.28" />
-              <stop offset="70%" stopColor="#28571d" stopOpacity="0.04" />
-              <stop offset="100%" stopColor="#28571d" stopOpacity="0" />
-            </linearGradient>
-            <linearGradient id="salaryGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#b1cc74" stopOpacity="0.4" />
-              <stop offset="70%" stopColor="#b1cc74" stopOpacity="0.05" />
-              <stop offset="100%" stopColor="#b1cc74" stopOpacity="0" />
-            </linearGradient>
-          </defs>
-
-          {/* Líneas horizontales de guía */}
-          {yTicks.map((tick) => {
-            const y = getY(tick);
-            return (
-              <g key={tick}>
-                <line
-                  x1={padding.left}
-                  y1={y}
-                  x2={width - padding.right}
-                  y2={y}
-                  stroke="#e8edef"
-                  strokeWidth="1"
-                  strokeDasharray="4 4"
-                />
-                <text
-                  x={padding.left - 10}
-                  y={y + 3.5}
-                  textAnchor="end"
-                  fill="#718188"
-                  fontSize="10"
-                  fontFamily="Inter, sans-serif"
-                >
-                  {activeMetric === 'rate' ? `${tick}%` : `$${(tick / 1000000).toFixed(1)}M`}
-                </text>
-              </g>
-            );
-          })}
-
-          {/* Línea objetivo del 75% (CNA) */}
-          {targetY && (
-            <g>
-              <line
-                x1={padding.left}
-                y1={targetY}
-                x2={width - padding.right}
-                y2={targetY}
-                stroke="#336f24"
-                strokeWidth="1.2"
-                strokeDasharray="6 3"
-              />
-              <text
-                x={width - padding.right}
-                y={targetY - 5}
-                textAnchor="end"
-                fill="#28571d"
-                fontSize="9"
-                fontWeight="600"
-                fontFamily="Inter, sans-serif"
+          <div role="tablist" aria-label="Métrica del gráfico" className="inline-flex rounded-xl border border-line bg-page p-1 self-start">
+            {[
+              { id: 'rate', label: 'Tasa de colocación (%)' },
+              { id: 'salary', label: 'Salario inicial (COP)' },
+            ].map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                role="tab"
+                aria-selected={activeMetric === m.id}
+                onClick={() => setActiveMetric(m.id)}
+                className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+                  activeMetric === m.id ? 'bg-green-dark text-white shadow-2xs font-bold' : 'text-secondary hover:text-ink'
+                }`}
               >
-                Meta Acreditación CNA (75%)
-              </text>
-            </g>
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-secondary font-medium">Último periodo ({lastPoint.period}):</span>
+          <span className="font-display text-base font-bold text-ink">
+            {isRate ? `${lastPoint.rate.toFixed(1)}%` : fmtMoney(lastPoint.avgSalary)}
+          </span>
+          {delta !== null && (
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-[0.68rem] font-bold border ${
+                delta >= 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+              }`}
+            >
+              {delta >= 0 ? '▲ +' : '▼ '}
+              {isRate ? `${Math.abs(delta).toFixed(1)} pp` : fmtMoney(Math.abs(delta))} vs periodo anterior
+            </span>
           )}
-
-          {/* Área sombreada */}
-          <path
-            d={areaPath}
-            fill={activeMetric === 'rate' ? 'url(#placementGradient)' : 'url(#salaryGradient)'}
-            className="transition-all duration-300"
-          />
-
-          {/* Línea de tendencia principal */}
-          <path
-            d={linePath}
-            fill="none"
-            stroke={activeMetric === 'rate' ? '#28571d' : '#336f24'}
-            strokeWidth="3"
-            strokeLinecap="round"
-            className="transition-all duration-300"
-          />
-
-          {/* Eje X (Etiquetas de Periodos) */}
-          {coords.map((c, idx) => (
-            <g key={c.point.period}>
-              <text
-                x={c.x}
-                y={height - 10}
-                textAnchor="middle"
-                fill={hoveredIndex === idx ? '#001a23' : '#718188'}
-                fontWeight={hoveredIndex === idx ? '700' : '500'}
-                fontSize="10.5"
-                fontFamily="Inter, sans-serif"
-              >
-                {c.point.period}
-              </text>
-
-              {/* Barra vertical de hover */}
-              {hoveredIndex === idx && (
-                <line
-                  x1={c.x}
-                  y1={padding.top}
-                  x2={c.x}
-                  y2={padding.top + chartH}
-                  stroke="#28571d"
-                  strokeWidth="1"
-                  strokeDasharray="3 3"
-                />
-              )}
-
-              {/* Puntos de datos interactivos */}
-              <circle
-                cx={c.x}
-                cy={c.y}
-                r={hoveredIndex === idx ? 6.5 : 4.5}
-                fill="#ffffff"
-                stroke={hoveredIndex === idx ? '#336f24' : '#28571d'}
-                strokeWidth={hoveredIndex === idx ? '3.5' : '2.5'}
-                className="cursor-pointer transition-all duration-150"
-                onMouseEnter={() => setHoveredIndex(idx)}
-                onMouseLeave={() => setHoveredIndex(null)}
-              />
-
-              {/* Zona sensible amplia para hover fácil */}
-              <rect
-                x={c.x - chartW / points.length / 2}
-                y={padding.top}
-                width={chartW / points.length}
-                height={chartH + 20}
-                fill="transparent"
-                className="cursor-pointer"
-                onMouseEnter={() => setHoveredIndex(idx)}
-                onMouseLeave={() => setHoveredIndex(null)}
-              />
-            </g>
-          ))}
-        </svg>
+        </div>
       </div>
 
-      {/* Nota inferior del gráfico */}
-      <div className="flex items-center justify-between text-[0.72rem] text-secondary border-t border-line/60 pt-2.5">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block size-2 rounded-full bg-green-dark" />
-          <span>Tendencia longitudinal calculada sobre graduados registrados en el censo institucional.</span>
-        </span>
-        <span className="font-semibold text-emerald-800">
-          Crecimiento acumulado: +7.5% en 5 periodos
-        </span>
+      {/* Render ApexCharts */}
+      <div className="relative w-full rounded-2xl bg-white p-1">
+        <Chart options={chartOptions} series={series} type="area" height={270} />
+      </div>
+
+      <div className="flex items-center justify-between text-[0.72rem] text-secondary border-t border-line-soft pt-2">
+        <span>Fuente: Observatorio Laboral de la IES & Encuestas de Graduados</span>
+        <span className="font-semibold text-green-dark">Meta CNA: 75.0% de empleabilidad formal</span>
       </div>
     </div>
   );
 }
 
 /**
- * 2. Gráfico Donut Interactivo (Modalidad de Trabajo y Tipología de Contrato)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * 2. Gráfico Donut de Modalidades y Contratos (ApexCharts Donut + Desglose)
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 export function PlacementDonutChart({ contractTypes, workModalities }) {
   const [activeTab, setActiveTab] = useState('contracts'); // 'contracts' | 'modalities'
+  const [chartEngine, setChartEngine] = useState('apex'); // 'apex' | 'legacy'
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
-  const contractData = contractTypes || [
-    { label: 'Término Indefinido', percentage: 56, count: 3254, color: '#28571d' },
-    { label: 'Término Fijo', percentage: 28, count: 1627, color: '#b1cc74' },
-    { label: 'Prestación Serv. (OPS)', percentage: 11, count: 639, color: '#0b2b34' },
-    { label: 'Pasantía / Convenio', percentage: 5, count: 291, color: '#94a3b8' },
-  ];
+  // Paleta institucional armonizada UTS
+  const contractPalette = ['#28571d', '#4d7a1f', '#d99b26', '#051F26'];
+  const modalityPalette = ['#28571d', '#4d7a1f', '#051F26'];
 
-  const modalityData = workModalities || [
-    { label: 'Presencial', percentage: 46, count: 2673, color: '#28571d' },
-    { label: 'Híbrido', percentage: 38, count: 2208, color: '#b1cc74' },
-    { label: 'Remoto Total', percentage: 16, count: 930, color: '#0b2b34' },
-  ];
+  const normalizedContracts = useMemo(() => {
+    const raw = contractTypes && contractTypes.length ? contractTypes : [
+      { type: 'Término Indefinido', percentage: 56, count: 3254, icon: 'bx-check-shield' },
+      { type: 'Término Fijo (Directo)', percentage: 28, count: 1627, icon: 'bx-calendar' },
+      { type: 'Prestación de Servicios (OPS)', percentage: 11, count: 639, icon: 'bx-file' },
+      { type: 'Convenio de Aprendizaje / Pasantía', percentage: 5, count: 291, icon: 'bx-graduation' },
+    ];
 
-  const currentDataset = activeTab === 'contracts' ? contractData : modalityData;
-  const radius = 68;
-  const circumference = 2 * Math.PI * radius; // ~427.25
+    return raw.map((item, idx) => ({
+      label: item.label || item.type || `Contrato ${idx + 1}`,
+      percentage: item.percentage ?? 0,
+      count: item.count ?? 0,
+      icon: item.icon || 'bx-briefcase',
+      color: item.color || contractPalette[idx % contractPalette.length],
+    }));
+  }, [contractTypes]);
 
-  let accumulatedPercent = 0;
-  const segments = currentDataset.map((item, idx) => {
-    const strokeDasharray = `${(item.percentage / 100) * circumference} ${circumference}`;
-    const strokeDashoffset = -((accumulatedPercent / 100) * circumference);
-    accumulatedPercent += item.percentage;
+  const normalizedModalities = useMemo(() => {
+    const raw = workModalities && workModalities.length ? workModalities : [
+      { modality: 'Presencial', percentage: 46, count: 2673, icon: 'bx-buildings' },
+      { modality: 'Híbrido', percentage: 38, count: 2208, icon: 'bx-laptop' },
+      { modality: 'Remoto Total', percentage: 16, count: 930, icon: 'bx-globe' },
+    ];
+
+    return raw.map((item, idx) => ({
+      label: item.label || item.modality || `Modalidad ${idx + 1}`,
+      percentage: item.percentage ?? 0,
+      count: item.count ?? 0,
+      icon: item.icon || 'bx-laptop',
+      color: item.color || modalityPalette[idx % modalityPalette.length],
+    }));
+  }, [workModalities]);
+
+  const currentDataset = activeTab === 'contracts' ? normalizedContracts : normalizedModalities;
+  const total = useMemo(() => currentDataset.reduce((sum, i) => sum + (i.count || 0), 0), [currentDataset]);
+
+  const chartOptions = useMemo(() => {
     return {
-      ...item,
-      strokeDasharray,
-      strokeDashoffset,
-      index: idx,
+      chart: {
+        type: 'donut',
+        height: 280,
+        fontFamily: 'Inter, system-ui, sans-serif',
+        toolbar: { show: false },
+        events: {
+          dataPointMouseEnter: (event, chartContext, config) => {
+            setHoveredIndex(config.dataPointIndex);
+          },
+          dataPointMouseLeave: () => {
+            setHoveredIndex(null);
+          },
+        },
+      },
+      colors: currentDataset.map((d) => d.color),
+      labels: currentDataset.map((d) => d.label),
+      legend: { show: false },
+      plotOptions: {
+        pie: {
+          donut: {
+            size: '72%',
+            background: 'transparent',
+            labels: {
+              show: true,
+              name: {
+                show: true,
+                fontSize: '11px',
+                fontWeight: 600,
+                color: '#64748b',
+                offsetY: -4,
+              },
+              value: {
+                show: true,
+                fontSize: '22px',
+                fontWeight: 800,
+                color: '#051F26',
+                offsetY: 4,
+                formatter: (val) => `${Number(val).toLocaleString('es-CO')}`,
+              },
+              total: {
+                show: true,
+                label: activeTab === 'contracts' ? 'Total Vinculados' : 'Total Evaluados',
+                fontSize: '10px',
+                fontWeight: 700,
+                color: '#64748b',
+                formatter: () => `${total.toLocaleString('es-CO')}`,
+              },
+            },
+          },
+        },
+      },
+      dataLabels: {
+        enabled: true,
+        formatter: (val) => `${val.toFixed(0)}%`,
+        style: {
+          fontSize: '11px',
+          fontWeight: 700,
+          colors: ['#ffffff'],
+        },
+        dropShadow: { enabled: false },
+      },
+      tooltip: {
+        theme: 'light',
+        y: {
+          formatter: (val) => `${Number(val).toLocaleString('es-CO')} graduados (${((val / (total || 1)) * 100).toFixed(1)}%)`,
+        },
+      },
+      stroke: {
+        width: 2,
+        colors: ['#ffffff'],
+      },
     };
-  });
+  }, [currentDataset, total, activeTab]);
 
-  const activeItem = hoveredIndex !== null ? currentDataset[hoveredIndex] : currentDataset[0];
+  const series = useMemo(() => currentDataset.map((d) => d.count), [currentDataset]);
+
+  if (chartEngine === 'legacy') {
+    return (
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50/70 p-2.5 text-xs">
+          <span className="font-bold text-amber-900 flex items-center gap-1.5">
+            <span className="size-2 rounded-full bg-amber-500" />
+            Visualizando versión anterior (SVG Donut Manual)
+          </span>
+          <div className="inline-flex rounded-lg border border-amber-300 bg-white p-0.5 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setChartEngine('apex')}
+              className="rounded-md px-2.5 py-1 text-xs font-bold text-ink hover:bg-amber-100 transition-all cursor-pointer"
+            >
+              ⚡ Ver versión ApexCharts (Nueva)
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartEngine('legacy')}
+              className="rounded-md bg-amber-600 text-white px-2.5 py-1 text-xs font-bold cursor-pointer shadow-2xs"
+            >
+              🏛️ SVG Anterior
+            </button>
+          </div>
+        </div>
+        <Legacy.PlacementDonutChart
+          contractTypes={normalizedContracts}
+          workModalities={normalizedModalities}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {/* Switcher de datos */}
-      <div className="flex items-center justify-between border-b border-line pb-3">
-        <div className="flex items-center gap-1.5 rounded-lg border border-line bg-page p-1">
+      {/* Selector de dimensión + Switcher Antes/Después */}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-b border-line pb-3">
+        {/* Pestañas: Tipos de Contrato / Modalidad */}
+        <div role="tablist" aria-label="Tipo de distribución" className="flex items-center gap-1.5 rounded-xl border border-line bg-page p-1">
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'contracts'}
             onClick={() => {
               setActiveTab('contracts');
               setHoveredIndex(null);
             }}
-            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer ${
-              activeTab === 'contracts'
-                ? 'bg-white text-ink shadow-2xs font-bold'
-                : 'text-secondary hover:text-ink'
+            className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'contracts' ? 'bg-green-dark text-white font-bold shadow-2xs' : 'text-secondary hover:text-ink'
             }`}
           >
-            Tipo de Contrato
+            Tipos de Contrato
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'modalities'}
             onClick={() => {
               setActiveTab('modalities');
               setHoveredIndex(null);
             }}
-            className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer ${
-              activeTab === 'modalities'
-                ? 'bg-white text-ink shadow-2xs font-bold'
-                : 'text-secondary hover:text-ink'
+            className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all cursor-pointer ${
+              activeTab === 'modalities' ? 'bg-green-dark text-white font-bold shadow-2xs' : 'text-secondary hover:text-ink'
             }`}
           >
             Modalidad de Trabajo
           </button>
         </div>
 
-        <span className="text-xs text-secondary font-medium">
-          Total: <strong className="text-ink">5.811</strong> vinculados
-        </span>
-      </div>
-
-      {/* Visual Donut + Leyenda */}
-      <div className="grid grid-cols-1 sm:grid-cols-12 gap-5 items-center">
-        {/* Donut SVG */}
-        <div className="sm:col-span-5 flex justify-center relative">
-          <svg viewBox="0 0 190 190" className="size-44 overflow-visible -rotate-90">
-            {/* Círculo base de fondo */}
-            <circle
-              cx="95"
-              cy="95"
-              r={radius}
-              fill="none"
-              stroke="#e8edef"
-              strokeWidth="24"
-            />
-
-            {/* Segmentos del donut */}
-            {segments.map((seg) => (
-              <circle
-                key={seg.label}
-                cx="95"
-                cy="95"
-                r={radius}
-                fill="none"
-                stroke={seg.color}
-                strokeWidth={hoveredIndex === seg.index ? '28' : '24'}
-                strokeDasharray={seg.strokeDasharray}
-                strokeDashoffset={seg.strokeDashoffset}
-                strokeLinecap="round"
-                className="transition-all duration-200 cursor-pointer"
-                onMouseEnter={() => setHoveredIndex(seg.index)}
-                onMouseLeave={() => setHoveredIndex(null)}
-              />
-            ))}
-          </svg>
-
-          {/* Centro del Donut */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-            <span className="font-display text-2xl font-bold tracking-tight text-ink">
-              {activeItem.percentage}%
-            </span>
-            <span className="text-[0.65rem] font-semibold uppercase tracking-wider text-secondary max-w-[80px] truncate">
-              {activeItem.label}
-            </span>
+        {/* Switcher Antes / Después y muestra total */}
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-secondary font-medium hidden md:inline">
+            Muestra total: <strong className="text-ink">{total.toLocaleString('es-CO')}</strong> egresados
+          </span>
+          <div className="inline-flex rounded-lg border border-line bg-page p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setChartEngine('apex')}
+              className={`rounded-md px-2 py-0.5 font-bold transition-all cursor-pointer ${
+                chartEngine === 'apex' ? 'bg-green-dark text-white shadow-2xs' : 'text-secondary hover:text-ink'
+              }`}
+              title="Gráfica moderna ApexCharts"
+            >
+              ⚡ ApexCharts
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartEngine('legacy')}
+              className={`rounded-md px-2 py-0.5 font-bold transition-all cursor-pointer ${
+                chartEngine === 'legacy' ? 'bg-green-dark text-white shadow-2xs' : 'text-secondary hover:text-ink'
+              }`}
+              title="Ver versión SVG anterior"
+            >
+              🏛️ SVG Anterior
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* Leyenda interactiva al costado */}
-        <div className="sm:col-span-7 space-y-2">
-          {currentDataset.map((item, idx) => (
-            <div
-              key={item.label}
-              onMouseEnter={() => setHoveredIndex(idx)}
-              onMouseLeave={() => setHoveredIndex(null)}
-              className={`rounded-xl border p-2.5 transition-all cursor-pointer flex items-center justify-between ${
-                hoveredIndex === idx
-                  ? 'border-green/40 bg-green/5 shadow-2xs'
-                  : 'border-line/70 bg-page/40 hover:bg-page'
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span
-                  className="size-3 rounded-full shrink-0"
-                  style={{ backgroundColor: item.color }}
-                />
-                <span className="truncate text-xs font-semibold text-ink">
-                  {item.label}
-                </span>
+      {/* Cuadrícula interactiva: Donut + Desglose detallado */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+        {/* Donut interactivo */}
+        <div className="md:col-span-5 flex justify-center relative bg-white rounded-2xl p-2">
+          <Chart options={chartOptions} series={series} type="donut" height={270} width="100%" />
+        </div>
+
+        {/* Tarjetas de desglose enriquecidas */}
+        <div className="md:col-span-7 space-y-2.5">
+          {currentDataset.map((item, idx) => {
+            const isHovered = hoveredIndex === idx;
+            return (
+              <div
+                key={item.label}
+                onMouseEnter={() => setHoveredIndex(idx)}
+                onMouseLeave={() => setHoveredIndex(null)}
+                className={`group rounded-xl border p-2.5 transition-all cursor-pointer ${
+                  isHovered
+                    ? 'border-green-dark/40 bg-green/5 shadow-2xs scale-[1.01]'
+                    : 'border-line/70 bg-page/40 hover:bg-page hover:border-line'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="size-6 rounded-lg grid place-items-center text-white shrink-0 text-xs shadow-2xs"
+                      style={{ backgroundColor: item.color }}
+                    >
+                      <i className={`bx ${item.icon}`} />
+                    </span>
+                    <span className="truncate text-xs font-semibold text-ink">
+                      {item.label}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[0.72rem] text-secondary">
+                      {item.count.toLocaleString('es-CO')} egresados
+                    </span>
+                    <span
+                      className="font-display text-xs font-bold px-2 py-0.5 rounded-md"
+                      style={{
+                        backgroundColor: `${item.color}15`,
+                        color: item.color,
+                      }}
+                    >
+                      {item.percentage}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Barra de progreso visual */}
+                <div className="h-1.5 w-full rounded-full bg-line/60 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-300"
+                    style={{
+                      width: `${item.percentage}%`,
+                      backgroundColor: item.color,
+                    }}
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-[0.7rem] text-secondary">
-                  {item.count.toLocaleString()}
-                </span>
-                <span className="font-display text-xs font-bold text-ink">
-                  {item.percentage}%
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
@@ -433,11 +566,11 @@ export function PlacementDonutChart({ contractTypes, workModalities }) {
 }
 
 /**
- * 3. Gráfico de Barras Verticales de Rangos Salariales (SMLV)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * 3. Gráfico de Barras Verticales de Rangos Salariales (ApexCharts Column)
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 export function SalaryDistributionBarChart({ salaryData }) {
-  const [hoveredBar, setHoveredBar] = useState(null);
-
   const data = salaryData || [
     {
       bracket: '1 a 2 SMLV',
@@ -452,7 +585,6 @@ export function SalaryDistributionBarChart({ salaryData }) {
       percentage: 46,
       count: 2673,
       typicalProfile: 'Profesionales junior y tecnólogos consolidados',
-      highlight: true,
     },
     {
       bracket: '4 a 6 SMLV',
@@ -470,132 +602,227 @@ export function SalaryDistributionBarChart({ salaryData }) {
     },
   ];
 
-  const maxPercent = 50;
+  const peak = Math.max(...data.map((d) => d.percentage));
+  const axisMax = Math.max(10, Math.ceil((peak * 1.15) / 10) * 10);
+
+  const chartOptions = useMemo(() => {
+    return {
+      chart: {
+        type: 'bar',
+        height: 250,
+        toolbar: { show: false },
+        fontFamily: 'Inter, system-ui, sans-serif',
+      },
+      plotOptions: {
+        bar: {
+          borderRadius: 8,
+          columnWidth: '42%',
+          distributed: true,
+          dataLabels: { position: 'top' },
+        },
+      },
+      colors: ['#28571d', '#4d7a1f', '#d99b26', '#b45309'],
+      dataLabels: {
+        enabled: true,
+        formatter: (val) => `${val}%`,
+        offsetY: -20,
+        style: {
+          fontSize: '11px',
+          fontWeight: 700,
+          colors: ['#051F26'],
+        },
+      },
+      legend: { show: false },
+      xaxis: {
+        categories: data.map((d) => d.bracket),
+        labels: {
+          style: { colors: '#64748b', fontSize: '11px', fontWeight: 600 },
+        },
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+      },
+      yaxis: {
+        max: axisMax,
+        labels: {
+          formatter: (val) => `${val}%`,
+          style: { colors: '#64748b', fontSize: '11px', fontWeight: 600 },
+        },
+      },
+      tooltip: {
+        theme: 'light',
+        y: {
+          formatter: (val, { dataPointIndex }) => {
+            const item = data[dataPointIndex];
+            return `${val}% (${item.count.toLocaleString('es-CO')} graduados) · Rango: ${item.rangeCOP}`;
+          },
+        },
+      },
+      grid: {
+        borderColor: '#f1f5f9',
+        strokeDashArray: 4,
+      },
+    };
+  }, [data, axisMax]);
+
+  const series = useMemo(
+    () => [
+      {
+        name: 'Distribución Porcentual',
+        data: data.map((d) => d.percentage),
+      },
+    ],
+    [data]
+  );
 
   return (
-    <div className="space-y-4">
-      {/* Gráfico de barras SVG */}
-      <div className="relative pt-2">
-        <div className="grid grid-cols-4 gap-3 sm:gap-4 h-48 items-end border-b border-line px-2">
-          {data.map((item, idx) => {
-            const barHeightPercent = (item.percentage / maxPercent) * 100;
-            const isHovered = hoveredBar === idx;
-
-            return (
-              <div
-                key={item.bracket}
-                className="flex flex-col items-center h-full justify-end cursor-pointer group"
-                onMouseEnter={() => setHoveredBar(idx)}
-                onMouseLeave={() => setHoveredBar(null)}
-              >
-                {/* Porcentaje flotante */}
-                <span
-                  className={`text-xs font-bold mb-1.5 transition-colors ${
-                    item.highlight || isHovered ? 'text-green-dark' : 'text-secondary'
-                  }`}
-                >
-                  {item.percentage}%
-                </span>
-
-                {/* Columna vertical */}
-                <div className="w-full max-w-[54px] rounded-t-xl overflow-hidden bg-page border border-line/60 relative">
-                  <div
-                    className={`w-full rounded-t-xl transition-all duration-300 ${
-                      item.highlight
-                        ? 'bg-gradient-to-t from-green-dark to-green'
-                        : isHovered
-                        ? 'bg-ink'
-                        : 'bg-lime/70 hover:bg-lime'
-                    }`}
-                    style={{ height: `${barHeightPercent * 1.5}px` }}
-                  />
-                </div>
-
-                {/* Etiqueta del Rango */}
-                <div className="mt-2 text-center w-full">
-                  <span className="block text-[0.72rem] font-bold text-ink truncate">
-                    {item.bracket}
-                  </span>
-                  <span className="block text-[0.65rem] text-secondary truncate">
-                    {item.rangeCOP}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+    <div className="space-y-3">
+      <div className="relative w-full rounded-2xl bg-white p-1">
+        <Chart options={chartOptions} series={series} type="bar" height={250} />
       </div>
 
-      {/* Tarjeta de detalle interactivo */}
-      {hoveredBar !== null ? (
-        <div className="rounded-xl border border-green/30 bg-green/5 p-3 text-xs flex items-center justify-between animate-in fade-in">
-          <div>
-            <strong className="text-ink">{data[hoveredBar].bracket} ({data[hoveredBar].rangeCOP}):</strong>{' '}
-            <span className="text-secondary">{data[hoveredBar].typicalProfile}</span>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-line-soft text-xs text-secondary">
+        {data.map((item) => (
+          <div key={item.bracket} className="rounded-xl bg-page p-2 border border-line-soft">
+            <span className="font-bold text-ink block">{item.bracket}</span>
+            <span className="text-[0.68rem] text-secondary font-medium">{item.rangeCOP}</span>
           </div>
-          <span className="font-bold text-green-dark whitespace-nowrap ml-2">
-            {data[hoveredBar].count.toLocaleString()} graduados
-          </span>
-        </div>
-      ) : (
-        <div className="rounded-xl border border-line bg-page/50 p-2.5 text-center text-xs text-secondary">
-          Pasa el cursor por cada rango salarial para ver el perfil y volumen de graduados.
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
 
 /**
- * 4. Gráfico Horizontal de Tiempos de Inserción
+ * ─────────────────────────────────────────────────────────────────────────────
+ * 4. Gráfico Horizontal de Tiempos de Inserción (ApexCharts Bar Horizontal)
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 export function TimeToPlacementChart({ timeData }) {
-  const [hoveredIndex, setHoveredIndex] = useState(null);
+  const toneMap = {
+    emerald: '#28571d',
+    lime: '#4d7a1f',
+    amber: '#d99b26',
+    rose: '#e11d48',
+  };
 
-  const data = timeData || [
-    { range: 'Menos de 3 meses', percentage: 44, count: 2557, tag: 'Inserción rápida (pasantías y convenios)', tone: '#28571d' },
-    { range: 'De 3 a 6 meses', percentage: 34, count: 1976, tag: 'Intermediación estándar bolsa de empleo', tone: '#336f24' },
-    { range: 'De 6 a 12 meses', percentage: 15, count: 871, tag: 'Procesos de selección especializados', tone: '#b1cc74' },
-    { range: 'Más de 12 meses', percentage: 7, count: 407, tag: 'Población prioritaria para plan vocacional', tone: '#f43f5e' },
-  ];
+  const data = useMemo(() => {
+    const raw = timeData && timeData.length ? timeData : [
+      { range: 'Menos de 3 meses', percentage: 44, count: 2557, tag: 'Inserción rápida (pasantías y convenios)', tone: '#28571d' },
+      { range: 'De 3 a 6 meses', percentage: 34, count: 1976, tag: 'Intermediación estándar bolsa de empleo', tone: '#4d7a1f' },
+      { range: 'De 6 a 12 meses', percentage: 15, count: 871, tag: 'Procesos de selección especializados', tone: '#d99b26' },
+      { range: 'Más de 12 meses', percentage: 7, count: 407, tag: 'Población prioritaria para plan vocacional', tone: '#e11d48' },
+    ];
+
+    return raw.map((d) => ({
+      range: d.range,
+      percentage: d.percentage,
+      count: d.count,
+      tag: d.tag || d.description || '',
+      tone: toneMap[d.tone] || (d.tone && d.tone.startsWith('#') ? d.tone : '#28571d'),
+    }));
+  }, [timeData]);
+
+  const total = data.reduce((s, d) => s + d.count, 0);
+  const within6 = data.slice(0, 2).reduce((s, d) => s + d.percentage, 0);
+  const late = data[data.length - 1];
+
+  const chartOptions = useMemo(() => {
+    return {
+      chart: {
+        type: 'bar',
+        height: 220,
+        toolbar: { show: false },
+        fontFamily: 'Inter, system-ui, sans-serif',
+      },
+      plotOptions: {
+        bar: {
+          horizontal: true,
+          borderRadius: 6,
+          barHeight: '52%',
+          distributed: true,
+          dataLabels: { position: 'top' },
+        },
+      },
+      colors: data.map((d) => d.tone),
+      dataLabels: {
+        enabled: true,
+        formatter: (val) => `${val}%`,
+        offsetX: 24,
+        style: {
+          fontSize: '11px',
+          fontWeight: 700,
+          colors: ['#051F26'],
+        },
+      },
+      legend: { show: false },
+      xaxis: {
+        categories: data.map((d) => d.range),
+        max: Math.max(...data.map((d) => d.percentage)) + 12,
+        labels: {
+          formatter: (val) => `${val}%`,
+          style: { colors: '#64748b', fontSize: '11px', fontWeight: 600 },
+        },
+      },
+      yaxis: {
+        labels: {
+          style: { colors: '#334155', fontSize: '11px', fontWeight: 600 },
+        },
+      },
+      tooltip: {
+        theme: 'light',
+        y: {
+          formatter: (val, { dataPointIndex }) => {
+            const item = data[dataPointIndex];
+            return `${val}% (${item.count.toLocaleString('es-CO')} personas) · ${item.tag}`;
+          },
+        },
+      },
+      grid: {
+        borderColor: '#f1f5f9',
+        strokeDashArray: 4,
+      },
+    };
+  }, [data]);
+
+  const series = useMemo(
+    () => [
+      {
+        name: 'Tiempo de Inserción',
+        data: data.map((d) => d.percentage),
+      },
+    ],
+    [data]
+  );
 
   return (
     <div className="space-y-3.5">
-      {data.map((item, idx) => (
-        <div
-          key={item.range}
-          onMouseEnter={() => setHoveredIndex(idx)}
-          onMouseLeave={() => setHoveredIndex(null)}
-          className={`rounded-xl border p-3 transition-all cursor-pointer ${
-            hoveredIndex === idx
-              ? 'border-green/40 bg-green/5 shadow-2xs'
-              : 'border-line/60 bg-page/30 hover:bg-page/70'
-          }`}
-        >
-          <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className="font-bold text-ink">{item.range}</span>
-            <div className="flex items-center gap-2">
-              <span className="text-secondary text-[0.7rem]">
-                {item.count.toLocaleString()} egresados
-              </span>
-              <span className="font-display font-bold text-ink">{item.percentage}%</span>
-            </div>
-          </div>
-
-          {/* Barra de progreso */}
-          <div className="h-3 w-full overflow-hidden rounded-full bg-white border border-line/60 relative">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${item.percentage}%`,
-                backgroundColor: item.tone,
-              }}
-            />
-          </div>
-
-          <p className="mt-1.5 text-[0.68rem] text-body-muted m-0">{item.tag}</p>
+      {/* Resumen ejecutivo en tarjetas */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3">
+          <p className="m-0 text-[0.65rem] font-bold uppercase tracking-wider text-secondary">
+            Empleo en menos de 6 meses
+          </p>
+          <p className="m-0 mt-0.5 font-display text-2xl font-bold text-green-dark leading-none">
+            {within6}%
+          </p>
         </div>
-      ))}
+        <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-3">
+          <p className="m-0 text-[0.65rem] font-bold uppercase tracking-wider text-secondary">
+            {late.range}
+          </p>
+          <p className="m-0 mt-0.5 font-display text-2xl font-bold text-rose-600 leading-none">
+            {late.percentage}%
+            <span className="ml-1.5 text-[0.7rem] font-semibold text-secondary">
+              ({late.count.toLocaleString('es-CO')} de {total.toLocaleString('es-CO')})
+            </span>
+          </p>
+        </div>
+      </div>
+
+      {/* Render ApexCharts Bar Horizontal */}
+      <div className="relative w-full rounded-2xl bg-white p-1">
+        <Chart options={chartOptions} series={series} type="bar" height={220} />
+      </div>
     </div>
   );
 }
