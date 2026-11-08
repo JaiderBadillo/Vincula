@@ -76,6 +76,23 @@ const carouselSlides = [
   },
 ];
 
+const INSTITUTION_FIELD_LABELS = {
+  legalName: 'Nombre oficial de la Institución (IES)',
+  sniesCode: 'Código SNIES institucional (MEN)',
+  nit: 'NIT institucional con dígito de verificación',
+  address: 'Dirección del campus o sede principal',
+  phone: 'Teléfono o PBX institucional',
+  rectorName: 'Nombre del Rector(a) o Representante Legal',
+  advisorName: 'Nombre del asesor responsable de egresados',
+  advisorEmail: 'Correo institucional (@correo.edu.co)',
+  advisorPhone: 'Celular o WhatsApp institucional',
+  resolucionMen: 'Resolución de Personería Jurídica del MEN (PDF)',
+  sniesCert: 'Certificación de Registro Activo SNIES (PDF)',
+  actaPosesion: 'Acta de Posesión del Rector(a) (PDF)',
+  rut: 'RUT institucional expedido por la DIAN (PDF)',
+  juramento: 'Declaración juramentada de personería jurídica y autorización',
+};
+
 export default function InstitutionRegistrationPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -202,7 +219,7 @@ export default function InstitutionRegistrationPage() {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   }
 
   async function handleSubmit(e) {
@@ -210,10 +227,8 @@ export default function InstitutionRegistrationPage() {
     setSubmitted(true);
     setApiError(null);
 
-    if (!validateForm()) {
-      const firstErrorKey = Object.keys(errors)[0];
-      const el = document.getElementById(firstErrorKey);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
       return;
     }
 
@@ -805,6 +820,7 @@ export default function InstitutionRegistrationPage() {
                     </div>
 
                     <div
+                      id="resolucionMen"
                       onClick={() => resolucionInputRef.current?.click()}
                       onDragOver={(e) => {
                         e.preventDefault();
@@ -879,6 +895,7 @@ export default function InstitutionRegistrationPage() {
                     </div>
 
                     <div
+                      id="sniesCert"
                       onClick={() => sniesInputRef.current?.click()}
                       onDragOver={(e) => {
                         e.preventDefault();
@@ -953,6 +970,7 @@ export default function InstitutionRegistrationPage() {
                     </div>
 
                     <div
+                      id="actaPosesion"
                       onClick={() => actaInputRef.current?.click()}
                       onDragOver={(e) => {
                         e.preventDefault();
@@ -1027,6 +1045,7 @@ export default function InstitutionRegistrationPage() {
                     </div>
 
                     <div
+                      id="rut"
                       onClick={() => rutInputRef.current?.click()}
                       onDragOver={(e) => {
                         e.preventDefault();
@@ -1091,6 +1110,7 @@ export default function InstitutionRegistrationPage() {
                   <div className="pt-2">
                     <label className="flex items-start gap-2.5 cursor-pointer text-xs leading-relaxed text-secondary select-none">
                       <input
+                        id="juramento"
                         type="checkbox"
                         checked={juramento}
                         onChange={(e) => setJuramento(e.target.checked)}
@@ -1114,6 +1134,45 @@ export default function InstitutionRegistrationPage() {
                   )}
                 </div>
               </div>
+
+              {/* Alerta de Datos Faltantes antes del botón de radicar */}
+              {submitted && Object.keys(errors).length > 0 && (
+                <div
+                  id="missing-fields-alert"
+                  className="rounded-2xl border-2 border-emerald-300 bg-emerald-50/95 p-4 sm:p-5 shadow-sm animate-fadeIn"
+                  role="alert"
+                >
+                  <div className="flex items-center gap-2.5 font-bold text-sm text-emerald-950 mb-2">
+                    <span className="grid size-7 place-items-center rounded-lg bg-emerald-200 text-emerald-900 shrink-0">
+                      <i className="bx bx-error-circle text-lg" />
+                    </span>
+                    <span>Faltan los siguientes datos obligatorios para radicar la vinculación institucional:</span>
+                  </div>
+
+                  <ul className="mt-2.5 grid gap-2 sm:grid-cols-2 text-xs font-semibold text-emerald-950">
+                    {Object.entries(errors).map(([key, msg]) => (
+                      <li key={key} className="flex items-start gap-2">
+                        <span className="mt-1 size-1.5 rounded-full bg-emerald-700 shrink-0" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const el = document.getElementById(key);
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }}
+                          className="text-left font-semibold text-emerald-950 hover:text-emerald-700 underline underline-offset-2 cursor-pointer bg-transparent border-none p-0"
+                          title="Haz clic para ir a este campo"
+                        >
+                          {INSTITUTION_FIELD_LABELS[key] || msg}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <p className="m-0 mt-3 text-[0.68rem] font-medium text-emerald-800">
+                    💡 Haz clic sobre cualquiera de los datos anteriores para ir directamente al campo correspondiente.
+                  </p>
+                </div>
+              )}
 
               {/* Botón de Envío */}
               <div className="flex flex-col sm:flex-row items-center gap-3">

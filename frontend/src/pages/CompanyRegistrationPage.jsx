@@ -64,6 +64,23 @@ const carouselSlides = [
   },
 ];
 
+const COMPANY_FIELD_LABELS = {
+  legalName: 'Razón Social completa de la empresa',
+  commercialName: 'Nombre comercial o marca',
+  nit: 'NIT con dígito de verificación',
+  address: 'Dirección física de sede principal',
+  companyPhone: 'Teléfono corporativo o PBX',
+  legalRepName: 'Nombres y apellidos del Representante Legal',
+  legalRepDoc: 'Cédula de ciudadanía del Representante Legal',
+  recruiterName: 'Nombre del responsable de Talento / RRHH',
+  recruiterEmail: 'Correo corporativo del reclutador',
+  recruiterPhone: 'Celular o WhatsApp del reclutador',
+  camaraComercio: 'Certificado de Existencia y Representación Legal (Cámara de Comercio PDF)',
+  rut: 'Registro Único Tributario (RUT - DIAN PDF)',
+  legalRepId: 'Cédula de ciudadanía del Representante Legal (PDF)',
+  juramento: 'Declaración juramentada y autorización de verificación',
+};
+
 export default function CompanyRegistrationPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -185,7 +202,7 @@ export default function CompanyRegistrationPage() {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   }
 
   async function handleSubmit(e) {
@@ -193,11 +210,8 @@ export default function CompanyRegistrationPage() {
     setSubmitted(true);
     setApiError(null);
 
-    if (!validateForm()) {
-      // Desplazamiento al primer error
-      const firstErrorKey = Object.keys(errors)[0];
-      const el = document.getElementById(firstErrorKey);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
       return;
     }
 
@@ -766,6 +780,7 @@ export default function CompanyRegistrationPage() {
                     </div>
 
                     <div
+                      id="camaraComercio"
                       onClick={() => camaraInputRef.current?.click()}
                       onDragOver={(e) => {
                         e.preventDefault();
@@ -840,6 +855,7 @@ export default function CompanyRegistrationPage() {
                     </div>
 
                     <div
+                      id="rut"
                       onClick={() => rutInputRef.current?.click()}
                       onDragOver={(e) => {
                         e.preventDefault();
@@ -910,6 +926,7 @@ export default function CompanyRegistrationPage() {
                     </div>
 
                     <div
+                      id="legalRepId"
                       onClick={() => repIdInputRef.current?.click()}
                       onDragOver={(e) => {
                         e.preventDefault();
@@ -978,6 +995,7 @@ export default function CompanyRegistrationPage() {
                   <div className="pt-2">
                     <label className="flex items-start gap-2.5 cursor-pointer text-xs leading-relaxed text-secondary select-none">
                       <input
+                        id="juramento"
                         type="checkbox"
                         checked={juramento}
                         onChange={(e) => setJuramento(e.target.checked)}
@@ -1001,6 +1019,45 @@ export default function CompanyRegistrationPage() {
                   )}
                 </div>
               </div>
+
+              {/* Alerta de Datos Faltantes antes del botón de radicar */}
+              {submitted && Object.keys(errors).length > 0 && (
+                <div
+                  id="missing-fields-alert"
+                  className="rounded-2xl border-2 border-amber-300 bg-amber-50/95 p-4 sm:p-5 shadow-sm animate-fadeIn"
+                  role="alert"
+                >
+                  <div className="flex items-center gap-2.5 font-bold text-sm text-amber-950 mb-2">
+                    <span className="grid size-7 place-items-center rounded-lg bg-amber-200 text-amber-900 shrink-0">
+                      <i className="bx bx-error-circle text-lg" />
+                    </span>
+                    <span>Faltan los siguientes datos obligatorios para radicar la solicitud:</span>
+                  </div>
+
+                  <ul className="mt-2.5 grid gap-2 sm:grid-cols-2 text-xs font-semibold text-amber-900">
+                    {Object.entries(errors).map(([key, msg]) => (
+                      <li key={key} className="flex items-start gap-2">
+                        <span className="mt-1 size-1.5 rounded-full bg-amber-600 shrink-0" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const el = document.getElementById(key);
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }}
+                          className="text-left font-semibold text-amber-950 hover:text-amber-700 underline underline-offset-2 cursor-pointer bg-transparent border-none p-0"
+                          title="Haz clic para ir a este campo"
+                        >
+                          {COMPANY_FIELD_LABELS[key] || msg}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <p className="m-0 mt-3 text-[0.68rem] font-medium text-amber-800">
+                    💡 Haz clic sobre cualquiera de los datos anteriores para ir directamente al campo correspondiente.
+                  </p>
+                </div>
+              )}
 
               {/* Botón de Envío */}
               <div className="flex flex-col sm:flex-row items-center gap-3">

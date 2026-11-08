@@ -127,6 +127,19 @@ const graduationYears = [
   '2014 o anterior',
 ];
 
+const GRADUATE_FIELD_LABELS = {
+  docNumber: 'Número de documento de identidad',
+  fullName: 'Nombres y apellidos completos',
+  email: 'Correo electrónico personal válido',
+  phone: 'Teléfono o WhatsApp de contacto',
+  dept: 'Departamento de residencia',
+  city: 'Ciudad / Municipio de residencia',
+  university: 'Universidad o Institución de egreso',
+  career: 'Carrera o programa académico de egreso',
+  diploma: 'Diploma o acta de grado (archivo PDF)',
+  habeasData: 'Autorización de verificación de datos (Habeas Data)',
+};
+
 // Carrusel con fotos grandes y poco texto conciso
 const carouselSlides = [
   {
@@ -183,6 +196,7 @@ function UniversitySelect({ value, onChange, error }) {
   return (
     <div className="relative" ref={dropdownRef}>
       <button
+        id="university"
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         className={`min-h-12 w-full rounded-xl border bg-white px-3.5 py-2.5 text-xs font-semibold text-ink outline-none focus:border-green focus:ring-4 focus:ring-green/10 transition-all flex items-center justify-between gap-2.5 cursor-pointer text-left ${
@@ -379,7 +393,7 @@ export default function GraduateRegistrationPage() {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   }
 
   async function handleSubmit(e) {
@@ -387,10 +401,8 @@ export default function GraduateRegistrationPage() {
     setSubmitted(true);
     setApiError(null);
 
-    if (!validate()) {
-      const firstErrorKey = Object.keys(errors)[0];
-      const el = document.getElementById(firstErrorKey);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
       return;
     }
 
@@ -833,6 +845,7 @@ export default function GraduateRegistrationPage() {
                     </label>
 
                     <div
+                      id="diploma"
                       onClick={() => fileInputRef.current?.click()}
                       onDragOver={(e) => {
                         e.preventDefault();
@@ -907,6 +920,7 @@ export default function GraduateRegistrationPage() {
                   <div className="pt-2">
                     <label className="flex items-start gap-2.5 cursor-pointer text-xs leading-relaxed text-secondary select-none">
                       <input
+                        id="habeasData"
                         type="checkbox"
                         checked={habeasData}
                         onChange={(e) => setHabeasData(e.target.checked)}
@@ -933,6 +947,45 @@ export default function GraduateRegistrationPage() {
                   )}
                 </div>
               </div>
+
+              {/* Alerta de Datos Faltantes antes del botón de finalizar */}
+              {submitted && Object.keys(errors).length > 0 && (
+                <div
+                  id="missing-fields-alert"
+                  className="rounded-2xl border-2 border-amber-300 bg-amber-50/95 p-4 sm:p-5 shadow-sm animate-fadeIn"
+                  role="alert"
+                >
+                  <div className="flex items-center gap-2.5 font-bold text-sm text-amber-950 mb-2">
+                    <span className="grid size-7 place-items-center rounded-lg bg-amber-200 text-amber-900 shrink-0">
+                      <i className="bx bx-error-circle text-lg" />
+                    </span>
+                    <span>Faltan los siguientes datos obligatorios para finalizar tu registro:</span>
+                  </div>
+
+                  <ul className="mt-2.5 grid gap-2 sm:grid-cols-2 text-xs font-semibold text-amber-900">
+                    {Object.entries(errors).map(([key, msg]) => (
+                      <li key={key} className="flex items-start gap-2">
+                        <span className="mt-1 size-1.5 rounded-full bg-amber-600 shrink-0" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const el = document.getElementById(key);
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }}
+                          className="text-left font-semibold text-amber-950 hover:text-amber-700 underline underline-offset-2 cursor-pointer bg-transparent border-none p-0"
+                          title="Haz clic para ir a este campo"
+                        >
+                          {GRADUATE_FIELD_LABELS[key] || msg}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <p className="m-0 mt-3 text-[0.68rem] font-medium text-amber-800">
+                    💡 Haz clic sobre cualquiera de los datos anteriores para ir directamente al campo correspondiente.
+                  </p>
+                </div>
+              )}
 
               {/* Botón de Enviar Registro */}
               <div className="flex flex-col sm:flex-row items-center gap-3">
