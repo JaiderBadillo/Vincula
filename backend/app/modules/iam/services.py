@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.integrations.supabase_storage import SupabaseStorageService
+from app.integrations.n8n_webhooks import N8nWebhookDispatcher
 from app.modules.iam.models import Usuario
 from app.modules.companies.models import Empresa, ReclutadorEmpresa, DocumentoEmpresa
 from app.modules.institutions.models import Institucion, AsesorIES, DocumentoInstitucion
@@ -177,6 +178,22 @@ class IAMService:
         session.add(nuevo_egresado)
         await session.commit()
 
+        # 3. Disparar webhook asíncrono hacia n8n para bienvenida y notificación
+        await N8nWebhookDispatcher.dispatch_event(
+            "registro-egresado",
+            {
+                "evento": "egresado.registrado",
+                "id_usuario": str(nuevo_usuario.id),
+                "id_egresado": str(nuevo_egresado.id),
+                "nombre": data.nombre_completo,
+                "correo": data.correo.lower(),
+                "carrera": data.carrera,
+                "ciudad": data.ciudad,
+                "departamento": data.departamento,
+                "url_completar_perfil": "https://vincula-henna.vercel.app/login?redirect=%2Fdashboard%2Fperfil",
+            }
+        )
+
         return {
             "success": True,
             "mensaje": "Pre-registro de egresado exitoso. Tu cuenta está activa.",
@@ -321,6 +338,23 @@ class IAMService:
         await session.commit()
 
         radicado = f"RAD-EMP-2026-{str(nueva_empresa.id)[:8].upper()}"
+
+        # Disparar webhook asíncrono hacia n8n para notificación de radicación y SLA 72h
+        await N8nWebhookDispatcher.dispatch_event(
+            "registro-empresa",
+            {
+                "evento": "empresa.registrada",
+                "radicado": radicado,
+                "id_usuario": str(nuevo_usuario.id),
+                "id_empresa": str(nueva_empresa.id),
+                "razon_social": data.razon_social,
+                "nit": data.nit,
+                "correo_contacto": data.correo_contacto.lower(),
+                "representante_legal": data.nombre_representante_legal,
+                "persona_contacto": data.persona_contacto,
+                "sla_horas": 72,
+            }
+        )
 
         return {
             "success": True,
