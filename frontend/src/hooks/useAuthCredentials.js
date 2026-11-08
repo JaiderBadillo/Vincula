@@ -1,70 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export const AUTH_CREDENTIALS_STORAGE_KEY = 'vincula.auth.credentials.v1';
+export const AUTH_CREDENTIALS_STORAGE_KEY = 'vincula.auth.credentials.v2';
 export const AUTH_CREDENTIALS_SYNC_EVENT = 'vincula:auth-credentials-updated';
 export const COMPANY_PERSONA_STORAGE_KEY = 'vincula.company.active-persona';
 export const COMPANY_PERSONA_SYNC_EVENT = 'vincula:company-persona-updated';
 
 export const INITIAL_CREDENTIALS = {
-  graduate: {
-    roleId: 'graduate',
-    roleLabel: 'Egresado',
-    category: 'Egresados y Graduados',
-    name: 'Jaider Niño',
-    email: 'egresado@correo.uts.edu.co',
-    password: 'Egresado123*',
-    lastChanged: 'Hoy',
-    portalRoute: '/dashboard',
-  },
-  institution_advisor: {
-    roleId: 'institution_advisor',
-    roleLabel: 'Asesor IES',
-    category: 'Institución de Educación Superior',
-    name: 'Coordinación de Egresados UTS',
-    email: 'ies@uts.edu.co',
-    password: 'IesAdmin123*',
-    lastChanged: 'Hoy',
-    portalRoute: '/institucion/dashboard',
-  },
   institution_admin: {
     roleId: 'institution_admin',
-    roleLabel: 'Administrador IES',
+    roleLabel: 'Administrador IES (UTS)',
     category: 'Institución de Educación Superior',
     name: 'Unidades Tecnológicas de Santander',
     email: 'ies@uts.edu.co',
     password: 'IesAdmin123*',
     lastChanged: 'Hoy',
     portalRoute: '/institucion/admin/perfil',
-  },
-  company_admin: {
-    roleId: 'company_admin',
-    roleLabel: 'Administrador de Empresa (Aprobada)',
-    category: 'Empresas y Empleadores',
-    name: 'Tech Innovations SAS',
-    email: 'empresa@techinnovations.co',
-    password: 'Empresa123*',
-    lastChanged: 'Hoy',
-    portalRoute: '/empresa/admin/perfil',
-  },
-  company_quarantine: {
-    roleId: 'company_quarantine',
-    roleLabel: 'Empresa en Cuarentena (SLA 72h)',
-    category: 'Empresas y Empleadores',
-    name: 'Startup en Espera SAS',
-    email: 'empresa.nueva@startup.co',
-    password: 'Empresa123*',
-    lastChanged: 'Hoy',
-    portalRoute: '/empresa/admin/actividad',
-  },
-  company_recruiter: {
-    roleId: 'company_recruiter',
-    roleLabel: 'Reclutador',
-    category: 'Empresas y Empleadores',
-    name: 'Carlos Andrés Rueda',
-    email: 'empresa@techinnovations.co',
-    password: 'Empresa123*',
-    lastChanged: 'Hoy',
-    portalRoute: '/empresa/reclutador/dashboard',
   },
   vincula_admin: {
     roleId: 'vincula_admin',
@@ -81,13 +31,16 @@ export const INITIAL_CREDENTIALS = {
 function readCredentials() {
   if (typeof window === 'undefined') return INITIAL_CREDENTIALS;
   try {
+    // Limpieza de claves obsoletas v1 si existían
+    window.localStorage.removeItem('vincula.auth.credentials.v1');
     const raw = window.localStorage.getItem(AUTH_CREDENTIALS_STORAGE_KEY);
     if (!raw) return INITIAL_CREDENTIALS;
     const parsed = JSON.parse(raw);
-    return {
-      ...INITIAL_CREDENTIALS,
-      ...parsed,
-    };
+    const sanitized = {};
+    for (const key of Object.keys(INITIAL_CREDENTIALS)) {
+      sanitized[key] = parsed[key] ? { ...INITIAL_CREDENTIALS[key], ...parsed[key] } : INITIAL_CREDENTIALS[key];
+    }
+    return sanitized;
   } catch {
     return INITIAL_CREDENTIALS;
   }
@@ -257,4 +210,3 @@ function syncWithRelatedProfiles(roleId, newEmail) {
     // Silencioso
   }
 }
-

@@ -6,13 +6,15 @@ import {
 } from '../data/vinculaAdminData.js';
 import { adminService } from '../services/adminService.js';
 
-const STORAGE_KEY_COMPANIES = 'vincula.admin.companies.v1';
-const STORAGE_KEY_INSTITUTIONS = 'vincula.admin.institutions.v1';
+const STORAGE_KEY_COMPANIES = 'vincula.admin.companies.v2';
+const STORAGE_KEY_INSTITUTIONS = 'vincula.admin.institutions.v2';
 const SYNC_EVENT = 'vincula:admin-platform-updated';
 
 function readStoredData(key, fallback) {
   if (typeof window === 'undefined') return fallback;
   try {
+    window.localStorage.removeItem('vincula.admin.companies.v1');
+    window.localStorage.removeItem('vincula.admin.institutions.v1');
     const raw = window.localStorage.getItem(key);
     return raw ? JSON.parse(raw) : fallback;
   } catch {

@@ -131,3 +131,4 @@ export default function ProtectedRoute({ allowedRoles = [], children }) {
   // 3. Renderizar componentes hijos o el Outlet de React Router
   return children ? children : <Outlet />;
 }
+

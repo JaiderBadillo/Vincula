@@ -327,61 +327,29 @@ export default function LoginPage() {
             Google
           </button>
 
-          {/* Demostración: Acceso rápido por rol */}
+          {/* Cuentas activas en la plataforma */}
           <div className="mt-6 rounded-2xl border border-sand-line bg-sand/30 p-3.5">
-            <p className="m-0 mb-2 text-center text-[0.68rem] font-bold uppercase tracking-wider text-secondary">
-              Acceso rápido para demostración (Cuentas Supabase PostgreSQL)
+            <p className="m-0 mb-2.5 text-center text-[0.68rem] font-bold uppercase tracking-wider text-secondary">
+              Cuentas oficiales activas (Supabase PostgreSQL)
             </p>
-            <div className="flex flex-wrap justify-center gap-1.5">
+            <div className="flex flex-wrap justify-center gap-2">
               <button
                 type="button"
-                onClick={() => handleQuickFill('graduate')}
-                className="rounded-lg border border-sand-line bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-ink hover:bg-cream hover:text-cocoa transition-colors cursor-pointer"
+                onClick={() => handleQuickFill('vincula_admin')}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-terracotta/30 bg-terracotta/10 px-3.5 py-1.5 text-xs font-bold text-terracotta hover:bg-terracotta hover:text-white transition-colors cursor-pointer"
+                title="Super Administrador Vincula (admin@vincula.com.co)"
               >
-                Egresado
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('institution_advisor')}
-                className="rounded-lg border border-sand-line bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-ink hover:bg-cream hover:text-cocoa transition-colors cursor-pointer"
-              >
-                Asesor IES
+                <i className="bx bx-shield-quarter text-sm" aria-hidden="true" />
+                Admin Vincula
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickFill('institution_admin')}
-                className="rounded-lg border border-sand-line bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-ink hover:bg-cream hover:text-cocoa transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-green/30 bg-green/10 px-3.5 py-1.5 text-xs font-bold text-green-dark hover:bg-green hover:text-white transition-colors cursor-pointer"
+                title="Cuenta Institucional UTS (ies@uts.edu.co)"
               >
-                Admin IES
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('company_admin')}
-                className="rounded-lg border border-sand-line bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-ink hover:bg-cream hover:text-cocoa transition-colors cursor-pointer"
-              >
-                Empresa Aprobada
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('company_quarantine')}
-                className="rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-[0.68rem] font-bold text-amber-900 hover:bg-amber-100 transition-colors cursor-pointer"
-                title="Empresa en modo cuarentena pendiente de auditoría SLA 72h"
-              >
-                Empresa Cuarentena
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('company_recruiter')}
-                className="rounded-lg border border-sand-line bg-white px-2.5 py-1 text-[0.68rem] font-semibold text-ink hover:bg-cream hover:text-cocoa transition-colors cursor-pointer"
-              >
-                Reclutador
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('vincula_admin')}
-                className="rounded-lg border border-terracotta/30 bg-terracotta/10 px-2.5 py-1 text-[0.68rem] font-bold text-terracotta hover:bg-terracotta hover:text-white transition-colors cursor-pointer"
-              >
-                Admin Vincula
+                <i className="bx bx-buildings text-sm" aria-hidden="true" />
+                Cuenta UTS (IES)
               </button>
             </div>
           </div>
