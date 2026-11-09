@@ -5,7 +5,8 @@ import { useAuthCredentials } from '../hooks/useAuthCredentials.js';
 import { authService } from '../services/authService.js';
 
 const GOOGLE_CLIENT_ID =
-  import.meta.env?.VITE_GOOGLE_CLIENT_ID || '';
+  import.meta.env?.VITE_GOOGLE_CLIENT_ID ||
+  '698543862122-050jkphuknmg709207im4lfs39744ef8.apps.googleusercontent.com';
 
 export default function LoginPage() {
   const [searchParams] = useSearchParams();
