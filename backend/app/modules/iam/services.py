@@ -7,8 +7,11 @@ Integra Supabase Storage para almacenamiento S3 de PDFs de auditoría (RUT, Cám
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
 import base64
+import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 from app.core.config import settings
 from app.core.security import verify_password, get_password_hash, create_access_token
@@ -121,6 +124,201 @@ class IAMService:
         }
 
     @staticmethod
+    async def authenticate_google(
+        session: AsyncSession,
+        credential: Optional[str] = None,
+        access_token: Optional[str] = None
+    ) -> TokenResponse:
+        """
+        Autenticación y registro automático con Google Identity Services (OAuth 2.0).
+        Soporta tanto ID Token (credential) como Access Token (OAuth2 popup).
+        """
+        import json
+        import urllib.request
+
+        idinfo: Dict[str, Any] = {}
+
+        if credential:
+            try:
+                idinfo = id_token.verify_oauth2_token(
+                    credential,
+                    google_requests.Request(),
+                    settings.GOOGLE_CLIENT_ID
+                )
+            except Exception as e:
+                raise ValueError(f"Token de Google inválido o expirado: {str(e)}")
+        elif access_token:
+            try:
+                req = urllib.request.Request(
+                    "https://www.googleapis.com/oauth2/v3/userinfo",
+                    headers={"Authorization": f"Bearer {access_token}"}
+                )
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    idinfo = json.loads(resp.read().decode("utf-8"))
+            except Exception as e:
+                raise ValueError(f"Access Token de Google inválido o expirado: {str(e)}")
+        else:
+            raise ValueError("No se proporcionó credencial ni token de acceso de Google.")
+
+        email = idinfo.get("email", "").strip().lower()
+        if not email:
+            raise ValueError("No se pudo obtener el correo de la cuenta de Google.")
+
+        nombre = idinfo.get("name", "") or email.split("@")[0]
+        avatar_url = idinfo.get("picture", "")
+        google_sub = idinfo.get("sub", "")
+
+        # 1. Buscar si el usuario ya existe en PostgreSQL
+        stmt = select(Usuario).where(Usuario.correo_electronico == email)
+        result = await session.execute(stmt)
+        usuario = result.scalar_one_or_none()
+
+        if not usuario:
+            # Crear nuevo usuario con rol 'egresado' y estado 'activo'
+            random_pwd = uuid.uuid4().hex + "G!9x"
+            usuario = Usuario(
+                correo_electronico=email,
+                contrasena_hash=get_password_hash(random_pwd),
+                rol="egresado",
+                estado="activo"
+            )
+            session.add(usuario)
+            await session.flush()
+
+            # Crear perfil de Egresado asociado
+            doc_provisional = f"G-{google_sub[:10]}" if google_sub else f"G-{uuid.uuid4().hex[:8]}"
+            nuevo_egresado = Egresado(
+                id_usuario=usuario.id,
+                tipo_documento="CC",
+                numero_documento=doc_provisional,
+                nombre_completo=nombre,
+                ciudad_residencia="Bucaramanga",
+                departamento_residencia="Santander",
+                telefono="No suministrado",
+                correo_personal=email,
+                url_avatar=avatar_url or None,
+                titular_profesional="Profesional en Formación / Graduado",
+                disponible_para_trabajar=True,
+                estado="activo"
+            )
+            session.add(nuevo_egresado)
+            await session.commit()
+
+            # Correo de bienvenida y Webhook asíncrono
+            try:
+                await EmailService.send_graduate_welcome_email(
+                    to_email=email,
+                    name=nombre,
+                    career="Profesional en Formación",
+                    city="Bucaramanga, Santander",
+                )
+            except Exception as mail_err:
+                print(f"[GOOGLE AUTH] Notificación de bienvenida omitida: {mail_err}")
+
+            try:
+                await N8nWebhookDispatcher.dispatch_event(
+                    "registro-egresado",
+                    {
+                        "evento": "egresado.registrado_google",
+                        "id_usuario": str(usuario.id),
+                        "id_egresado": str(nuevo_egresado.id),
+                        "nombre": nombre,
+                        "correo": email,
+                        "fuente": "Google Identity Services",
+                    }
+                )
+            except Exception as n8n_err:
+                print(f"[GOOGLE AUTH] Webhook n8n omitido: {n8n_err}")
+        else:
+            if usuario.estado != "activo":
+                raise ValueError("Tu cuenta se encuentra inactiva o suspendida. Comunícate con soporte.")
+            usuario.ultimo_acceso_en = datetime.now(timezone.utc)
+            await session.commit()
+
+        # 2. Resolver datos de entidad y nombre según el rol
+        nombre_final = nombre
+        id_entidad = None
+        estado_validacion = "aprobado"
+
+        if usuario.rol in ("admin_empresa", "reclutador_empresa"):
+            rec_stmt = (
+                select(ReclutadorEmpresa, Empresa)
+                .join(Empresa, ReclutadorEmpresa.id_empresa == Empresa.id)
+                .where(ReclutadorEmpresa.id_usuario == usuario.id)
+            )
+            rec_res = await session.execute(rec_stmt)
+            row = rec_res.first()
+            if row:
+                reclutador, empresa = row
+                nombre_final = reclutador.nombre_completo or empresa.nombre_comercial
+                id_entidad = str(empresa.id)
+                estado_validacion = empresa.estado
+            else:
+                estado_validacion = "pendiente"
+
+        elif usuario.rol in ("admin_ies", "asesor_ies"):
+            asesor_stmt = (
+                select(AsesorIES, Institucion)
+                .join(Institucion, AsesorIES.id_institucion == Institucion.id)
+                .where(AsesorIES.id_usuario == usuario.id)
+            )
+            asesor_res = await session.execute(asesor_stmt)
+            row = asesor_res.first()
+            if row:
+                asesor, institucion = row
+                nombre_final = asesor.nombre_completo or institucion.nombre_corto
+                id_entidad = str(institucion.id)
+                estado_validacion = institucion.estado
+            else:
+                estado_validacion = "pendiente"
+
+        elif usuario.rol == "egresado":
+            egr_stmt = select(Egresado).where(Egresado.id_usuario == usuario.id)
+            egr_res = await session.execute(egr_stmt)
+            egresado = egr_res.scalar_one_or_none()
+            if not egresado:
+                doc_provisional = f"G-{google_sub[:10]}" if google_sub else f"G-{uuid.uuid4().hex[:8]}"
+                egresado = Egresado(
+                    id_usuario=usuario.id,
+                    tipo_documento="CC",
+                    numero_documento=doc_provisional,
+                    nombre_completo=nombre,
+                    ciudad_residencia="Bucaramanga",
+                    departamento_residencia="Santander",
+                    telefono="No suministrado",
+                    correo_personal=usuario.correo_electronico,
+                    url_avatar=avatar_url or None,
+                    titular_profesional="Profesional en Formación / Graduado",
+                    disponible_para_trabajar=True,
+                    estado="activo"
+                )
+                session.add(egresado)
+                await session.commit()
+
+            nombre_final = egresado.nombre_completo or nombre
+            id_entidad = str(egresado.id)
+            if not egresado.url_avatar and avatar_url:
+                egresado.url_avatar = avatar_url
+                await session.commit()
+            estado_validacion = "aprobado"
+
+        elif usuario.rol == "superadmin_vincula":
+            nombre_final = "Super Administrador Vincula"
+            estado_validacion = "aprobado"
+            id_entidad = None
+
+        user_dict = {
+            "id": str(usuario.id),
+            "nombre": nombre_final,
+            "correo": usuario.correo_electronico,
+            "rol": usuario.rol,
+            "estado_validacion": estado_validacion,
+            "id_entidad": id_entidad,
+        }
+
+        return IAMService.create_token_for_user(user_dict)
+
+    @staticmethod
     def create_token_for_user(user: Dict[str, Any]) -> TokenResponse:
         token_payload = {
             "sub": user["id"],
@@ -197,10 +395,12 @@ class IAMService:
 
         # 4. Enviar correo de bienvenida directo por Gmail SMTP (gratuito e instantáneo)
         try:
+            city_str = f"{data.ciudad}, {data.departamento}" if (data.ciudad and data.departamento) else data.ciudad
             await EmailService.send_graduate_welcome_email(
                 to_email=data.correo.lower(),
                 name=data.nombre_completo,
-                career=data.carrera
+                career=data.carrera,
+                city=city_str,
             )
         except Exception as mail_err:
             print(f"[AVISO CORREO EGRESADO] No se pudo enviar el correo de bienvenida: {mail_err}")
@@ -372,7 +572,8 @@ class IAMService:
             await EmailService.send_company_welcome_email(
                 to_email=data.correo_contacto.lower(),
                 company_name=data.razon_social or data.nombre_comercial,
-                radicado=radicado
+                radicado=radicado,
+                nit=data.nit,
             )
         except Exception as mail_err:
             print(f"[AVISO CORREO EMPRESA] No se pudo enviar el correo de radicación: {mail_err}")
@@ -525,12 +726,29 @@ class IAMService:
 
         radicado = f"RAD-IES-2026-{str(nueva_ies.id)[:8].upper()}"
 
+        # Disparar webhook asíncrono hacia n8n para radicación institucional
+        await N8nWebhookDispatcher.dispatch_event(
+            "registro-institucion",
+            {
+                "evento": "institucion.registrada",
+                "radicado": radicado,
+                "id_usuario": str(nuevo_usuario.id),
+                "id_institucion": str(nueva_ies.id),
+                "nombre_institucion": data.nombre_institucion,
+                "codigo_snies": data.codigo_snies,
+                "nit": data.nit,
+                "correo_institucional": data.correo_institucional.lower(),
+                "sla_horas": 72,
+            }
+        )
+
         # Enviar correo de radicación institucional vía Gmail SMTP (gratuito e instantáneo)
         try:
             await EmailService.send_institution_welcome_email(
                 to_email=data.correo_institucional.lower(),
                 institution_name=data.nombre_institucion,
-                radicado=radicado
+                radicado=radicado,
+                snies_code=data.codigo_snies,
             )
         except Exception as mail_err:
             print(f"[AVISO CORREO IES] No se pudo enviar el correo institucional: {mail_err}")

@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.modules.iam.schemas import (
     LoginRequest,
+    GoogleAuthRequest,
     TokenResponse,
     RegisterGraduateRequest,
     RegisterCompanyRequest,
@@ -40,6 +41,22 @@ async def login(credentials: LoginRequest, db: AsyncSession = Depends(get_db)):
         )
 
     return IAMService.create_token_for_user(user)
+
+
+@router.post("/google", response_model=TokenResponse)
+async def login_google(payload: GoogleAuthRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Inicio de sesión y registro automático con Google Identity Services (OAuth 2.0).
+    Verifica el token JWT o Access Token de Google, crea el usuario egresado si no existe y emite el JWT de sesión.
+    """
+    try:
+        return await IAMService.authenticate_google(
+            db,
+            credential=payload.credential,
+            access_token=payload.access_token
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.post("/registro-egresado")
@@ -218,20 +235,59 @@ async def get_me(current_user: Dict[str, Any] = Depends(get_current_user)):
 
 
 @router.post("/test-email")
-async def test_email(destinatario: str):
+async def test_email(destinatario: str, tipo: str = "registro"):
     """
-    Endpoint de prueba para verificar la conectividad de Gmail SMTP.
-    Envía un correo de prueba de bienvenida al destinatario suministrado.
+    Endpoint de prueba para verificar la conectividad y el diseño visual de Gmail SMTP.
+    Tipos soportados: 'registro', 'aprobacion_empresa', 'aprobacion_ies', 'postulacion', 'avance_fase'
     """
-    res = await EmailService.send_graduate_welcome_email(
-        to_email=destinatario,
-        name="Usuario de Prueba",
-        career="Ingeniería de Sistemas (UTS)"
-    )
+    if tipo == "aprobacion_empresa":
+        res = await EmailService.send_company_approved_email(
+            to_email=destinatario,
+            company_name="Innovación y Software S.A.S.",
+            nit="901.482.190-4",
+            notes="Verificación de RUT DIAN y Certificado de Existencia en Cámara de Comercio aprobada satisfactoriamente.",
+        )
+    elif tipo == "aprobacion_ies":
+        res = await EmailService.send_institution_approved_email(
+            to_email=destinatario,
+            institution_name="Unidades Tecnológicas de Santander (UTS)",
+            snies_code="2812",
+            notes="Resolución MEN y código SNIES validados por el Comité de Gobernanza de Vincula.",
+        )
+    elif tipo == "postulacion":
+        res = await EmailService.send_application_created_email(
+            to_email=destinatario,
+            graduate_name="Jaider Badillo",
+            vacancy_title="Ingeniero de Software Full Stack (React & FastAPI)",
+            company_name="Soluciones Digitales de Santander S.A.S.",
+            vacancy_code="VAC-2026-084",
+            modality="Híbrido",
+            location="Bucaramanga, Santander",
+        )
+    elif tipo == "avance_fase":
+        res = await EmailService.send_application_phase_changed_email(
+            to_email=destinatario,
+            graduate_name="Jaider Badillo",
+            vacancy_title="Ingeniero de Software Full Stack (React & FastAPI)",
+            company_name="Soluciones Digitales de Santander S.A.S.",
+            new_stage="interview",
+            previous_stage="evaluation",
+            vacancy_code="VAC-2026-084",
+            recruiter_feedback="Excelente desempeño en el reto de arquitectura técnica. Pasas a entrevista con el líder de ingeniería.",
+            interview_details="Viernes 14 de Noviembre, 10:00 AM - 11:00 AM · Modalidad: Virtual (Google Meet)",
+        )
+    else:
+        res = await EmailService.send_graduate_welcome_email(
+            to_email=destinatario,
+            name="Jaider Badillo",
+            career="Ingeniería de Sistemas (UTS)",
+            city="Bucaramanga, Santander",
+        )
+
     if not res.get("success"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Fallo enviando correo: {res.get('error') or res.get('reason')}"
         )
-    return {"success": True, "mensaje": f"Correo enviado exitosamente a {destinatario}"}
+    return {"success": True, "tipo": tipo, "mensaje": f"Correo '{tipo}' enviado exitosamente a {destinatario}"}
 

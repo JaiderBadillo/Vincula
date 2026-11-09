@@ -153,6 +153,17 @@ class PaginatedVacanciesResponse(BaseModel):
 
 class PostulacionCreateRequest(BaseModel):
     id_hoja_vida: Optional[str] = None
+    vacante_titulo: Optional[str] = None
+    vacante_codigo: Optional[str] = None
+    empresa_nombre: Optional[str] = None
+    modalidad: Optional[str] = None
+    ubicacion: Optional[str] = None
+    correo_egresado: Optional[str] = None
+    nombre_egresado: Optional[str] = None
+    carta_presentacion: Optional[str] = None
+    salario_esperado: Optional[Any] = None
+    disponibilidad_inmediata: Optional[bool] = True
+    respuestas_formulario: Optional[Dict[str, Any]] = None
 
 
 class PostulacionResponse(BaseModel):
@@ -213,17 +224,27 @@ class KanbanBoardDetailedResponse(BaseModel):
 
 
 class MoverFaseRequest(BaseModel):
-    fase_nueva: str = Field(
-        ...,
+    fase_nueva: Optional[str] = Field(
+        None,
         description="'en_revision', 'preseleccionados', 'prueba_tecnica', 'entrevista', 'oferta_finalistas', 'descartados' o sus alias 'review', 'preselected', 'evaluation', 'interview', 'offer', 'discarded'"
     )
+    nueva_fase: Optional[str] = None
+    fase_anterior: Optional[str] = None
     comentario: Optional[str] = Field(None, description="Bitácora de auditoría del movimiento")
+    notas_fase: Optional[str] = None
     motivo_descarte: Optional[str] = Field(None, description="Obligatorio si la fase nueva es 'descartados' o 'discarded'")
     retroalimentacion: Optional[str] = Field(None, description="Retroalimentación opcional para el candidato")
+    correo_candidato: Optional[str] = None
+    nombre_candidato: Optional[str] = None
+    vacante_titulo: Optional[str] = None
+    vacante_codigo: Optional[str] = None
+    empresa_nombre: Optional[str] = None
 
 
 class NotaReclutadorRequest(BaseModel):
-    texto_nota: str = Field(..., min_length=2, description="Nota privada del reclutador para el candidato")
+    texto_nota: Optional[str] = Field(None, description="Nota privada del reclutador para el candidato")
+    nota: Optional[str] = None
+    calificacion: Optional[Any] = None
 
 
 class NotaReclutadorResponse(BaseModel):
@@ -240,7 +261,11 @@ class ProgramarEntrevistaRequest(BaseModel):
     franja_horaria: str = Field(..., description="Ej: '10:00 AM - 11:00 AM'")
     modalidad: str = Field("Virtual", description="'Virtual' o 'Presencial'")
     url_reunion: Optional[str] = Field(None, description="Enlace a Meet, Teams o dirección física")
-    objetivo: str = Field(..., min_length=5, description="Objetivo de la entrevista (técnica, cultural, etc.)")
+    objetivo: str = Field("Entrevista de selección", description="Objetivo de la entrevista (técnica, cultural, etc.)")
+    correo_candidato: Optional[str] = None
+    nombre_candidato: Optional[str] = None
+    vacante_titulo: Optional[str] = None
+    empresa_nombre: Optional[str] = None
 
 
 class EntrevistaResponse(BaseModel):

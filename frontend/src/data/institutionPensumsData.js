@@ -51,18 +51,7 @@ const sistemasPensum = {
       ],
     },
   ],
-  vacanciesDemand: [
-    { skill: 'JavaScript', vacanciesCount: 58, category: 'frontend' },
-    { skill: 'SQL', vacanciesCount: 51, category: 'database' },
-    { skill: 'Python', vacanciesCount: 44, category: 'backend' },
-    { skill: 'Git', vacanciesCount: 39, category: 'tools' },
-    { skill: 'APIs REST', vacanciesCount: 33, category: 'backend' },
-    { skill: 'PostgreSQL', vacanciesCount: 35, category: 'database' },
-    { skill: 'Docker', vacanciesCount: 31, category: 'devops' },
-    { skill: 'AWS', vacanciesCount: 24, category: 'cloud' },
-    { skill: 'Power BI', vacanciesCount: 22, category: 'bi' },
-    { skill: 'React', vacanciesCount: 28, category: 'frontend' },
-  ],
+  vacanciesDemand: [],
 };
 
 const electronicaPensum = {
@@ -92,15 +81,7 @@ const electronicaPensum = {
       ],
     },
   ],
-  vacanciesDemand: [
-    { skill: 'Circuitos', vacanciesCount: 17, category: 'hardware' },
-    { skill: 'Microcontroladores', vacanciesCount: 15, category: 'hardware' },
-    { skill: 'Instrumentación', vacanciesCount: 12, category: 'hardware' },
-    { skill: 'PLC (Siemens/Allen Bradley)', vacanciesCount: 26, category: 'automation' },
-    { skill: 'IoT (Internet de las Cosas)', vacanciesCount: 21, category: 'embedded' },
-    { skill: 'Python', vacanciesCount: 18, category: 'software' },
-    { skill: 'Inglés B2', vacanciesCount: 14, category: 'languages' },
-  ],
+  vacanciesDemand: [],
 };
 
 const softwarePensum = {
@@ -132,15 +113,7 @@ const softwarePensum = {
       ],
     },
   ],
-  vacanciesDemand: [
-    { skill: 'JavaScript', vacanciesCount: 52, category: 'frontend' },
-    { skill: 'React', vacanciesCount: 46, category: 'frontend' },
-    { skill: 'Node.js', vacanciesCount: 38, category: 'backend' },
-    { skill: 'SQL', vacanciesCount: 35, category: 'database' },
-    { skill: 'Git', vacanciesCount: 32, category: 'tools' },
-    { skill: 'PostgreSQL', vacanciesCount: 26, category: 'database' },
-    { skill: 'Docker', vacanciesCount: 22, category: 'devops' },
-  ],
+  vacanciesDemand: [],
 };
 
 const gestionPensum = {
@@ -172,15 +145,7 @@ const gestionPensum = {
       ],
     },
   ],
-  vacanciesDemand: [
-    { skill: 'Gestión de proyectos', vacanciesCount: 36, category: 'management' },
-    { skill: 'Atención al cliente', vacanciesCount: 34, category: 'sales' },
-    { skill: 'Contabilidad básica', vacanciesCount: 21, category: 'accounting' },
-    { skill: 'Excel avanzado', vacanciesCount: 28, category: 'tools' },
-    { skill: 'Inglés B2', vacanciesCount: 25, category: 'languages' },
-    { skill: 'Power BI', vacanciesCount: 20, category: 'analytics' },
-    { skill: 'CRM (HubSpot/Salesforce)', vacanciesCount: 16, category: 'sales' },
-  ],
+  vacanciesDemand: [],
 };
 
 const contabilidadPensum = {
@@ -221,15 +186,7 @@ const contabilidadPensum = {
       ],
     },
   ],
-  vacanciesDemand: [
-    { skill: 'Siigo / Siigo Nube', vacanciesCount: 42, category: 'accounting' },
-    { skill: 'Liquidación de nómina y PILA', vacanciesCount: 38, category: 'accounting' },
-    { skill: 'Declaración de renta e IVA', vacanciesCount: 35, category: 'tax' },
-    { skill: 'Excel avanzado (tablas dinámicas)', vacanciesCount: 40, category: 'tools' },
-    { skill: 'Normas NIIF para PYMES', vacanciesCount: 29, category: 'accounting' },
-    { skill: 'SAP FI / Business One', vacanciesCount: 24, category: 'erp' },
-    { skill: 'Conciliaciones bancarias', vacanciesCount: 31, category: 'finance' },
-  ],
+  vacanciesDemand: [],
 };
 
 export const initialInstitutionPensums = {

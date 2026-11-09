@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 import math
 import uuid
 
-from sqlalchemy import select, update, desc, func
+from sqlalchemy import select, update, desc, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -28,6 +28,8 @@ from app.modules.superadmin.schemas import (
     PaginatedInstitutionAuditResponse,
 )
 from app.integrations.supabase_storage import SupabaseStorageService
+from app.integrations.email_service import EmailService
+from app.integrations.n8n_webhooks import N8nWebhookDispatcher
 
 
 class SuperAdminService:
@@ -330,16 +332,40 @@ class SuperAdminService:
         )
 
         # Registrar bitácora de auditoría
+        notas_txt = payload.notas if (payload and payload.notas) else "Verificación documental satisfactoria (RUT y Cámara de Comercio validados)."
         audit = AuditoriaSuperadmin(
             tipo_entidad="empresa",
             id_entidad=comp_uuid,
             id_auditor=id_auditor,
             accion_realizada="aprobacion_oficial",
-            observaciones_correccion=payload.notas if (payload and payload.notas) else "Verificación documental satisfactoria (RUT y Cámara de Comercio validados)."
+            observaciones_correccion=notas_txt
         )
         session.add(audit)
 
         await session.commit()
+
+        # Disparar webhook hacia n8n y enviar correo oficial de aprobación
+        await N8nWebhookDispatcher.dispatch_event(
+            "empresa-aprobada",
+            {
+                "evento": "empresa.aprobada",
+                "id_empresa": str(emp.id),
+                "razon_social": emp.razon_social,
+                "nit": emp.nit,
+                "correo_contacto": emp.correo_contacto,
+                "notas": notas_txt,
+            }
+        )
+        if emp.correo_contacto:
+            try:
+                await EmailService.send_company_approved_email(
+                    to_email=emp.correo_contacto,
+                    company_name=emp.razon_social or emp.nombre_comercial,
+                    nit=emp.nit,
+                    notes=notas_txt,
+                )
+            except Exception as mail_err:
+                print(f"[AVISO CORREO APROBACION EMPRESA] {mail_err}")
 
         return {
             "success": True,
@@ -476,16 +502,40 @@ class SuperAdminService:
             .values(estado="aprobado")
         )
 
+        notas_txt = payload.notas if (payload and payload.notas) else f"Aval institucional verificado ante el MEN (SNIES {ies.codigo_snies})."
         audit = AuditoriaSuperadmin(
             tipo_entidad="institucion",
             id_entidad=ies_uuid,
             id_auditor=id_auditor,
             accion_realizada="aprobacion_oficial",
-            observaciones_correccion=payload.notas if (payload and payload.notas) else f"Aval institucional verificado ante el MEN (SNIES {ies.codigo_snies})."
+            observaciones_correccion=notas_txt
         )
         session.add(audit)
 
         await session.commit()
+
+        # Disparar webhook hacia n8n y enviar correo oficial de aprobación IES
+        await N8nWebhookDispatcher.dispatch_event(
+            "institucion-aprobada",
+            {
+                "evento": "institucion.aprobada",
+                "id_institucion": str(ies.id),
+                "nombre_oficial": ies.nombre_oficial,
+                "codigo_snies": ies.codigo_snies,
+                "correo_institucional": ies.correo_institucional,
+                "notas": notas_txt,
+            }
+        )
+        if ies.correo_institucional:
+            try:
+                await EmailService.send_institution_approved_email(
+                    to_email=ies.correo_institucional,
+                    institution_name=ies.nombre_oficial or ies.nombre_corto,
+                    snies_code=ies.codigo_snies,
+                    notes=notas_txt,
+                )
+            except Exception as mail_err:
+                print(f"[AVISO CORREO APROBACION IES] {mail_err}")
 
         return {
             "success": True,
@@ -579,3 +629,40 @@ class SuperAdminService:
             "motivo_rechazo": action.motivo_rechazo,
             "mensaje": f"Institución rechazada por: {action.motivo_rechazo}"
         }
+
+    @classmethod
+    async def get_platform_metrics(cls, session: AsyncSession) -> Dict[str, Any]:
+        """
+        Calcula las métricas reales del ecosistema consultando las tablas oficiales en PostgreSQL.
+        """
+        emp_tot = (await session.execute(text('SELECT count(*) FROM empresas'))).scalar() or 0
+        emp_act = (await session.execute(text("SELECT count(*) FROM empresas WHERE estado = 'aprobado'"))).scalar() or 0
+        emp_pen = (await session.execute(text("SELECT count(*) FROM empresas WHERE estado = 'pendiente'"))).scalar() or 0
+        emp_sub = (await session.execute(text("SELECT count(*) FROM empresas WHERE estado = 'en_subsanacion'"))).scalar() or 0
+
+        ies_tot = (await session.execute(text('SELECT count(*) FROM instituciones'))).scalar() or 0
+        ies_act = (await session.execute(text("SELECT count(*) FROM instituciones WHERE estado = 'aprobado'"))).scalar() or 0
+        ies_pen = (await session.execute(text("SELECT count(*) FROM instituciones WHERE estado = 'pendiente'"))).scalar() or 0
+
+        vac_tot = (await session.execute(text('SELECT count(*) FROM vacantes'))).scalar() or 0
+        vac_act = (await session.execute(text("SELECT count(*) FROM vacantes WHERE estado = 'abierta'"))).scalar() or 0
+
+        egr_tot = (await session.execute(text('SELECT count(*) FROM egresados'))).scalar() or 0
+        post_tot = (await session.execute(text('SELECT count(*) FROM postulaciones'))).scalar() or 0
+        conv_tot = (await session.execute(text('SELECT count(*) FROM convenios_interinstitucionales'))).scalar() or 0
+
+        return {
+            "total_empresas": emp_tot,
+            "empresas_activas": emp_act,
+            "empresas_pendientes": emp_pen,
+            "empresas_en_subsanacion": emp_sub,
+            "total_instituciones": ies_tot,
+            "instituciones_activas": ies_act,
+            "instituciones_pendientes": ies_pen,
+            "total_vacantes": vac_tot,
+            "vacantes_activas": vac_act,
+            "total_egresados": egr_tot,
+            "total_postulaciones": post_tot,
+            "total_convenios": conv_tot,
+        }
+

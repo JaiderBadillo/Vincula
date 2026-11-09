@@ -73,6 +73,10 @@ class Settings(BaseSettings):
     # Google Gemini AI (Matching Semántico Vectorial)
     GEMINI_API_KEY: str = ""
 
+    # Google OAuth 2.0
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+
     model_config = SettingsConfigDict(
         env_file=(".env", "backend/.env"),
         env_file_encoding="utf-8",

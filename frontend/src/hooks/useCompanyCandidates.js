@@ -48,12 +48,23 @@ export function useCompanyCandidates() {
   }, []);
 
   const moveCandidateStage = useCallback((id, newStage, notes = null) => {
-    // Sincronizar en segundo plano con el backend de PostgreSQL
-    atsService.moveCandidateStage(id, newStage, null, notes).catch((err) => {
-      console.info('[useCompanyCandidates] Transición local o error API:', err.message);
-    });
-
     setCandidates((prev) => {
+      const target = prev.find((c) => c.id === id);
+      const candidateMeta = target
+        ? {
+            correo_candidato: target.email,
+            nombre_candidato: target.candidateName,
+            vacante_titulo: target.vacancyTitle,
+            vacante_codigo: target.vacancyCode,
+            fase_anterior: target.stage,
+          }
+        : {};
+
+      // Sincronizar en segundo plano con el backend de PostgreSQL y notificar por correo
+      atsService.moveCandidateStage(id, newStage, null, notes, candidateMeta).catch((err) => {
+        console.info('[useCompanyCandidates] Transición local o error API:', err.message);
+      });
+
       const next = prev.map((c) => {
         if (c.id !== id) return c;
         const updated = {
@@ -72,12 +83,23 @@ export function useCompanyCandidates() {
   }, []);
 
   const discardCandidate = useCallback((id, reason, notes = null) => {
-    // Sincronizar descarte con PostgreSQL
-    atsService.moveCandidateStage(id, 'discarded', reason, notes).catch((err) => {
-      console.info('[useCompanyCandidates] Descarte local o error API:', err.message);
-    });
-
     setCandidates((prev) => {
+      const target = prev.find((c) => c.id === id);
+      const candidateMeta = target
+        ? {
+            correo_candidato: target.email,
+            nombre_candidato: target.candidateName,
+            vacante_titulo: target.vacancyTitle,
+            vacante_codigo: target.vacancyCode,
+            fase_anterior: target.stage,
+          }
+        : {};
+
+      // Sincronizar descarte con PostgreSQL y notificar por correo
+      atsService.moveCandidateStage(id, 'discarded', reason, notes, candidateMeta).catch((err) => {
+        console.info('[useCompanyCandidates] Descarte local o error API:', err.message);
+      });
+
       const next = prev.map((c) => {
         if (c.id !== id) return c;
         return {
@@ -106,11 +128,22 @@ export function useCompanyCandidates() {
   }, []);
 
   const scheduleInterview = useCallback((id, payload) => {
-    atsService.scheduleInterview(id, payload).catch((err) => {
-      console.info('[useCompanyCandidates] Entrevista programada localmente o error API:', err.message);
-    });
-
     setCandidates((prev) => {
+      const target = prev.find((c) => c.id === id);
+      const candidateMeta = target
+        ? {
+            correo_candidato: target.email,
+            nombre_candidato: target.candidateName,
+            vacante_titulo: target.vacancyTitle,
+            vacante_codigo: target.vacancyCode,
+            fase_anterior: target.stage,
+          }
+        : {};
+
+      atsService.scheduleInterview(id, payload, candidateMeta).catch((err) => {
+        console.info('[useCompanyCandidates] Entrevista programada localmente o error API:', err.message);
+      });
+
       const next = prev.map((c) => {
         if (c.id !== id) return c;
         return {

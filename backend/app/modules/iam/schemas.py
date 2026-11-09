@@ -11,6 +11,12 @@ class LoginRequest(BaseModel):
     password: str = Field(..., min_length=6)
 
 
+class GoogleAuthRequest(BaseModel):
+    credential: Optional[str] = Field(None, description="Token JWT de identidad emitido por Google Identity Services")
+    access_token: Optional[str] = Field(None, description="Access Token OAuth 2.0 emitido por Google")
+
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"

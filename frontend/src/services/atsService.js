@@ -40,17 +40,25 @@ class ATSService {
   }
 
   /**
-   * Mueve un candidato de fase en el tablero ATS con bitácora de auditoría.
+   * Mueve un candidato de fase en el tablero ATS con bitácora de auditoría y notificación por correo.
    */
-  async moveCandidateStage(applicationId, newStage, rejectionReason = null, recruiterNotes = null) {
+  async moveCandidateStage(applicationId, newStage, rejectionReason = null, recruiterNotes = null, candidateMeta = {}) {
     try {
       const res = await fetch(`${API_BASE_URL}/reclutador/postulaciones/${applicationId}/mover-fase`, {
         method: 'PATCH',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({
+          fase_nueva: newStage,
           nueva_fase: newStage,
           motivo_descarte: rejectionReason,
+          comentario: recruiterNotes,
           notas_fase: recruiterNotes,
+          correo_candidato: candidateMeta.correo_candidato || candidateMeta.email || null,
+          nombre_candidato: candidateMeta.nombre_candidato || candidateMeta.candidateName || null,
+          vacante_titulo: candidateMeta.vacante_titulo || candidateMeta.vacancyTitle || null,
+          vacante_codigo: candidateMeta.vacante_codigo || candidateMeta.vacancyCode || null,
+          empresa_nombre: candidateMeta.empresa_nombre || candidateMeta.companyName || null,
+          fase_anterior: candidateMeta.fase_anterior || candidateMeta.previousStage || null,
         }),
       });
       if (!res.ok) {
@@ -73,6 +81,7 @@ class ATSService {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({
+          texto_nota: noteText,
           nota: noteText,
           calificacion: rating,
         }),
@@ -91,7 +100,7 @@ class ATSService {
   /**
    * Agenda una entrevista formal con el candidato y lo avanza a fase 'entrevista'.
    */
-  async scheduleInterview(applicationId, payload) {
+  async scheduleInterview(applicationId, payload, candidateMeta = {}) {
     try {
       const res = await fetch(`${API_BASE_URL}/reclutador/postulaciones/${applicationId}/entrevistas`, {
         method: 'POST',
@@ -102,6 +111,11 @@ class ATSService {
           modalidad: payload.modalidad || payload.modality || 'Virtual',
           url_reunion: payload.url_reunion || payload.meetUrl || null,
           objetivo: payload.objetivo || payload.objective || 'Entrevista de evaluación técnica',
+          correo_candidato: candidateMeta.correo_candidato || candidateMeta.email || payload.correo_candidato || null,
+          nombre_candidato: candidateMeta.nombre_candidato || candidateMeta.candidateName || payload.nombre_candidato || null,
+          vacante_titulo: candidateMeta.vacante_titulo || candidateMeta.vacancyTitle || payload.vacante_titulo || null,
+          vacante_codigo: candidateMeta.vacante_codigo || candidateMeta.vacancyCode || payload.vacante_codigo || null,
+          empresa_nombre: candidateMeta.empresa_nombre || candidateMeta.companyName || payload.empresa_nombre || null,
         }),
       });
       if (!res.ok) {

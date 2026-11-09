@@ -20,6 +20,8 @@ from sqlalchemy import select, update, delete, func, desc, or_, and_
 from app.modules.companies.models import Empresa, SedeEmpresa, ReclutadorEmpresa
 from app.modules.institutions.models import ProgramaAcademico
 from app.modules.graduates.models import Egresado, AcademicoEgresado
+from app.integrations.email_service import EmailService
+from app.integrations.n8n_webhooks import N8nWebhookDispatcher
 from app.modules.vacancies_ats.models import (
     Vacante,
     TaxonomiaCompetencia,
@@ -42,6 +44,7 @@ from app.modules.vacancies_ats.schemas import (
     MoveCandidatePhaseRequest,
     KanbanBoardResponse,
     KanbanCandidateItem,
+    PostulacionCreateRequest,
     PostulacionResponse,
     KanbanCandidateCardResponse,
     KanbanBoardDetailedResponse,
@@ -779,7 +782,9 @@ class VacancyATSService:
         session: AsyncSession,
         user_id: str,
         id_vacante: str,
-        id_hoja_vida: Optional[str] = None
+        id_hoja_vida: Optional[str] = None,
+        payload: Optional[PostulacionCreateRequest] = None,
+        current_user: Optional[Dict[str, Any]] = None,
     ) -> PostulacionResponse:
         """
         Registra la postulación en 1 clic de un egresado a una vacante pública abierta.
@@ -789,31 +794,104 @@ class VacancyATSService:
         - Prevención estricta de postulaciones duplicadas (uq_postulacion_vacante_egresado).
         - Incremento atómico del contador total_postulantes.
         - Bitácora inicial en historial_fases_postulacion.
+        - Envío de correo de confirmación indicando Fase 1 (En Revisión Inicial).
         """
+        egresado = None
+        user_uuid = None
+        try:
+            user_uuid = uuid.UUID(str(user_id))
+            egresado = (await session.execute(
+                select(Egresado).where(Egresado.id_usuario == user_uuid)
+            )).scalar_one_or_none()
+        except ValueError:
+            pass
+
+        vacante = None
+        vac_uuid = None
         try:
             vac_uuid = uuid.UUID(str(id_vacante))
-            user_uuid = uuid.UUID(str(user_id))
+            vacante = (await session.execute(
+                select(Vacante).where(Vacante.id == vac_uuid)
+            )).scalar_one_or_none()
         except ValueError:
+            pass
+
+        # Si la vacante no está en PostgreSQL pero vienen metadatos desde el catálogo frontend:
+        if not vacante and payload and (payload.vacante_titulo or payload.empresa_nombre):
+            egr_nombre = (
+                (egresado.nombre_completo if egresado else None)
+                or (payload.nombre_egresado if payload else None)
+                or (current_user.get("nombre") if current_user else None)
+                or "Egresado Vincula"
+            )
+            egr_correo = (
+                (egresado.correo_personal if egresado else None)
+                or (payload.correo_egresado if payload else None)
+                or (current_user.get("correo") if current_user else None)
+            )
+            vac_titulo = payload.vacante_titulo or "Vacante Laboral"
+            emp_nombre = payload.empresa_nombre or "Empresa Aliada"
+            vac_codigo = payload.vacante_codigo or f"VAC-2026-{str(id_vacante)[:6].upper()}"
+            now_iso = datetime.now(timezone.utc).isoformat()
+
+            await N8nWebhookDispatcher.dispatch_event(
+                "postulacion-creada",
+                {
+                    "evento": "postulacion.creada",
+                    "id_vacante": str(id_vacante),
+                    "vacante_titulo": vac_titulo,
+                    "empresa_nombre": emp_nombre,
+                    "egresado_nombre": egr_nombre,
+                    "egresado_correo": egr_correo,
+                    "fase_actual": "en_revision",
+                }
+            )
+            if egr_correo:
+                try:
+                    await EmailService.send_application_created_email(
+                        to_email=egr_correo,
+                        graduate_name=egr_nombre,
+                        vacancy_title=vac_titulo,
+                        company_name=emp_nombre,
+                        vacancy_code=vac_codigo,
+                        modality=payload.modalidad,
+                        location=payload.ubicacion,
+                        current_stage="en_revision",
+                    )
+                except Exception as mail_err:
+                    print(f"[AVISO CORREO POSTULACION CATALOGO] {mail_err}")
+
+            return PostulacionResponse(
+                id=str(uuid.uuid4()),
+                id_vacante=str(id_vacante),
+                id_egresado=str(egresado.id) if egresado else str(user_id),
+                id_hoja_vida=id_hoja_vida,
+                fase_actual="en_revision",
+                porcentaje_afinidad=88.0,
+                retroalimentacion_reclutador=None,
+                motivo_descarte=None,
+                descartado_en=None,
+                postulado_en=now_iso,
+                actualizado_en=now_iso,
+                vacante_titulo=vac_titulo,
+                vacante_codigo=vac_codigo,
+                empresa_nombre=emp_nombre,
+                egresado_nombre=egr_nombre,
+                egresado_correo=egr_correo,
+                egresado_telefono=egresado.telefono if egresado else None,
+            )
+
+        if not vac_uuid or not user_uuid:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"codigo": "UUID_INVALIDO", "mensaje": "Identificador UUID con formato inválido."}
             )
-
-        # 1. Obtener el perfil del egresado para el usuario autenticado
-        egresado = (await session.execute(
-            select(Egresado).where(Egresado.id_usuario == user_uuid)
-        )).scalar_one_or_none()
 
         if not egresado:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"codigo": "EGRESADO_NO_ENCONTRADO", "mensaje": "No se encontró el perfil de egresado para esta cuenta de usuario."}
             )
-
-        # 2. Obtener la vacante y su empresa
-        vacante = (await session.execute(
-            select(Vacante).where(Vacante.id == vac_uuid)
-        )).scalar_one_or_none()
 
         if not vacante:
             raise HTTPException(
@@ -880,6 +958,39 @@ class VacancyATSService:
         await session.commit()
         await session.refresh(nueva_postulacion)
 
+        emp_nombre = empresa.nombre_comercial or empresa.razon_social
+        ubicacion_str = f"{vacante.sede.ciudad}, {vacante.sede.departamento}" if vacante.sede else "Colombia"
+
+        # 7. Disparar webhook n8n y enviar correo de confirmación de postulación (Fase 1)
+        await N8nWebhookDispatcher.dispatch_event(
+            "postulacion-creada",
+            {
+                "evento": "postulacion.creada",
+                "id_postulacion": str(nueva_postulacion.id),
+                "id_vacante": str(vacante.id),
+                "vacante_titulo": vacante.titulo,
+                "vacante_codigo": vacante.codigo_vacante,
+                "empresa_nombre": emp_nombre,
+                "egresado_nombre": egresado.nombre_completo,
+                "egresado_correo": egresado.correo_personal,
+                "fase_actual": "en_revision",
+            }
+        )
+        if egresado.correo_personal:
+            try:
+                await EmailService.send_application_created_email(
+                    to_email=egresado.correo_personal,
+                    graduate_name=egresado.nombre_completo,
+                    vacancy_title=vacante.titulo,
+                    company_name=emp_nombre,
+                    vacancy_code=vacante.codigo_vacante,
+                    modality=vacante.modalidad,
+                    location=ubicacion_str,
+                    current_stage="en_revision",
+                )
+            except Exception as mail_err:
+                print(f"[AVISO CORREO POSTULACION] {mail_err}")
+
         return PostulacionResponse(
             id=str(nueva_postulacion.id),
             id_vacante=str(nueva_postulacion.id_vacante),
@@ -894,7 +1005,7 @@ class VacancyATSService:
             actualizado_en=nueva_postulacion.actualizado_en.isoformat(),
             vacante_titulo=vacante.titulo,
             vacante_codigo=vacante.codigo_vacante,
-            empresa_nombre=empresa.nombre_comercial or empresa.razon_social,
+            empresa_nombre=emp_nombre,
             egresado_nombre=egresado.nombre_completo,
             egresado_correo=egresado.correo_personal,
             egresado_telefono=egresado.telefono
@@ -996,31 +1107,92 @@ class VacancyATSService:
     ) -> KanbanCandidateCardResponse:
         """
         Mueve un candidato de fase en el embudo ATS (drag-and-drop).
-        Registra la transición en historial_fases_postulacion y maneja descartes.
+        Registra la transición en historial_fases_postulacion, maneja descartes y envía correo al candidato.
         """
-        try:
-            post_uuid = uuid.UUID(str(id_postulacion))
-            user_uuid = uuid.UUID(str(user_id))
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"codigo": "UUID_INVALIDO", "mensaje": "UUID inválido."}
-            )
-
-        fase_target_input = payload.fase_nueva.strip().lower()
-        db_fase = cls.STAGE_UI_TO_DB.get(fase_target_input)
+        raw_fase = (payload.fase_nueva or payload.nueva_fase or "").strip().lower()
+        db_fase = cls.STAGE_UI_TO_DB.get(raw_fase)
         if not db_fase:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "codigo": "FASE_INVALIDA",
-                    "mensaje": f"La fase '{payload.fase_nueva}' no es válida. Opciones: review/en_revision, preselected/preseleccionados, evaluation/prueba_tecnica, interview/entrevista, offer/oferta_finalistas, discarded/descartados."
+                    "mensaje": f"La fase '{raw_fase}' no es válida. Opciones: review/en_revision, preselected/preseleccionados, evaluation/prueba_tecnica, interview/entrevista, offer/oferta_finalistas, discarded/descartados."
                 }
             )
 
-        postulacion = (await session.execute(
-            select(Postulacion).where(Postulacion.id == post_uuid)
-        )).scalar_one_or_none()
+        postulacion = None
+        post_uuid = None
+        user_uuid = None
+        try:
+            user_uuid = uuid.UUID(str(user_id))
+        except ValueError:
+            pass
+
+        try:
+            post_uuid = uuid.UUID(str(id_postulacion))
+            postulacion = (await session.execute(
+                select(Postulacion).where(Postulacion.id == post_uuid)
+            )).scalar_one_or_none()
+        except ValueError:
+            pass
+
+        retro_txt = (payload.retroalimentacion or payload.notas_fase or payload.comentario or "").strip() or None
+
+        # Si el candidato viene del estado local del frontend (no persistido en PostgreSQL) pero incluye correo:
+        if not postulacion and payload.correo_candidato:
+            cand_nombre = payload.nombre_candidato or "Candidato Vincula"
+            vac_titulo = payload.vacante_titulo or "Convocatoria Laboral"
+            emp_nombre = payload.empresa_nombre or "Empresa Aliada"
+            vac_codigo = payload.vacante_codigo or "VAC-2026"
+            stage_ui = cls.STAGE_DB_TO_UI.get(db_fase, "review")
+
+            await N8nWebhookDispatcher.dispatch_event(
+                "postulacion-cambio-fase",
+                {
+                    "evento": "postulacion.cambio_fase",
+                    "id_postulacion": str(id_postulacion),
+                    "candidato_nombre": cand_nombre,
+                    "candidato_correo": payload.correo_candidato,
+                    "vacante_titulo": vac_titulo,
+                    "empresa_nombre": emp_nombre,
+                    "fase_anterior": payload.fase_anterior,
+                    "fase_nueva": db_fase,
+                    "retroalimentacion": retro_txt,
+                }
+            )
+            try:
+                await EmailService.send_application_phase_changed_email(
+                    to_email=payload.correo_candidato,
+                    graduate_name=cand_nombre,
+                    vacancy_title=vac_titulo,
+                    company_name=emp_nombre,
+                    new_stage=db_fase,
+                    previous_stage=payload.fase_anterior,
+                    vacancy_code=vac_codigo,
+                    recruiter_feedback=payload.motivo_descarte if db_fase == "descartados" else retro_txt,
+                )
+            except Exception as mail_err:
+                print(f"[AVISO CORREO CAMBIO FASE LOCAL] {mail_err}")
+
+            return KanbanCandidateCardResponse(
+                id=str(id_postulacion),
+                candidateName=cand_nombre,
+                email=payload.correo_candidato,
+                phone="+57 300 000 0000",
+                city="Bucaramanga",
+                program="Profesional Universitario",
+                institution="Universidad Aliada",
+                graduationYear="2025",
+                vacancyId="vac-local",
+                vacancyTitle=vac_titulo,
+                vacancyCode=vac_codigo,
+                siteId="sede-principal",
+                stage=stage_ui,
+                matchPercentage=88,
+                appliedAt=datetime.now(timezone.utc).isoformat(),
+                recruiterNotes=retro_txt,
+                rejectionReason=payload.motivo_descarte if db_fase == "descartados" else None,
+            )
 
         if not postulacion:
             raise HTTPException(
@@ -1047,24 +1219,63 @@ class VacancyATSService:
             postulacion.motivo_descarte = None
             postulacion.descartado_en = None
 
-        if payload.retroalimentacion:
-            postulacion.retroalimentacion_reclutador = payload.retroalimentacion.strip()
+        if retro_txt:
+            postulacion.retroalimentacion_reclutador = retro_txt
 
         postulacion.fase_actual = db_fase
 
         # Registrar en auditoría
-        comentario_log = payload.comentario or f"Transición de '{fase_anterior}' hacia '{db_fase}'"
-        historial = HistorialFasePostulacion(
-            id_postulacion=postulacion.id,
-            fase_anterior=fase_anterior,
-            fase_nueva=db_fase,
-            cambiado_por_usuario=user_uuid,
-            comentario=comentario_log
-        )
-        session.add(historial)
+        comentario_log = payload.comentario or payload.notas_fase or f"Transición de '{fase_anterior}' hacia '{db_fase}'"
+        if user_uuid:
+            historial = HistorialFasePostulacion(
+                id_postulacion=postulacion.id,
+                fase_anterior=fase_anterior,
+                fase_nueva=db_fase,
+                cambiado_por_usuario=user_uuid,
+                comentario=comentario_log
+            )
+            session.add(historial)
 
         await session.commit()
         await session.refresh(postulacion)
+
+        egr = postulacion.egresado
+        vac = postulacion.vacante
+        emp_nombre = (vac.empresa.nombre_comercial or vac.empresa.razon_social) if (vac and vac.empresa) else (payload.empresa_nombre or "Empresa Aliada")
+        vac_titulo = vac.titulo if vac else (payload.vacante_titulo or "Convocatoria Laboral")
+        vac_codigo = vac.codigo_vacante if vac else payload.vacante_codigo
+
+        # Disparar webhook hacia n8n y enviar correo de avance de fase al egresado
+        await N8nWebhookDispatcher.dispatch_event(
+            "postulacion-cambio-fase",
+            {
+                "evento": "postulacion.cambio_fase",
+                "id_postulacion": str(postulacion.id),
+                "candidato_nombre": egr.nombre_completo if egr else payload.nombre_candidato,
+                "candidato_correo": egr.correo_personal if egr else payload.correo_candidato,
+                "vacante_titulo": vac_titulo,
+                "vacante_codigo": vac_codigo,
+                "empresa_nombre": emp_nombre,
+                "fase_anterior": fase_anterior,
+                "fase_nueva": db_fase,
+                "retroalimentacion": postulacion.motivo_descarte if db_fase == "descartados" else retro_txt,
+            }
+        )
+        dest_email = (egr.correo_personal if egr else None) or payload.correo_candidato
+        if dest_email:
+            try:
+                await EmailService.send_application_phase_changed_email(
+                    to_email=dest_email,
+                    graduate_name=(egr.nombre_completo if egr else None) or payload.nombre_candidato or "Egresado Vincula",
+                    vacancy_title=vac_titulo,
+                    company_name=emp_nombre,
+                    new_stage=db_fase,
+                    previous_stage=fase_anterior,
+                    vacancy_code=vac_codigo,
+                    recruiter_feedback=postulacion.motivo_descarte if db_fase == "descartados" else retro_txt,
+                )
+            except Exception as mail_err:
+                print(f"[AVISO CORREO CAMBIO FASE] {mail_err}")
 
         return cls._build_candidate_card(postulacion)
 
@@ -1112,10 +1323,11 @@ class VacancyATSService:
                 detail={"codigo": "RECLUTADOR_NO_ENCONTRADO", "mensaje": "No hay un reclutador registrado para asignar la nota."}
             )
 
+        nota_txt = (payload.texto_nota or payload.nota or "").strip()
         nueva_nota = NotaReclutadorPostulacion(
             id_postulacion=postulacion.id,
             id_reclutador=rec.id,
-            texto_nota=payload.texto_nota.strip()
+            texto_nota=nota_txt
         )
         session.add(nueva_nota)
         await session.commit()
@@ -1139,19 +1351,58 @@ class VacancyATSService:
         payload: ProgramarEntrevistaRequest
     ) -> EntrevistaResponse:
         """Programa una entrevista y mueve automáticamente al candidato a la fase 'entrevista'."""
+        interview_summary = (
+            f"{payload.fecha_entrevista} · {payload.franja_horaria} ({payload.modalidad})"
+            + (f" — Enlace/Lugar: {payload.url_reunion}" if payload.url_reunion else "")
+        )
+
+        postulacion = None
+        post_uuid = None
+        user_uuid = None
         try:
-            post_uuid = uuid.UUID(str(id_postulacion))
             user_uuid = uuid.UUID(str(user_id))
             parsed_date = datetime.strptime(payload.fecha_entrevista, "%Y-%m-%d").date()
         except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"codigo": "DATOS_INVALIDOS", "mensaje": "Formato de UUID o fecha inválido. Formato esperado de fecha: YYYY-MM-DD."}
-            )
+            parsed_date = datetime.now(timezone.utc).date()
 
-        postulacion = (await session.execute(
-            select(Postulacion).where(Postulacion.id == post_uuid)
-        )).scalar_one_or_none()
+        try:
+            post_uuid = uuid.UUID(str(id_postulacion))
+            postulacion = (await session.execute(
+                select(Postulacion).where(Postulacion.id == post_uuid)
+            )).scalar_one_or_none()
+        except ValueError:
+            pass
+
+        if not postulacion and payload.correo_candidato:
+            cand_nombre = payload.nombre_candidato or "Candidato Vincula"
+            vac_titulo = payload.vacante_titulo or "Convocatoria Laboral"
+            emp_nombre = payload.empresa_nombre or "Empresa Aliada"
+            try:
+                await EmailService.send_application_phase_changed_email(
+                    to_email=payload.correo_candidato,
+                    graduate_name=cand_nombre,
+                    vacancy_title=vac_titulo,
+                    company_name=emp_nombre,
+                    new_stage="entrevista",
+                    recruiter_feedback=payload.objetivo,
+                    interview_details=interview_summary,
+                )
+            except Exception as mail_err:
+                print(f"[AVISO CORREO ENTREVISTA LOCAL] {mail_err}")
+
+            return EntrevistaResponse(
+                id=str(uuid.uuid4()),
+                id_postulacion=str(id_postulacion),
+                id_reclutador=str(user_id),
+                nombre_reclutador="Equipo de Selección",
+                fecha_entrevista=payload.fecha_entrevista,
+                franja_horaria=payload.franja_horaria,
+                modalidad=payload.modalidad,
+                url_reunion=payload.url_reunion,
+                objetivo=payload.objetivo,
+                estado="programada",
+                creado_en=datetime.now(timezone.utc).isoformat()
+            )
 
         if not postulacion:
             raise HTTPException(
@@ -1186,21 +1437,44 @@ class VacancyATSService:
         )
         session.add(entrevista)
 
+        fase_ant = postulacion.fase_actual
         # Mover a fase 'entrevista' si aún no lo estaba
         if postulacion.fase_actual in ("en_revision", "preseleccionados", "prueba_tecnica"):
-            fase_ant = postulacion.fase_actual
             postulacion.fase_actual = "entrevista"
-            historial = HistorialFasePostulacion(
-                id_postulacion=postulacion.id,
-                fase_anterior=fase_ant,
-                fase_nueva="entrevista",
-                cambiado_por_usuario=user_uuid,
-                comentario=f"Entrevista programada para el {payload.fecha_entrevista} ({payload.franja_horaria})"
-            )
-            session.add(historial)
+            if user_uuid:
+                historial = HistorialFasePostulacion(
+                    id_postulacion=postulacion.id,
+                    fase_anterior=fase_ant,
+                    fase_nueva="entrevista",
+                    cambiado_por_usuario=user_uuid,
+                    comentario=f"Entrevista programada para el {payload.fecha_entrevista} ({payload.franja_horaria})"
+                )
+                session.add(historial)
 
         await session.commit()
         await session.refresh(entrevista)
+
+        egr = postulacion.egresado
+        vac = postulacion.vacante
+        emp_nombre = (vac.empresa.nombre_comercial or vac.empresa.razon_social) if (vac and vac.empresa) else (payload.empresa_nombre or "Empresa Aliada")
+        vac_titulo = vac.titulo if vac else (payload.vacante_titulo or "Convocatoria Laboral")
+        dest_email = (egr.correo_personal if egr else None) or payload.correo_candidato
+
+        if dest_email:
+            try:
+                await EmailService.send_application_phase_changed_email(
+                    to_email=dest_email,
+                    graduate_name=(egr.nombre_completo if egr else None) or payload.nombre_candidato or "Egresado Vincula",
+                    vacancy_title=vac_titulo,
+                    company_name=emp_nombre,
+                    new_stage="entrevista",
+                    previous_stage=fase_ant,
+                    vacancy_code=vac.codigo_vacante if vac else None,
+                    recruiter_feedback=payload.objetivo,
+                    interview_details=interview_summary,
+                )
+            except Exception as mail_err:
+                print(f"[AVISO CORREO ENTREVISTA] {mail_err}")
 
         return EntrevistaResponse(
             id=str(entrevista.id),

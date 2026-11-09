@@ -222,6 +222,42 @@ class AuthService {
   }
 
   /**
+   * Inicio de sesión y registro automático con Google Identity Services
+   * @param {string|Object} authPayload Credential JWT o { credential, access_token }
+   */
+  async loginWithGoogle(authPayload) {
+    const payload =
+      typeof authPayload === 'string'
+        ? { credential: authPayload }
+        : authPayload;
+
+    const response = await fetch(`${API_BASE_URL}/auth/google`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      let errorMessage = 'Error al autenticar con Google.';
+      try {
+        const errorData = await response.json();
+        errorMessage = extractErrorMessage(errorData, errorMessage);
+      } catch {
+        // noop
+      }
+      const err = new Error(errorMessage);
+      err.status = response.status;
+      throw err;
+    }
+
+    const data = await response.json();
+    this.saveSession(data);
+    return data;
+  }
+
+  /**
    * Consultar datos del usuario autenticado (/auth/me)
    */
   async getMe() {

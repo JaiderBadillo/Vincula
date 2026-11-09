@@ -258,7 +258,9 @@ async def postular_a_vacante(
         session=db,
         user_id=_get_user_id(current_user),
         id_vacante=vacancy_id,
-        id_hoja_vida=id_cv
+        id_hoja_vida=id_cv,
+        payload=payload,
+        current_user=current_user,
     )
 
 

@@ -20,10 +20,22 @@ from app.modules.superadmin.schemas import (
     SecureUrlResponse,
     PaginatedCompanyAuditResponse,
     PaginatedInstitutionAuditResponse,
+    PlatformMetricsResponse,
 )
 from app.modules.superadmin.services import SuperAdminService
 
 router = APIRouter(prefix="/admin", tags=["Super Admin - Auditoría y Aprobaciones"])
+
+
+@router.get("/metricas-plataforma", response_model=PlatformMetricsResponse)
+async def get_platform_metrics(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Retorna los contadores y métricas agregadas reales de la plataforma Vincula desde PostgreSQL.
+    """
+    return await SuperAdminService.get_platform_metrics(db)
+
 
 
 @router.get("/auditoria/empresas", response_model=PaginatedCompanyAuditResponse)

@@ -112,3 +112,19 @@ class PaginatedInstitutionAuditResponse(BaseModel):
     limit: int
     total_pages: int
 
+
+class PlatformMetricsResponse(BaseModel):
+    total_empresas: int
+    empresas_activas: int
+    empresas_pendientes: int
+    empresas_en_subsanacion: int
+    total_instituciones: int
+    instituciones_activas: int
+    instituciones_pendientes: int
+    total_vacantes: int
+    vacantes_activas: int
+    total_egresados: int
+    total_postulaciones: int
+    total_convenios: int
+
+

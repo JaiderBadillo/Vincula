@@ -83,6 +83,7 @@ class ApplicationService {
    */
   async applyToVacancy(vacancyId, payload = {}) {
     try {
+      const currentUser = authService.getCurrentUser();
       const res = await fetch(`${API_BASE_URL}/postulaciones/${vacancyId}`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
@@ -92,6 +93,13 @@ class ApplicationService {
           carta_presentacion: payload.carta_presentacion || '',
           disponibilidad_inmediata: payload.disponibilidad_inmediata ?? true,
           respuestas_formulario: payload.respuestas_formulario || {},
+          vacante_titulo: payload.vacante_titulo || payload.title || null,
+          vacante_codigo: payload.vacante_codigo || payload.code || null,
+          empresa_nombre: payload.empresa_nombre || payload.company || null,
+          modalidad: payload.modalidad || payload.modality || null,
+          ubicacion: payload.ubicacion || payload.location || null,
+          correo_egresado: payload.correo_egresado || currentUser?.correo || currentUser?.email || null,
+          nombre_egresado: payload.nombre_egresado || currentUser?.nombre || currentUser?.name || null,
         }),
       });
       if (!res.ok) {

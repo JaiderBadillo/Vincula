@@ -344,8 +344,13 @@ export default function VacanciesPage() {
       await applicationService.applyToVacancy(applyModalJob.id, {
         carta_presentacion: applicationNote,
         salario_esperado: null,
+        vacante_titulo: applyModalJob.title,
+        vacante_codigo: applyModalJob.code || `VAC-2026-${String(applyModalJob.id).slice(0, 4).toUpperCase()}`,
+        empresa_nombre: applyModalJob.company,
+        modalidad: applyModalJob.modality,
+        ubicacion: applyModalJob.location,
       });
-      notify(`¡Postulación enviada exitosamente a ${applyModalJob.company}!`);
+      notify(`¡Postulación enviada exitosamente a ${applyModalJob.company}! Te hemos enviado un correo de confirmación.`);
     } catch (err) {
       console.info('[VacanciesPage] Registro de postulación demo/local:', err.message);
       notify(`¡Postulación enviada exitosamente a ${applyModalJob.company}!`);

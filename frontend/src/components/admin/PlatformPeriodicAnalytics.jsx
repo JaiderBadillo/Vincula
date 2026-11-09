@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { MONTHLY_PERIODS_DATA, SEMESTRAL_PERIODS_DATA } from '../../data/vinculaAdminData.js';
 
 export default function PlatformPeriodicAnalytics() {
@@ -43,12 +43,12 @@ export default function PlatformPeriodicAnalytics() {
 
   // Último corte acumulado total en la plataforma
   const latestLifetime = useMemo(() => {
-    const lastItem = seriesData[seriesData.length - 1] || MONTHLY_PERIODS_DATA[MONTHLY_PERIODS_DATA.length - 1];
+    const lastItem = seriesData[seriesData.length - 1] || MONTHLY_PERIODS_DATA[0] || {};
     return {
-      cumCompanies: lastItem.cumCompanies,
-      cumVacancies: lastItem.cumVacancies,
-      cumInstitutions: lastItem.cumInstitutions,
-      cumGraduates: lastItem.cumGraduates,
+      cumCompanies: lastItem.cumCompanies || 0,
+      cumVacancies: lastItem.cumVacancies || 0,
+      cumInstitutions: lastItem.cumInstitutions || 1,
+      cumGraduates: lastItem.cumGraduates || 0,
     };
   }, [seriesData]);
 
