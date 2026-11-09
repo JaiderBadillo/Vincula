@@ -31,6 +31,14 @@ from app.modules.iam.schemas import (
 )
 
 
+class UserNotRegisteredError(Exception):
+    def __init__(self, email: str, name: str, picture: str):
+        self.email = email
+        self.name = name
+        self.picture = picture
+        super().__init__(f"No existe una cuenta registrada con el correo {email}.")
+
+
 class IAMService:
     @staticmethod
     async def authenticate_user(session: AsyncSession, login_data: LoginRequest) -> Optional[Dict[str, Any]]:
@@ -174,66 +182,16 @@ class IAMService:
         usuario = result.scalar_one_or_none()
 
         if not usuario:
-            # Crear nuevo usuario con rol 'egresado' y estado 'activo'
-            random_pwd = uuid.uuid4().hex + "G!9x"
-            usuario = Usuario(
-                correo_electronico=email,
-                contrasena_hash=get_password_hash(random_pwd),
-                rol="egresado",
-                estado="activo"
-            )
-            session.add(usuario)
-            await session.flush()
+            # Si el usuario no existe en la base de datos, no inventamos una cuenta fantasma.
+            # Se levanta la excepción para que el frontend lo redirija a la pantalla de registro
+            # con su nombre y correo de Google pre-diligenciados.
+            raise UserNotRegisteredError(email=email, name=nombre, picture=avatar_url)
 
-            # Crear perfil de Egresado asociado
-            doc_provisional = f"G-{google_sub[:10]}" if google_sub else f"G-{uuid.uuid4().hex[:8]}"
-            nuevo_egresado = Egresado(
-                id_usuario=usuario.id,
-                tipo_documento="CC",
-                numero_documento=doc_provisional,
-                nombre_completo=nombre,
-                ciudad_residencia="Bucaramanga",
-                departamento_residencia="Santander",
-                telefono="No suministrado",
-                correo_personal=email,
-                url_avatar=avatar_url or None,
-                titular_profesional="Profesional en Formación / Graduado",
-                disponible_para_trabajar=True,
-                estado="activo"
-            )
-            session.add(nuevo_egresado)
-            await session.commit()
+        if usuario.estado != "activo":
+            raise ValueError("Tu cuenta se encuentra inactiva o suspendida. Comunícate con soporte.")
 
-            # Correo de bienvenida y Webhook asíncrono
-            try:
-                await EmailService.send_graduate_welcome_email(
-                    to_email=email,
-                    name=nombre,
-                    career="Profesional en Formación",
-                    city="Bucaramanga, Santander",
-                )
-            except Exception as mail_err:
-                print(f"[GOOGLE AUTH] Notificación de bienvenida omitida: {mail_err}")
-
-            try:
-                await N8nWebhookDispatcher.dispatch_event(
-                    "registro-egresado",
-                    {
-                        "evento": "egresado.registrado_google",
-                        "id_usuario": str(usuario.id),
-                        "id_egresado": str(nuevo_egresado.id),
-                        "nombre": nombre,
-                        "correo": email,
-                        "fuente": "Google Identity Services",
-                    }
-                )
-            except Exception as n8n_err:
-                print(f"[GOOGLE AUTH] Webhook n8n omitido: {n8n_err}")
-        else:
-            if usuario.estado != "activo":
-                raise ValueError("Tu cuenta se encuentra inactiva o suspendida. Comunícate con soporte.")
-            usuario.ultimo_acceso_en = datetime.now(timezone.utc)
-            await session.commit()
+        usuario.ultimo_acceso_en = datetime.now(timezone.utc)
+        await session.commit()
 
         # 2. Resolver datos de entidad y nombre según el rol
         nombre_final = nombre

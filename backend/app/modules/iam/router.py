@@ -19,7 +19,7 @@ from app.modules.iam.schemas import (
     RegisterInstitutionRequest,
     UserMeResponse,
 )
-from app.modules.iam.services import IAMService
+from app.modules.iam.services import IAMService, UserNotRegisteredError
 from app.integrations.email_service import EmailService
 
 router = APIRouter(prefix="/auth", tags=["IAM - Autenticación y Registro"])
@@ -46,14 +46,26 @@ async def login(credentials: LoginRequest, db: AsyncSession = Depends(get_db)):
 @router.post("/google", response_model=TokenResponse)
 async def login_google(payload: GoogleAuthRequest, db: AsyncSession = Depends(get_db)):
     """
-    Inicio de sesión y registro automático con Google Identity Services (OAuth 2.0).
-    Verifica el token JWT o Access Token de Google, crea el usuario egresado si no existe y emite el JWT de sesión.
+    Inicio de sesión con Google Identity Services (OAuth 2.0).
+    Verifica el token de Google. Si el correo existe en la base de datos, emite el JWT de sesión.
+    Si el correo no está registrado, responde con 404 y datos para redireccionar al registro.
     """
     try:
         return await IAMService.authenticate_google(
             db,
             credential=payload.credential,
             access_token=payload.access_token
+        )
+    except UserNotRegisteredError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "USER_NOT_REGISTERED",
+                "mensaje": str(e),
+                "email": e.email,
+                "name": e.name,
+                "picture": e.picture,
+            }
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

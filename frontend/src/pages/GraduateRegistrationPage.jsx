@@ -285,14 +285,17 @@ export default function GraduateRegistrationPage() {
   const location = useLocation();
   const { updateProfile } = useProfile();
 
-  // Tomar únicamente datos pasados desde el pre-registro del Hero (si el usuario los escribió)
+  // Tomar datos pasados desde el Hero o desde Google OAuth en la URL
+  const searchParams = new URLSearchParams(location.search);
+  const paramEmail = searchParams.get('email') || '';
+  const paramName = searchParams.get('name') || '';
   const prefilled = location.state || {};
 
   // Estados Sección 1: Datos Personales (Completamente limpios, sin hardcoding ni falsos prellenados)
   const [docType, setDocType] = useState('CC');
   const [docNumber, setDocNumber] = useState('');
-  const [fullName, setFullName] = useState(prefilled.name || '');
-  const [email, setEmail] = useState('');
+  const [fullName, setFullName] = useState(paramName || prefilled.name || '');
+  const [email, setEmail] = useState(paramEmail || prefilled.email || '');
   const [phone, setPhone] = useState('');
   const [dept, setDept] = useState(prefilled.dept || 'Santander');
   const [city, setCity] = useState(prefilled.city || 'Bucaramanga');
@@ -547,6 +550,19 @@ export default function GraduateRegistrationPage() {
                 </div>
               </div>
             </div>
+
+            {paramEmail && (
+              <div className="mb-6 rounded-2xl border border-sky-200 bg-sky-50/90 p-4.5 flex items-start gap-3.5 text-sky-950 shadow-xs">
+                <i className="bx bxl-google text-2xl text-sky-600 shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <p className="font-bold text-sm text-sky-950 m-0">Registro Oficial con Google</p>
+                  <p className="m-0 mt-1 text-sky-800 leading-relaxed">
+                    Tu correo <strong className="text-sky-950">{paramEmail}</strong> aún no está registrado en la base de datos de Vincula.
+                    Por favor completa los campos de documento, universidad y carrera a continuación para activar tu cuenta de egresado.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <form noValidate onSubmit={handleSubmit} className="space-y-6">
 

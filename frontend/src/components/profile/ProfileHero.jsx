@@ -52,9 +52,9 @@ export default function ProfileHero({
   }
 
   const stats = [
-    { icon: 'bx-show', value: '48', label: 'Vistas de perfil', trend: '+12%' },
-    { icon: 'bx-search-alt', value: '126', label: 'Apariciones en búsquedas', trend: '+8%' },
-    { icon: 'bx-send', value: '5', label: 'Postulaciones activas' },
+    { icon: 'bx-show', value: String(profile.profileViews ?? 0), label: 'Vistas de perfil' },
+    { icon: 'bx-search-alt', value: String(profile.searchAppearances ?? 0), label: 'Apariciones en búsquedas' },
+    { icon: 'bx-send', value: String(profile.activeApplicationsCount ?? profile.applicationsCount ?? 0), label: 'Postulaciones activas' },
   ];
 
   return (
@@ -192,17 +192,24 @@ export default function ProfileHero({
             <h1 className="m-0 font-display text-[clamp(1.6rem,3vw,2.2rem)] font-bold leading-tight tracking-[-0.04em] text-ink">
               {profile.fullName}
             </h1>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[0.68rem] font-bold text-emerald-700">
-              <i className="bx bxs-badge-check text-green text-sm" aria-hidden="true" />
-              Egresado Verificado
-            </span>
+            {profile.isVerified ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[0.68rem] font-bold text-emerald-700">
+                <i className="bx bxs-badge-check text-green text-sm" aria-hidden="true" />
+                Egresado Verificado
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[0.68rem] font-bold text-amber-700">
+                <i className="bx bx-time-five text-amber-600 text-sm" aria-hidden="true" />
+                Perfil en Verificación
+              </span>
+            )}
           </div>
 
           <p className="m-0 mt-1 max-w-2xl font-display text-sm sm:text-base font-semibold text-blue-muted">
-            {profile.headline}
+            {profile.headline || 'Perfil profesional en desarrollo'}
           </p>
 
-          {/* Enlace a formación académica UTS y datos de contacto */}
+          {/* Enlace a formación académica y datos de contacto */}
           <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-2.5 text-xs sm:text-sm">
             <button
               type="button"
@@ -213,16 +220,22 @@ export default function ProfileHero({
               <span className="grid size-5 place-items-center rounded-full bg-ink text-lime text-xs group-hover:bg-green group-hover:text-white transition-colors">
                 <i className="bx bxs-graduation" aria-hidden="true" />
               </span>
-              <span>{profile.institution || profile.university || 'Institución Universitaria'}</span>
-              <span className="text-secondary font-normal">•</span>
-              <span className="text-blue-muted font-medium">{profile.program}</span>
+              <span>{profile.institution || profile.university || 'Institución de Educación Superior'}</span>
+              {profile.program && (
+                <>
+                  <span className="text-secondary font-normal">•</span>
+                  <span className="text-blue-muted font-medium">{profile.program}</span>
+                </>
+              )}
               <i className="bx bx-chevron-right text-base text-secondary group-hover:translate-x-0.5 transition-transform" />
             </button>
 
-            <span className="inline-flex items-center gap-1 font-medium text-body-muted">
-              <i className="bx bx-map text-base text-secondary" aria-hidden="true" />
-              {profile.location}
-            </span>
+            {profile.location && (
+              <span className="inline-flex items-center gap-1 font-medium text-body-muted">
+                <i className="bx bx-map text-base text-secondary" aria-hidden="true" />
+                {profile.location}
+              </span>
+            )}
 
             <button
               type="button"

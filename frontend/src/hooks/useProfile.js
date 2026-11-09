@@ -8,7 +8,19 @@ function readProfile() {
   if (typeof window === 'undefined') return initialProfile;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? { ...initialProfile, ...JSON.parse(raw) } : initialProfile;
+    if (!raw) {
+      const authUserRaw = window.localStorage.getItem('vincula.auth.user');
+      if (authUserRaw) {
+        const authUser = JSON.parse(authUserRaw);
+        return {
+          ...initialProfile,
+          fullName: authUser.nombre || '',
+          email: authUser.correo || '',
+        };
+      }
+      return initialProfile;
+    }
+    return { ...initialProfile, ...JSON.parse(raw) };
   } catch {
     return initialProfile;
   }

@@ -19,6 +19,11 @@ export default function LoginPage() {
   useEffect(() => {
     if (isLogout) {
       authService.logout();
+      try {
+        localStorage.removeItem('vincula.profile.v1');
+      } catch {
+        // noop
+      }
     }
   }, [isLogout]);
 
@@ -91,6 +96,12 @@ export default function LoginPage() {
       navigate(targetRoute, { replace: true });
     } catch (err) {
       setIsGoogleLoading(false);
+      if (err.status === 404 && err.data?.code === 'USER_NOT_REGISTERED') {
+        const regEmail = err.data.email || '';
+        const regName = err.data.name || '';
+        navigate(`/registro-egresado?email=${encodeURIComponent(regEmail)}&name=${encodeURIComponent(regName)}`);
+        return;
+      }
       setAuthError(err.message || 'Error al iniciar sesión con Google.');
     }
   };
@@ -141,6 +152,12 @@ export default function LoginPage() {
             navigate(targetRoute, { replace: true });
           } catch (err) {
             setIsGoogleLoading(false);
+            if (err.status === 404 && err.data?.code === 'USER_NOT_REGISTERED') {
+              const regEmail = err.data.email || '';
+              const regName = err.data.name || '';
+              navigate(`/registro-egresado?email=${encodeURIComponent(regEmail)}&name=${encodeURIComponent(regName)}`);
+              return;
+            }
             setAuthError(err.message || 'Error al autenticar con Google en el servidor.');
           }
         },

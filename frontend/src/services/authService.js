@@ -156,6 +156,10 @@ class AuthService {
     try {
       localStorage.removeItem(AUTH_TOKEN_KEY);
       localStorage.removeItem(AUTH_USER_KEY);
+      localStorage.removeItem('vincula.profile.v1');
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('vincula:profile-updated', { detail: null }));
+      }
     } catch {
       // noop
     }
@@ -241,14 +245,16 @@ class AuthService {
 
     if (!response.ok) {
       let errorMessage = 'Error al autenticar con Google.';
+      let errorData = null;
       try {
-        const errorData = await response.json();
+        errorData = await response.json();
         errorMessage = extractErrorMessage(errorData, errorMessage);
       } catch {
         // noop
       }
       const err = new Error(errorMessage);
       err.status = response.status;
+      err.data = errorData?.detail || errorData;
       throw err;
     }
 
