@@ -76,7 +76,7 @@ export default function InstitutionLaborMarketPage() {
 
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_20rem]">
             {/* Programas y demanda */}
-            <section aria-labelledby="programs-title" className="rounded-2xl border border-line bg-white p-6 shadow-xs">
+            <section data-tour="ies-mercado-laboral" aria-labelledby="programs-title" className="rounded-2xl border border-line bg-white p-6 shadow-xs">
               <div className="flex items-baseline justify-between border-b border-line pb-4">
                 <h2 id="programs-title" className="m-0 font-display text-lg font-bold text-ink">
                   Alineación de Programas Académicos

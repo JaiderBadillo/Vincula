@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import InstitutionSidebar from './InstitutionSidebar.jsx';
 import InstitutionTopbar from './InstitutionTopbar.jsx';
 import { InstitutionThemeProvider, useInstitutionTheme } from '../../context/InstitutionThemeContext.jsx';
-import OnboardingTour from '../common/OnboardingTour.jsx';
 
 const SIDEBAR_PREFERENCE_KEY = 'vincula.institution.sidebar-collapsed';
 
@@ -77,7 +76,6 @@ function PortalLayoutContent({ activePage = 'dashboard', role = 'advisor', child
         />
         {children}
       </div>
-      <OnboardingTour />
     </div>
   );
 }
