@@ -377,13 +377,9 @@ export default function LoginPage() {
                 <label className="text-sm font-bold text-ink" htmlFor="login-password">
                   Contraseña
                 </label>
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-green hover:text-green-dark"
-                  tabIndex={-1}
-                >
+                <Link to={`/recuperar-contrasena?correo=${encodeURIComponent(email.trim())}`} className="text-xs font-semibold text-green hover:text-green-dark no-underline">
                   ¿Olvidaste tu contraseña?
-                </button>
+                </Link>
               </div>
               <div className="relative">
                 <i

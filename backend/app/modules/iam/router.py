@@ -23,6 +23,8 @@ from app.modules.iam.services import IAMService, UserNotRegisteredError
 from app.integrations.email_service import EmailService
 
 router = APIRouter(prefix="/auth", tags=["IAM - Autenticación y Registro"])
+from app.modules.iam.password_reset import router as password_reset_router
+router.include_router(password_reset_router)
 
 
 @router.post("/login", response_model=TokenResponse)

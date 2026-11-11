@@ -1,0 +1,8 @@
+# Recuperación de contraseña
+
+1. Ejecutar `database/password_reset.sql` en PostgreSQL/Supabase con la cuenta propietaria del esquema.
+2. El backend ya tiene `SMTP_USER` y `SMTP_PASSWORD` configurados en este entorno: puede entregar el código con su `EmailService` sin n8n. Para utilizar n8n, importar `docs/n8n_password_reset.json`, configurar las credenciales SMTP del nodo **Enviar correo** y su remitente mediante `VINCULA_SMTP_FROM` en n8n. Configurar `VINCULA_WEBHOOK_SECRET` en n8n con el mismo valor de `N8N_WEBHOOK_SECRET` del backend. Si n8n bloquea el acceso a variables de entorno en expresiones, sustituir la comprobación por una credencial de encabezado de webhook y ajustar el emisor de forma equivalente.
+3. Activar el flujo y configurar `N8N_WEBHOOK_BASE_URL=https://<n8n>/webhook` y `N8N_WEBHOOK_SECRET=<secreto fuerte>` en el backend. Reiniciarlo. La URL final debe ser `/webhook/auth.password-reset`. Si ambas opciones están disponibles, se utiliza n8n.
+4. Probar con una cuenta real: solicitar, revisar correo, introducir código, cambiar contraseña e iniciar sesión con la nueva. No se enviaron correos reales durante las pruebas de implementación.
+
+El código se genera con un generador criptográfico, se almacena como HMAC, vence a los 10 minutos, se limita a cinco intentos y se reemplaza al solicitar otro después de 60 segundos. Las respuestas a solicitudes no revelan si existe una cuenta. Una entrega fallida revierte el código. Una vez usado, se elimina. La contraseña se almacena con bcrypt. El flujo se ofrece a todas las cuentas con contraseña, independientemente del rol. Las sesiones JWT ya emitidas conservarán su vigencia normal hasta expirar (configuración actual: 24 horas).

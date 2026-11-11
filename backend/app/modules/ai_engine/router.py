@@ -25,8 +25,10 @@ from app.modules.ai_engine.schemas import (
 )
 from app.modules.ai_engine.services import TalentMatcherService
 from app.modules.ai_engine.curriculum_service import CurriculumTraceabilityService
+from app.modules.ai_engine.chat import router as chat_router
 
 router = APIRouter(prefix="/ia", tags=["Motor IA & Matching de Talento"])
+router.include_router(chat_router)
 
 
 def _get_user_id(current_user: Dict[str, Any]) -> str:

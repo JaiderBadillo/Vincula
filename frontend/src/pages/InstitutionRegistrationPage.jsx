@@ -86,6 +86,8 @@ const INSTITUTION_FIELD_LABELS = {
   advisorName: 'Nombre del asesor responsable de egresados',
   advisorEmail: 'Correo institucional (@correo.edu.co)',
   advisorPhone: 'Celular o WhatsApp institucional',
+  password: 'Crea tu contraseña institucional (mín. 8 caracteres)',
+  confirmPassword: 'Confirmación de contraseña institucional',
   resolucionMen: 'Resolución de Personería Jurídica del MEN (PDF)',
   sniesCert: 'Certificación de Registro Activo SNIES (PDF)',
   actaPosesion: 'Acta de Posesión del Rector(a) (PDF)',
@@ -138,7 +140,10 @@ export default function InstitutionRegistrationPage() {
   const [filingNumber, setFilingNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState(null);
-  const [password, setPassword] = useState('IesAdmin123*');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Carrusel interactivo derecho
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -200,6 +205,17 @@ export default function InstitutionRegistrationPage() {
       newErrors.advisorEmail = 'Ingresa un correo electrónico institucional (@institucion.edu.co).';
     }
     if (!advisorPhone.trim()) newErrors.advisorPhone = 'Ingresa un teléfono celular de contacto institucional.';
+
+    if (!password) {
+      newErrors.password = 'Crea una contraseña institucional para tu cuenta.';
+    } else if (password.length < 8) {
+      newErrors.password = 'La contraseña institucional debe tener al menos 8 caracteres.';
+    }
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Por favor confirma la contraseña institucional.';
+    } else if (confirmPassword !== password) {
+      newErrors.confirmPassword = 'Las contraseñas no coinciden.';
+    }
 
     // Validación de Documentos PDF obligatorios
     if (!resolucionMenFile) {
@@ -297,6 +313,13 @@ export default function InstitutionRegistrationPage() {
         filingCode: radNumber,
         documentsCount: 4,
       }));
+
+      // 2. Iniciar sesión automáticamente en modo IES
+      try {
+        await authService.login(advisorEmail.trim().toLowerCase(), password);
+      } catch (loginErr) {
+        console.warn('Auto-login post registro de institución no completado:', loginErr);
+      }
 
       setIsSubmitting(false);
       setShowSuccessModal(true);
@@ -781,6 +804,81 @@ export default function InstitutionRegistrationPage() {
                       {errors.advisorPhone && (
                         <p className="mt-1 text-[0.68rem] font-bold text-red-600">{errors.advisorPhone}</p>
                       )}
+                    </div>
+                  </div>
+
+                  {/* Credenciales de Acceso Administrador IES */}
+                  <div className="rounded-2xl border border-line-soft bg-emerald-50/40 p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-ink">
+                      <span className="grid size-6 place-items-center rounded-lg bg-emerald-100 text-emerald-800 text-sm">
+                        <i className="bx bx-lock-alt" />
+                      </span>
+                      <span className="text-xs font-bold text-[#051F26]">Credenciales de Acceso Administrador IES</span>
+                    </div>
+                    <p className="text-[0.72rem] text-secondary m-0 leading-relaxed">
+                      Crea la contraseña maestra para administrar convenios institucionales, autorizar asesores y certificar títulos de egresados.
+                    </p>
+
+                    <div className="grid gap-3.5 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="password" className="mb-1.5 block text-xs font-bold text-ink">
+                          Contraseña institucional <span className="text-red-600">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            id="password"
+                            type={showPassword ? 'text' : 'password'}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="Mínimo 8 caracteres"
+                            autoComplete="new-password"
+                            className={`min-h-11 w-full rounded-xl border bg-white pl-3.5 pr-10 py-2.5 text-xs font-semibold text-ink outline-none placeholder:text-secondary focus:border-green focus:ring-4 focus:ring-green/10 transition-all ${
+                              errors.password ? 'border-red-600' : 'border-line'
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((p) => !p)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-ink text-base cursor-pointer bg-transparent border-none p-0 flex items-center justify-center"
+                            aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                          >
+                            <i className={`bx ${showPassword ? 'bx-hide' : 'bx-show'}`} />
+                          </button>
+                        </div>
+                        {errors.password && (
+                          <p className="mt-1 text-[0.68rem] font-bold text-red-600">{errors.password}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label htmlFor="confirmPassword" className="mb-1.5 block text-xs font-bold text-ink">
+                          Confirmar contraseña <span className="text-red-600">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            id="confirmPassword"
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="Repite tu contraseña"
+                            autoComplete="new-password"
+                            className={`min-h-11 w-full rounded-xl border bg-white pl-3.5 pr-10 py-2.5 text-xs font-semibold text-ink outline-none placeholder:text-secondary focus:border-green focus:ring-4 focus:ring-green/10 transition-all ${
+                              errors.confirmPassword ? 'border-red-600' : 'border-line'
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword((p) => !p)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-ink text-base cursor-pointer bg-transparent border-none p-0 flex items-center justify-center"
+                            aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                          >
+                            <i className={`bx ${showConfirmPassword ? 'bx-hide' : 'bx-show'}`} />
+                          </button>
+                        </div>
+                        {errors.confirmPassword && (
+                          <p className="mt-1 text-[0.68rem] font-bold text-red-600">{errors.confirmPassword}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1385,13 +1483,19 @@ export default function InstitutionRegistrationPage() {
                 <p>• {rutFile?.name}</p>
               </div>
               <div className="flex items-center justify-between text-emerald-950 border-t border-emerald-200/60 pt-2">
-                <span className="font-semibold">Notificaciones enviadas a:</span>
-                <span className="font-bold truncate max-w-[200px]">{advisorEmail}</span>
+                <span className="font-semibold">Correo de acceso institucional:</span>
+                <span className="font-bold truncate max-w-[200px] text-ink">{advisorEmail}</span>
+              </div>
+              <div className="flex items-center justify-between text-emerald-950">
+                <span className="font-semibold">Contraseña:</span>
+                <span className="rounded-md bg-emerald-200/80 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-900">
+                  •••••••• (Configurada)
+                </span>
               </div>
             </div>
 
             <p className="text-[0.72rem] text-secondary leading-snug">
-              Una vez cotejada la resolución de personería jurídica y el registro activo en el SNIES ante el Ministerio de Educación Nacional, tu institución quedará habilitada para certificar diplomas de egresados y celebrar convenios empresariales.
+              Tu sesión ha sido iniciada en modo preliminar. También podrás ingresar en cualquier momento usando tu correo institucional y la contraseña que acabas de configurar.
             </p>
 
             <button

@@ -31,6 +31,7 @@ import InstitutionPlacementStatsPage from './pages/InstitutionPlacementStatsPage
 import InstitutionProgramDetailPage from './pages/InstitutionProgramDetailPage.jsx';
 import InstitutionStudentTrackingPage from './pages/InstitutionStudentTrackingPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
+import PasswordRecoveryPage from './pages/PasswordRecoveryPage.jsx';
 import MyApplicationsPage from './pages/MyApplicationsPage.jsx';
 import MyApplicationsProposalPage from './pages/MyApplicationsProposalPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
@@ -48,6 +49,7 @@ export default function App() {
         {/* ─── Rutas Públicas (Landing y Registro / Login) ─── */}
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/recuperar-contrasena" element={<PasswordRecoveryPage />} />
         <Route path="/registro-egresado" element={<GraduateRegistrationPage />} />
         <Route path="/registro-empresa" element={<CompanyRegistrationPage />} />
         <Route path="/registro-institucion" element={<InstitutionRegistrationPage />} />

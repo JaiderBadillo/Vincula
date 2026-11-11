@@ -132,6 +132,8 @@ const GRADUATE_FIELD_LABELS = {
   fullName: 'Nombres y apellidos completos',
   email: 'Correo electrónico personal válido',
   phone: 'Teléfono o WhatsApp de contacto',
+  password: 'Crea tu contraseña de acceso (mín. 8 caracteres)',
+  confirmPassword: 'Confirmación de contraseña',
   dept: 'Departamento de residencia',
   city: 'Ciudad / Municipio de residencia',
   university: 'Universidad o Institución de egreso',
@@ -317,7 +319,10 @@ export default function GraduateRegistrationPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState(null);
-  const [password, setPassword] = useState('Egresado123*');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Carrusel interactivo lado derecho
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -375,6 +380,16 @@ export default function GraduateRegistrationPage() {
     }
     if (!phone.trim()) {
       newErrors.phone = 'Ingresa un número telefónico o de WhatsApp.';
+    }
+    if (!password) {
+      newErrors.password = 'Crea una contraseña para ingresar a tu cuenta de egresado.';
+    } else if (password.length < 8) {
+      newErrors.password = 'La contraseña debe contener al menos 8 caracteres.';
+    }
+    if (!confirmPassword) {
+      newErrors.confirmPassword = 'Por favor confirma tu contraseña.';
+    } else if (confirmPassword !== password) {
+      newErrors.confirmPassword = 'Las contraseñas no coinciden.';
     }
     if (!dept) {
       newErrors.dept = 'Selecciona tu departamento.';
@@ -452,6 +467,13 @@ export default function GraduateRegistrationPage() {
         registrationCompleted: true,
         ...(cvName ? { cvFileName: cvName } : {}),
       }));
+
+      // 2. Iniciar sesión automáticamente para persistir token JWT en el cliente
+      try {
+        await authService.login(email.trim().toLowerCase(), password);
+      } catch (loginErr) {
+        console.warn('Auto-login post-registro no completado (el usuario podrá ingresar manualmente):', loginErr);
+      }
 
       setIsSubmitting(false);
       setShowSuccessModal(true);
@@ -686,6 +708,81 @@ export default function GraduateRegistrationPage() {
                       {errors.phone && (
                         <p className="mt-1 text-[0.68rem] font-bold text-red-600">{errors.phone}</p>
                       )}
+                    </div>
+                  </div>
+
+                  {/* Credenciales de Acceso al Portal de Empleo */}
+                  <div className="rounded-2xl border border-line-soft bg-emerald-50/40 p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-ink">
+                      <span className="grid size-6 place-items-center rounded-lg bg-emerald-100 text-emerald-800 text-sm">
+                        <i className="bx bx-lock-alt" />
+                      </span>
+                      <span className="text-xs font-bold text-[#051F26]">Crea tu Contraseña de Acceso</span>
+                    </div>
+                    <p className="text-[0.72rem] text-secondary m-0 leading-relaxed">
+                      Esta contraseña te permitirá ingresar a tu portal de egresado en cualquier momento junto con tu correo electrónico.
+                    </p>
+
+                    <div className="grid gap-3.5 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="password" className="mb-1.5 block text-xs font-bold text-ink">
+                          Contraseña de acceso <span className="text-red-600">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            id="password"
+                            type={showPassword ? 'text' : 'password'}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="Mínimo 8 caracteres"
+                            autoComplete="new-password"
+                            className={`min-h-11 w-full rounded-xl border bg-white pl-3.5 pr-10 py-2.5 text-xs font-semibold text-ink outline-none placeholder:text-secondary focus:border-green focus:ring-4 focus:ring-green/10 transition-all ${
+                              errors.password ? 'border-red-600' : 'border-line'
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((p) => !p)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-ink text-base cursor-pointer bg-transparent border-none p-0 flex items-center justify-center"
+                            aria-label={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                          >
+                            <i className={`bx ${showPassword ? 'bx-hide' : 'bx-show'}`} />
+                          </button>
+                        </div>
+                        {errors.password && (
+                          <p className="mt-1 text-[0.68rem] font-bold text-red-600">{errors.password}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label htmlFor="confirmPassword" className="mb-1.5 block text-xs font-bold text-ink">
+                          Confirmar contraseña <span className="text-red-600">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            id="confirmPassword"
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="Repite tu contraseña"
+                            autoComplete="new-password"
+                            className={`min-h-11 w-full rounded-xl border bg-white pl-3.5 pr-10 py-2.5 text-xs font-semibold text-ink outline-none placeholder:text-secondary focus:border-green focus:ring-4 focus:ring-green/10 transition-all ${
+                              errors.confirmPassword ? 'border-red-600' : 'border-line'
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword((p) => !p)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-ink text-base cursor-pointer bg-transparent border-none p-0 flex items-center justify-center"
+                            aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                          >
+                            <i className={`bx ${showConfirmPassword ? 'bx-hide' : 'bx-show'}`} />
+                          </button>
+                        </div>
+                        {errors.confirmPassword && (
+                          <p className="mt-1 text-[0.68rem] font-bold text-red-600">{errors.confirmPassword}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -1151,6 +1248,16 @@ export default function GraduateRegistrationPage() {
                 </span>
               </div>
               <div className="flex items-center justify-between text-emerald-900 border-t border-emerald-200/60 pt-2">
+                <span className="font-semibold">Cuenta de acceso:</span>
+                <span className="font-bold truncate max-w-[200px] text-ink">{email}</span>
+              </div>
+              <div className="flex items-center justify-between text-emerald-900">
+                <span className="font-semibold">Contraseña:</span>
+                <span className="rounded-md bg-emerald-100/90 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-800">
+                  •••••••• (Configurada)
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-emerald-900 border-t border-emerald-200/60 pt-2">
                 <span className="font-semibold">Estado de verificación:</span>
                 <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-bold text-amber-800">
                   En revisión por asesor IES
@@ -1159,7 +1266,7 @@ export default function GraduateRegistrationPage() {
             </div>
 
             <p className="text-[0.72rem] text-secondary leading-snug">
-              Ya tienes acceso ilimitado a vacantes exclusivas de convenios universitarios y seguimiento de postulaciones.
+              Tu sesión ha sido iniciada. También podrás volver a entrar en cualquier momento con tu correo y contraseña o con tu cuenta de Google.
             </p>
 
             <button
