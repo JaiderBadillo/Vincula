@@ -47,6 +47,7 @@ from app.modules.institutions.schemas import (
     ProgramaItemResponse,
     PaginatedProgramsResponse,
     AsesorCreateRequest,
+    AsesorUpdateRequest,
     AsesorItemResponse,
     AsignacionResponse,
 )
@@ -593,6 +594,7 @@ class InstitutionService:
         resultado: List[AsesorItemResponse] = []
         for a in asesores:
             p_ids = [str(ap.id_programa) for ap in a.programas_asignados] if a.programas_asignados else []
+            sedes_list = [s.strip() for s in a.sedes_cobertura.split(",") if s.strip()] if getattr(a, "sedes_cobertura", None) else ([str(a.id_sede)] if a.id_sede else [])
             resultado.append(
                 AsesorItemResponse(
                     id=str(a.id),
@@ -604,6 +606,7 @@ class InstitutionService:
                     estado=a.estado,
                     programas_asignados_count=len(p_ids),
                     programas_ids=p_ids,
+                    sedes_ids=sedes_list,
                     creado_en=a.creado_en.isoformat() if a.creado_en else ""
                 )
             )
@@ -627,20 +630,21 @@ class InstitutionService:
                 }
             )
 
-        # 2. Crear usuario con rol 'admin_ies' (o asesor institucional)
+        # 2. Crear usuario con rol 'asesor_ies' para que acceda al portal de asesor
         hashed_pwd = get_password_hash(payload.password)
         nuevo_usuario = Usuario(
             correo_electronico=correo_clean,
             contrasena_hash=hashed_pwd,
-            rol="admin_ies",
+            rol="asesor_ies",
             estado="activo"
         )
         session.add(nuevo_usuario)
         await session.flush()
 
-        # 3. Validar sede / facultad si fueron suministradas
+        # 3. Validar sede / facultad si fueron suministradas y preparar cobertura multisede
         val_sede = uuid.UUID(str(payload.id_sede)) if payload.id_sede else None
         val_fac = uuid.UUID(str(payload.id_facultad)) if payload.id_facultad else None
+        cobertura_str = ",".join(payload.sedes_ids) if payload.sedes_ids else (str(payload.id_sede) if payload.id_sede else None)
 
         nuevo_asesor = AsesorIES(
             id_usuario=nuevo_usuario.id,
@@ -651,11 +655,14 @@ class InstitutionService:
             correo_institucional=correo_clean,
             telefono=payload.telefono.strip() if payload.telefono else None,
             cargo=payload.cargo.strip() if payload.cargo else "Asesor de Enlace y Prácticas",
+            sedes_cobertura=cobertura_str,
             estado="activo"
         )
         session.add(nuevo_asesor)
         await session.commit()
         await session.refresh(nuevo_asesor)
+
+        saved_sedes = [s.strip() for s in nuevo_asesor.sedes_cobertura.split(",") if s.strip()] if getattr(nuevo_asesor, "sedes_cobertura", None) else ([str(nuevo_asesor.id_sede)] if nuevo_asesor.id_sede else [])
 
         return AsesorItemResponse(
             id=str(nuevo_asesor.id),
@@ -667,7 +674,62 @@ class InstitutionService:
             estado=nuevo_asesor.estado,
             programas_asignados_count=0,
             programas_ids=[],
+            sedes_ids=saved_sedes,
             creado_en=nuevo_asesor.creado_en.isoformat() if nuevo_asesor.creado_en else ""
+        )
+
+    @classmethod
+    async def update_asesor(cls, session: AsyncSession, ies_id: str, asesor_id: str, payload: AsesorUpdateRequest) -> AsesorItemResponse:
+        val_ies = uuid.UUID(str(ies_id))
+        val_asesor = uuid.UUID(str(asesor_id))
+
+        stmt = (
+            select(AsesorIES)
+            .options(selectinload(AsesorIES.programas_asignados))
+            .where(AsesorIES.id == val_asesor, AsesorIES.id_institucion == val_ies)
+        )
+        asesor = (await session.execute(stmt)).scalar_one_or_none()
+        if not asesor:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"codigo": "ASESOR_NO_ENCONTRADO", "mensaje": f"Asesor con ID {asesor_id} no encontrado en tu institución."}
+            )
+
+        if payload.nombre_completo is not None:
+            asesor.nombre_completo = payload.nombre_completo.strip()
+        if payload.telefono is not None:
+            asesor.telefono = payload.telefono.strip() if payload.telefono else None
+        if payload.cargo is not None:
+            asesor.cargo = payload.cargo.strip()
+        if payload.estado is not None:
+            asesor.estado = payload.estado.strip().lower()
+            user = (await session.execute(select(Usuario).where(Usuario.id == asesor.id_usuario))).scalar_one_or_none()
+            if user:
+                user.estado = "activo" if asesor.estado == "activo" else "suspendido"
+
+        if payload.sedes_ids is not None:
+            asesor.sedes_cobertura = ",".join(payload.sedes_ids) if payload.sedes_ids else None
+        if payload.id_sede is not None:
+            asesor.id_sede = uuid.UUID(str(payload.id_sede)) if payload.id_sede else None
+
+        await session.commit()
+        await session.refresh(asesor)
+
+        p_ids = [str(ap.id_programa) for ap in asesor.programas_asignados] if asesor.programas_asignados else []
+        sedes_list = [s.strip() for s in asesor.sedes_cobertura.split(",") if s.strip()] if getattr(asesor, "sedes_cobertura", None) else ([str(asesor.id_sede)] if asesor.id_sede else [])
+
+        return AsesorItemResponse(
+            id=str(asesor.id),
+            id_usuario=str(asesor.id_usuario),
+            nombre_completo=asesor.nombre_completo,
+            correo_institucional=asesor.correo_institucional,
+            telefono=asesor.telefono,
+            cargo=asesor.cargo,
+            estado=asesor.estado,
+            programas_asignados_count=len(p_ids),
+            programas_ids=p_ids,
+            sedes_ids=sedes_list,
+            creado_en=asesor.creado_en.isoformat() if asesor.creado_en else ""
         )
 
     @classmethod

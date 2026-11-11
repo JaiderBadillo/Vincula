@@ -134,6 +134,7 @@ class AsesorIES(Base):
     correo_institucional = Column(String(255), nullable=False)
     telefono = Column(String(50), nullable=True)
     cargo = Column(String(100), default="Asesor de Enlace y Prácticas")
+    sedes_cobertura = Column(String(500), nullable=True)
     estado = Column(String(30), default="activo", nullable=False)
     creado_en = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 

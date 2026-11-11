@@ -156,7 +156,7 @@ const TOUR_STEPS_BY_ROLE = {
   ],
 };
 
-export default function OnboardingTour() {
+export default function OnboardingTour({ showLauncher = true, autoStart = true }) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -236,6 +236,7 @@ export default function OnboardingTour() {
 
   // Apertura automática si el usuario nunca lo ha completado
   useEffect(() => {
+    if (!autoStart) return undefined;
     try {
       const seen = localStorage.getItem(storageKey);
       if (!seen) {
@@ -247,7 +248,7 @@ export default function OnboardingTour() {
     } catch {
       // noop
     }
-  }, [storageKey]);
+  }, [storageKey, autoStart]);
 
   // Escuchar evento global para reabrir el tour
   useEffect(() => {
@@ -380,7 +381,7 @@ export default function OnboardingTour() {
   return (
     <>
       {/* Botón Flotante Permanente para Reabrir el Tutorial Guiado */}
-      <button
+      {showLauncher && <button
         type="button"
         onClick={() => {
           setCurrentStep(0);
@@ -394,7 +395,7 @@ export default function OnboardingTour() {
           <i className="bx bx-help-circle" />
         </span>
         <span className="hidden sm:inline">Guía interactiva</span>
-      </button>
+      </button>}
 
       {/* ─── OVERLAY SPOTLIGHT INTERACTIVO ─── */}
       {isOpen && (

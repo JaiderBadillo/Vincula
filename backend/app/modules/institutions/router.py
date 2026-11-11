@@ -27,6 +27,7 @@ from app.modules.institutions.schemas import (
     ProgramaItemResponse,
     PaginatedProgramsResponse,
     AsesorCreateRequest,
+    AsesorUpdateRequest,
     AsesorItemResponse,
     AsignarAsesorRequest,
     AsignacionResponse,
@@ -236,6 +237,19 @@ async def create_asesor(
     """Crea una cuenta de asesor de empleabilidad y la vincula con la institución."""
     ies_id = _resolve_ies_id(current_user, id_institucion)
     return await InstitutionService.create_asesor(db, ies_id, payload)
+
+
+@router.put("/asesores/{asesor_id}", response_model=AsesorItemResponse)
+async def update_asesor(
+    asesor_id: str,
+    payload: AsesorUpdateRequest,
+    id_institucion: Optional[str] = Query(None, description="UUID de la IES (Superadmin)"),
+    current_user: Dict[str, Any] = Depends(require_role(["admin_ies", "ies_admin", "superadmin_vincula", "superadmin"])),
+    db: AsyncSession = Depends(get_db)
+):
+    """Actualiza los datos, sedes de cobertura o estado de un asesor institucional."""
+    ies_id = _resolve_ies_id(current_user, id_institucion)
+    return await InstitutionService.update_asesor(db, ies_id, asesor_id, payload)
 
 
 @router.post("/programas/{program_id}/asignar-asesor", response_model=AsignacionResponse)

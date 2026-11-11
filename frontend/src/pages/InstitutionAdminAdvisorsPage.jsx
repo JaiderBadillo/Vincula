@@ -136,18 +136,24 @@ export default function InstitutionAdminAdvisorsPage() {
       try {
         const data = await institutionService.getAsesores();
         if (isMounted && Array.isArray(data) && data.length > 0) {
-          const mapped = data.map((item) => ({
-            id: item.id,
-            fullName: item.nombre_completo,
-            email: item.correo_institucional,
-            phone: item.telefono || '',
-            position: item.cargo || 'Asesor de Enlace y Prácticas',
-            campusIds: item.id_sede ? [item.id_sede] : (campuses[0] ? [campuses[0].id] : ['sede-bga-principal']),
-            status: item.estado === 'activo' ? 'active' : 'inactive',
-            lastAccess: 'Hoy',
-            avatar: null,
-            assignedProgramsCount: item.programas_asignados_count || 0,
-          }));
+          const mapped = data.map((item) => {
+            const backendCampusIds = (Array.isArray(item.sedes_ids) && item.sedes_ids.length > 0)
+              ? item.sedes_ids
+              : (item.id_sede ? [item.id_sede] : null);
+
+            return {
+              id: item.id,
+              fullName: item.nombre_completo,
+              email: item.correo_institucional,
+              phone: item.telefono || '',
+              position: item.cargo || 'Asesor de Enlace y Prácticas',
+              campusIds: backendCampusIds || (campuses.length > 0 ? campuses.map((c) => c.id) : ['sede-bga-principal']),
+              status: item.estado === 'activo' ? 'active' : 'inactive',
+              lastAccess: 'Hoy',
+              avatar: null,
+              assignedProgramsCount: item.programas_asignados_count || 0,
+            };
+          });
           setAdvisors(mapped);
           writeStoredAdvisors(mapped);
         }
@@ -321,6 +327,21 @@ export default function InstitutionAdminAdvisorsPage() {
     if (!validateAdvisor()) return;
 
     if (editingAdvisor) {
+      if (authService.isAuthenticated() && editingAdvisor.id && !editingAdvisor.id.startsWith('adv-init')) {
+        try {
+          institutionService.updateAsesor(editingAdvisor.id, {
+            nombre_completo: form.fullName.trim(),
+            telefono: form.phone.trim() || null,
+            cargo: form.position.trim(),
+            estado: form.status,
+            sedes_ids: form.campusIds || [],
+            id_sede: form.campusIds?.[0]?.startsWith('sede-') ? null : form.campusIds?.[0],
+          }).catch((err) => console.warn('Actualización en backend diferida:', err));
+        } catch {
+          // safe fallback
+        }
+      }
+
       const updated = advisors.map((a) =>
         a.id === editingAdvisor.id
           ? {
@@ -347,6 +368,7 @@ export default function InstitutionAdminAdvisorsPage() {
             nombre_completo: form.fullName.trim(),
             telefono: form.phone.trim() || null,
             cargo: form.position.trim() || 'Asesor de Enlace y Prácticas',
+            sedes_ids: form.campusIds || [],
             id_sede: form.campusIds?.[0]?.startsWith('sede-') ? null : form.campusIds?.[0],
           };
           const backendResult = await institutionService.createAsesor(payload);
@@ -384,6 +406,11 @@ export default function InstitutionAdminAdvisorsPage() {
 
   function handleToggleAdvisorStatus(advisor) {
     const nextStatus = advisor.status === 'active' ? 'inactive' : 'active';
+    if (authService.isAuthenticated() && advisor.id && !advisor.id.startsWith('adv-init')) {
+      institutionService.updateAsesor(advisor.id, {
+        estado: nextStatus === 'active' ? 'activo' : 'inactivo',
+      }).catch((e) => console.warn('Sync status backend:', e));
+    }
     const updated = advisors.map((a) => (a.id === advisor.id ? { ...a, status: nextStatus } : a));
     setAdvisors(updated);
     writeStoredAdvisors(updated);

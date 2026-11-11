@@ -302,6 +302,32 @@ class InstitutionService {
     return await res.json();
   }
 
+  async updateAsesor(asesorId, payload, idInstitucion = null) {
+    const params = new URLSearchParams();
+    if (idInstitucion) params.append('id_institucion', idInstitucion);
+
+    const url = `${API_BASE_URL}/instituciones/asesores/${asesorId}${params.toString() ? `?${params.toString()}` : ''}`;
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      let msg = 'Error al actualizar asesor institucional.';
+      try {
+        const errJson = await res.json();
+        msg = extractErrorMessage(errJson, msg);
+      } catch {
+        // noop
+      }
+      const err = new Error(msg);
+      err.status = res.status;
+      throw err;
+    }
+    return await res.json();
+  }
+
   async assignAsesorToProgram(programId, idAsesor, idInstitucion = null) {
     const params = new URLSearchParams();
     if (idInstitucion) params.append('id_institucion', idInstitucion);

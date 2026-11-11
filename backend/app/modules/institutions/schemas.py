@@ -150,6 +150,7 @@ class AsesorCreateRequest(BaseModel):
     cargo: Optional[str] = Field("Asesor de Enlace y Prácticas", max_length=100)
     id_sede: Optional[str] = None
     id_facultad: Optional[str] = None
+    sedes_ids: Optional[List[str]] = Field(default_factory=list, description="Lista de IDs de sedes o campus de cobertura")
 
 
 class AsesorItemResponse(BaseModel):
@@ -162,7 +163,17 @@ class AsesorItemResponse(BaseModel):
     estado: str
     programas_asignados_count: int = 0
     programas_ids: List[str] = []
+    sedes_ids: List[str] = []
     creado_en: str
+
+
+class AsesorUpdateRequest(BaseModel):
+    nombre_completo: Optional[str] = None
+    telefono: Optional[str] = None
+    cargo: Optional[str] = None
+    estado: Optional[str] = None
+    id_sede: Optional[str] = None
+    sedes_ids: Optional[List[str]] = None
 
 
 class AsignarAsesorRequest(BaseModel):
