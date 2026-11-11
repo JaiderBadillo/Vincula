@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { advisorProfile } from '../../data/institutionData.js';
 import { useInstitutionProfile } from '../../hooks/useInstitutionProfile.js';
 import { authService } from '../../services/authService.js';
@@ -25,6 +25,12 @@ export default function InstitutionTopbar({
 }) {
   const { institutionProfile } = useInstitutionProfile();
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const [, refreshUser] = useState(0);
+  useEffect(() => {
+    const onUserUpdated = () => refreshUser(value => value + 1);
+    window.addEventListener('vincula:user-updated', onUserUpdated);
+    return () => window.removeEventListener('vincula:user-updated', onUserUpdated);
+  }, []);
   const currentUser = authService.getCurrentUser();
 
   const rawAdvisorName = currentUser?.nombre || advisorProfile.fullName || 'Coordinación IES';
