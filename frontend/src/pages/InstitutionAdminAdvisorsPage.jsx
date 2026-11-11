@@ -109,6 +109,7 @@ export default function InstitutionAdminAdvisorsPage() {
     position: 'Asesor de Graduados y Empleabilidad',
     campusIds: [campuses[0]?.id || 'sede-bga-principal'],
     status: 'active',
+    password: '',
   });
   const [errors, setErrors] = useState({});
 
@@ -261,6 +262,7 @@ export default function InstitutionAdminAdvisorsPage() {
       position: 'Asesor de Graduados y Empleabilidad',
       campusIds: [campuses[0]?.id || 'sede-bga-principal'],
       status: 'active',
+      password: '',
     });
     setErrors({});
     setModalOpen(true);
@@ -341,7 +343,7 @@ export default function InstitutionAdminAdvisorsPage() {
         try {
           const payload = {
             correo: form.email.trim().toLowerCase(),
-            password: 'Asesor2026*', // Contraseña inicial de cuenta IAM para el asesor
+            password: form.password?.trim() || 'Asesor2026*', // Contraseña inicial de cuenta IAM para el asesor
             nombre_completo: form.fullName.trim(),
             telefono: form.phone.trim() || null,
             cargo: form.position.trim() || 'Asesor de Enlace y Prácticas',
@@ -353,6 +355,10 @@ export default function InstitutionAdminAdvisorsPage() {
           }
         } catch (err) {
           console.warn('Registro en backend no completado, operando en fallback:', err);
+          if (err?.message?.toLowerCase().includes('ya tiene una cuenta') || err?.message?.toLowerCase().includes('registrado')) {
+            setErrors((p) => ({ ...p, email: err.message }));
+            return;
+          }
         }
       }
 
@@ -883,6 +889,20 @@ export default function InstitutionAdminAdvisorsPage() {
 
               {/* Form Body */}
               <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+                {!editingAdvisor && (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-3.5 flex items-start gap-3">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-emerald-600 text-white text-base shadow-2xs">
+                      <i className="bx bx-shield-quarter" />
+                    </span>
+                    <div className="text-xs text-emerald-950 leading-relaxed min-w-0">
+                      <p className="font-bold m-0">No se requiere registro previo del asesor</p>
+                      <p className="m-0 mt-0.5 text-[0.72rem] text-emerald-800">
+                        Vincula creará su cuenta oficial en esta institución automáticamente. El asesor podrá iniciar sesión usando <strong>Continuar con Google</strong> (con su correo institucional) o con su contraseña inicial asignada.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label htmlFor="adv-name" className="block text-xs font-bold text-ink mb-1">
                     Nombre Completo del Asesor <span className="text-rose-500">*</span>:
@@ -1052,8 +1072,32 @@ export default function InstitutionAdminAdvisorsPage() {
                       <option value="active">Activo (permite acceso)</option>
                       <option value="inactive">Suspendido (sin acceso)</option>
                     </select>
+                    <p className="m-0 mt-1 text-[0.68rem] text-secondary">
+                      {form.status === 'active'
+                        ? 'Permite al asesor ingresar a validar títulos y gestionar egresados.'
+                        : 'Bloquea temporalmente el inicio de sesión del asesor sin borrar sus datos.'}
+                    </p>
                   </div>
                 </div>
+
+                {!editingAdvisor && (
+                  <div>
+                    <label htmlFor="adv-password" className="block text-xs font-bold text-ink mb-1">
+                      Contraseña Provisional de Acceso:
+                    </label>
+                    <input
+                      id="adv-password"
+                      type="text"
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                      placeholder="Asesor2026* (por defecto)"
+                      className="w-full rounded-xl border border-sand-line bg-cream/50 px-3.5 py-2.5 text-xs text-ink placeholder:text-secondary focus:border-terracotta focus:bg-white focus:outline-none transition-colors"
+                    />
+                    <p className="m-0 mt-1 text-[0.68rem] text-secondary">
+                      Si lo dejas vacío, se usará la contraseña inicial <span className="font-mono font-bold text-ink">Asesor2026*</span>. El asesor podrá actualizarla al entrar.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Footer */}
