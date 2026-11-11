@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import DashboardSidebar from './DashboardSidebar.jsx';
 import DashboardTopbar from './DashboardTopbar.jsx';
-import { normalizeRole } from '../auth/ProtectedRoute.jsx';
+import GraduateChatbot from './GraduateChatbot.jsx';
 
 const SIDEBAR_PREFERENCE_KEY = 'vincula.dashboard.sidebar-collapsed';
 
@@ -16,7 +16,6 @@ function getSavedSidebarPreference() {
 }
 
 export default function GraduatePortalLayout({ activePage = 'home', children }) {
-  const isGraduate = normalizeRole(authService.getCurrentUser()?.rol) === 'egresado';
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(getSavedSidebarPreference);
   const menuButtonRef = useRef(null);
@@ -65,6 +64,7 @@ export default function GraduatePortalLayout({ activePage = 'home', children }) 
         />
         {children}
       </div>
+      <GraduateChatbot />
     </div>
   );
 }

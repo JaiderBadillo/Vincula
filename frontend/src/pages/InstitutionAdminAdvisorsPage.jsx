@@ -502,6 +502,7 @@ export default function InstitutionAdminAdvisorsPage() {
                 </button>
                 <button
                   type="button"
+                  data-tour="ies-sedes-tab"
                   onClick={() => handleViewChange('sedes')}
                   className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                     activeView === 'sedes'

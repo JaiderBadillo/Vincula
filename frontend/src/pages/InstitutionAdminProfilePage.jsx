@@ -221,7 +221,7 @@ export default function InstitutionAdminProfilePage() {
           />
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-            <div className="space-y-6">
+            <div data-tour="ies-admin-perfil" className="space-y-6">
               {/* Imagen, Logo y Portada Institucional */}
               <Card
                 title="Imagen, Logo y Portada Institucional"
