@@ -107,7 +107,7 @@ export default function VinculaAdminInstitutionsPage() {
           )}
 
           {/* ─── Pestañas de Estado & Filtros ─── */}
-          <section className="rounded-2xl border border-sand-line bg-white p-5 shadow-xs space-y-4">
+          <section data-tour="admin-ies-table" className="rounded-2xl border border-sand-line bg-white p-5 shadow-xs space-y-4">
             <div className="flex flex-wrap items-center gap-1.5 border-b border-sand-line pb-3">
               {[
                 { id: 'pending', label: 'Pendientes de Validación', count: metrics.pendingInstitutions, color: 'bg-amber-100 text-amber-900' },

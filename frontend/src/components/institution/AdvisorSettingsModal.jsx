@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { authService, extractErrorMessage } from '../../services/authService.js';
-import { companyPhotos } from '../../data/companyImages.js';
 
 const API = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 const GOOGLE_CLIENT_ID = import.meta.env?.VITE_GOOGLE_CLIENT_ID || '698543862122-050jkphuknmg709207im4lfs39744ef8.apps.googleusercontent.com';
@@ -107,7 +106,7 @@ export default function AdvisorSettingsModal({ isOpen, onClose, userName, userAv
     className="fixed inset-0 z-[10002] flex items-center justify-center overflow-y-auto bg-ink/70 p-3 backdrop-blur-xs sm:p-5">
     <div onClick={event => event.stopPropagation()} className="my-auto grid w-full max-w-5xl overflow-hidden rounded-3xl border border-sand-line bg-white shadow-2xl md:grid-cols-[minmax(250px,36%)_1fr]">
       <aside className="relative flex flex-col justify-between overflow-hidden bg-cocoa p-4 text-white md:min-h-[590px] md:p-6">
-        <img src={companyPhotos.configuracion?.src} alt="" className="absolute inset-0 size-full object-cover opacity-30" />
+        <img src="/images/profile/cover-office.jpg" alt="" className="absolute inset-0 size-full object-cover opacity-30" />
         <div className="absolute inset-0 bg-gradient-to-t from-cocoa via-cocoa/90 to-cocoa/40" />
         <div className="relative z-10">
           <p className="m-0 text-[0.7rem] font-bold uppercase tracking-widest text-white/70">Perfil en uso</p>

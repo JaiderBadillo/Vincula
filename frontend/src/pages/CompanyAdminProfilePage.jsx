@@ -215,7 +215,7 @@ export default function CompanyAdminProfilePage() {
           />
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-            <div className="space-y-6">
+            <div data-tour="company-admin-perfil" className="space-y-6">
               {/* Imagen, Logo y Portada Corporativa */}
               <Card
                 title="Imagen, Logo y Portada Corporativa"

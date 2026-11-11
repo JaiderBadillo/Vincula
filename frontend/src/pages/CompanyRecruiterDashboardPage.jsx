@@ -60,7 +60,7 @@ export default function CompanyRecruiterDashboardPage() {
   return (
     <CompanyPortalLayout activePage="recruiter-dashboard" role="recruiter">
       <main className="w-full pb-20">
-        <div className="mx-auto max-w-7xl px-5 pt-8 sm:px-8 lg:px-10 space-y-8">
+        <div data-tour="company-recruiter-dashboard" className="mx-auto max-w-7xl px-5 pt-8 sm:px-8 lg:px-10 space-y-8">
           {/* ─── 1. Hero Showcase del Reclutador (Estilo Sonnet cálido) ─── */}
           <CompanyPageHero
             photo={companyPhotos.reclutadores || companyPhotos.talento}

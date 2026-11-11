@@ -42,7 +42,7 @@ export default function CompanyAdminActivityPage() {
   return (
     <CompanyPortalLayout activePage="admin-actividad">
       <main className="w-full pb-20">
-        <div className="mx-auto max-w-6xl px-5 pt-6 sm:px-8 lg:px-10 space-y-6">
+        <div data-tour="company-admin-actividad" className="mx-auto max-w-6xl px-5 pt-6 sm:px-8 lg:px-10 space-y-6">
           {/* Banner Hero con fotografía y métricas */}
           <CompanyPageHero
             photo={companyPhotos.actividad}

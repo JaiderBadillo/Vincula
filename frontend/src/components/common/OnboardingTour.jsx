@@ -1,13 +1,47 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../../services/authService.js';
+import { normalizeRole } from '../auth/ProtectedRoute.jsx';
 
 /**
  * Pasos del Tutorial Guiado con Spotlight y Navegación Suave entre Secciones.
  * Cada rol tiene un recorrido 100% delimitado a su ámbito de permisos para evitar
- * redirecciones o parpadeos entre portales distintos.
+ * cualquier redirección o cruce entre portales distintos.
  */
 const TOUR_STEPS_BY_ROLE = {
+  superadmin: [
+    {
+      id: 'admin-dashboard-kpis',
+      route: '/admin/dashboard',
+      targetSelector: '[data-tour="admin-kpis"]',
+      badge: 'Paso 1 de 3 · Panel Central',
+      title: 'Supervisión Central de la Red Vincula',
+      description:
+        '¡Bienvenido al Panel de Super Administración! Aquí supervisas en tiempo real el ecosistema completo: empresas registradas, instituciones de educación superior en red y solicitudes prioritarias.',
+      actionHint: 'Monitorea las métricas periódicas y el estado de acreditación de la plataforma.',
+    },
+    {
+      id: 'admin-empresas-auditoria',
+      route: '/admin/empresas',
+      targetSelector: '[data-tour="admin-empresas-table"]',
+      badge: 'Paso 2 de 3 · Auditoría Empresarial',
+      title: 'Aprobación y Cuarentena de Empresas',
+      description:
+        'Audita la documentación legal de las empresas (Cámara de Comercio, RUT y Cédula de Representante Legal). Solo las empresas verificadas formalmente por ti pueden publicar vacantes y contratar talento.',
+      actionHint: 'Inspecciona los expedientes y gestiona subsanaciones o aprobaciones.',
+    },
+    {
+      id: 'admin-ies-acreditacion',
+      route: '/admin/instituciones',
+      targetSelector: '[data-tour="admin-ies-table"]',
+      badge: 'Paso 3 de 3 · Acreditación IES',
+      title: 'Acreditación de Universidades e IES',
+      description:
+        'Verifica los códigos SNIES oficiales y actos de reconocimiento del Ministerio de Educación Nacional (MEN) para incorporar a las universidades a la red de empleo y avalar sus sellos digitales.',
+      actionHint: 'Garantiza la autenticidad académica de las instituciones de educación superior.',
+    },
+  ],
+
   institution_admin: [
     {
       id: 'ies-admin-perfil',
@@ -104,6 +138,72 @@ const TOUR_STEPS_BY_ROLE = {
     },
   ],
 
+  company_admin: [
+    {
+      id: 'company-admin-perfil',
+      route: '/empresa/admin/perfil',
+      targetSelector: '[data-tour="company-admin-perfil"]',
+      badge: 'Paso 1 de 3 · Perfil Corporativo',
+      title: 'Identidad y Marca Empleadora',
+      description:
+        '¡Bienvenido a la gestión corporativa! Configura aquí los datos oficiales de tu empresa, NIT, logotipo y descripción que conocerán los egresados y las universidades aliadas.',
+      actionHint: 'Un perfil corporativo verificado genera mayor confianza en tus postulantes.',
+    },
+    {
+      id: 'company-publicar-vacante',
+      route: '/empresa/admin/vacantes',
+      targetSelector: '[data-tour="company-publicar-vacante"]',
+      badge: 'Paso 2 de 3 · Ofertas Laborales',
+      title: '¡Mira este botón: Nueva Vacante!',
+      description:
+        'Publica convocatorias formales con requisitos de carrera, bandas salariales y alcance prioritario para egresados de universidades con convenio.',
+      actionHint: 'Activa o pausa vacantes según tus requerimientos de contratación.',
+    },
+    {
+      id: 'company-admin-actividad',
+      route: '/empresa/admin/actividad',
+      targetSelector: '[data-tour="company-admin-actividad"]',
+      badge: 'Paso 3 de 3 · Métricas de Selección',
+      title: 'Actividad y Desempeño de Contratación',
+      description:
+        'Supervisa el embudo de atracción, el tiempo promedio de contratación y el desempeño general de tu equipo de selección de talento.',
+      actionHint: 'Audita el flujo de postulantes por cada canal de reclutamiento.',
+    },
+  ],
+
+  company_recruiter: [
+    {
+      id: 'company-recruiter-dashboard',
+      route: '/empresa/reclutador/dashboard',
+      targetSelector: '[data-tour="company-recruiter-dashboard"]',
+      badge: 'Paso 1 de 3 · Operativa de Selección',
+      title: 'Panel del Reclutador',
+      description:
+        '¡Bienvenido a tu panel de reclutamiento! Monitorea tus vacantes asignadas, solicitudes por calificar y las entrevistas agendadas para hoy.',
+      actionHint: 'Atiende de forma ágil a los egresados recién postulados.',
+    },
+    {
+      id: 'company-kanban',
+      route: '/empresa/reclutador/candidatos',
+      targetSelector: '[data-tour="company-kanban"]',
+      badge: 'Paso 2 de 3 · Embudo ATS',
+      title: 'Tablero Kanban ATS de Candidatos',
+      description:
+        '¡Mira este tablero! Administra tus postulantes en tiempo real por cada fase de selección: Revisión, Preseleccionado, Entrevista, Pruebas y Contratado.',
+      actionHint: 'Arrastra candidatos para cambiar su estado y enviar feedback.',
+    },
+    {
+      id: 'company-buscar-talento',
+      route: '/empresa/reclutador/talento',
+      targetSelector: '[data-tour="company-buscar-talento"]',
+      badge: 'Paso 3 de 3 · Banco de Talento',
+      title: 'Búsqueda Directa de Talento Certificado',
+      description:
+        'Filtra talento universitario por programa académico, universidad aliada y competencias para invitarlos a tus procesos con un solo clic.',
+      actionHint: 'Acceso a egresados con título verificado ante las instituciones.',
+    },
+  ],
+
   graduate: [
     {
       id: 'grad-perfil-kpi',
@@ -156,57 +256,63 @@ const TOUR_STEPS_BY_ROLE = {
       actionHint: 'Cero incertidumbre: cada fase te notifica de inmediato.',
     },
   ],
+};
 
-  company: [
-    {
-      id: 'company-kanban',
-      route: '/empresa/reclutador/candidatos',
-      targetSelector: '[data-tour="company-kanban"]',
-      badge: 'Paso 1 de 3 · Embudo ATS',
-      title: 'Tablero Kanban ATS de Candidatos',
-      description:
-        '¡Mira este tablero! Administra tus postulantes en tiempo real por cada fase de selección: Revisión, Preseleccionado, Entrevista, Pruebas y Contratado.',
-      actionHint: 'Arrastra candidatos para cambiar su estado y enviar feedback.',
-    },
-    {
-      id: 'company-publicar-vacante',
-      route: '/empresa/admin/vacantes',
-      targetSelector: '[data-tour="company-publicar-vacante"]',
-      badge: 'Paso 2 de 3 · Ofertas Laborales',
-      title: '¡Mira este botón: Nueva Vacante!',
-      description:
-        'Publica convocatorias formales con requisitos de carrera, bandas salariales y alcance prioritario para egresados de universidades con convenio.',
-      actionHint: 'Activa o pausa vacantes según tus requerimientos de contratación.',
-    },
-    {
-      id: 'company-buscar-talento',
-      route: '/empresa/reclutador/talento',
-      targetSelector: '[data-tour="company-buscar-talento"]',
-      badge: 'Paso 3 de 3 · Banco de Talento',
-      title: 'Búsqueda Directa de Talento Certificado',
-      description:
-        'Filtra talento universitario por programa académico, universidad aliada y competencias para invitarlos a tus procesos con un solo clic.',
-      actionHint: 'Acceso a egresados con título verificado ante las instituciones.',
-    },
-  ],
+const PORTAL_PREFIX_BY_TOUR = {
+  superadmin: '/admin',
+  institution_admin: '/institucion/admin',
+  institution_advisor: '/institucion',
+  company_admin: '/empresa/admin',
+  company_recruiter: '/empresa/reclutador',
+  graduate: '/dashboard',
 };
 
 /**
- * Componente Guardián: solo monta el tour si el usuario está autenticado y dentro de un portal.
- * Evita cualquier cálculo, listener o conflicto en landing (/), login o registros.
+ * Componente Guardián de Confinamiento de Portal:
+ * Solo monta el tour si el rol del usuario coincide ESTRICTAMENTE con el portal en el que se encuentra.
+ * Evita cualquier cruce entre portales (por ejemplo, Super Admin jamás verá tour de Egresado ni será redirigido a /dashboard).
  */
 export default function OnboardingTour({ showLauncher = true, autoStart = true }) {
   const location = useLocation();
   const isAuthenticated = authService.isAuthenticated();
   const currentUser = authService.getCurrentUser();
 
-  const isPortalRoute =
-    location.pathname.startsWith('/dashboard') ||
-    location.pathname.startsWith('/institucion') ||
-    location.pathname.startsWith('/empresa') ||
-    location.pathname.startsWith('/admin');
+  if (!isAuthenticated || !currentUser) {
+    return null;
+  }
 
-  if (!isAuthenticated || !currentUser || !isPortalRoute) {
+  const rawRole = currentUser?.rol || '';
+  const normRole = normalizeRole(rawRole);
+
+  let tourType = null;
+  if (normRole === 'superadmin_vincula') {
+    tourType = 'superadmin';
+  } else if (normRole === 'admin_ies') {
+    tourType = 'institution_admin';
+  } else if (normRole === 'asesor_ies') {
+    tourType = 'institution_advisor';
+  } else if (normRole === 'admin_empresa') {
+    tourType = 'company_admin';
+  } else if (normRole === 'reclutador_empresa') {
+    tourType = 'company_recruiter';
+  } else if (normRole === 'egresado') {
+    tourType = 'graduate';
+  }
+
+  if (!tourType) {
+    return null;
+  }
+
+  const expectedPrefix = PORTAL_PREFIX_BY_TOUR[tourType];
+  const isOnValidPortal = expectedPrefix && location.pathname.startsWith(expectedPrefix);
+
+  // Excepción estricta: asesor IES no debe correr en /institucion/admin
+  if (tourType === 'institution_advisor' && location.pathname.startsWith('/institucion/admin')) {
+    return null;
+  }
+
+  // Si no está en su portal correspondiente, el tour se deshabilita 100%
+  if (!isOnValidPortal) {
     return null;
   }
 
@@ -214,37 +320,34 @@ export default function OnboardingTour({ showLauncher = true, autoStart = true }
 
   return (
     <OnboardingTourContent
-      key={userIdentifier}
+      key={`${tourType}-${userIdentifier}`}
       showLauncher={showLauncher}
       autoStart={autoStart}
       currentUser={currentUser}
+      tourType={tourType}
+      expectedPrefix={expectedPrefix}
     />
   );
 }
 
-function OnboardingTourContent({ showLauncher = true, autoStart = true, currentUser }) {
+function OnboardingTourContent({
+  showLauncher = true,
+  autoStart = true,
+  currentUser,
+  tourType,
+  expectedPrefix,
+}) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const userRole = (currentUser?.rol || '').toLowerCase();
-
-  const tourType = useMemo(() => {
-    if (userRole === 'admin_ies' || userRole === 'ies_admin') return 'institution_admin';
-    if (userRole === 'asesor_ies' || userRole === 'ies_asesor') return 'institution_advisor';
-    if (userRole.includes('asesor') || userRole.includes('advisor')) return 'institution_advisor';
-    if (userRole.includes('ies') || userRole.includes('institucion')) return 'institution_admin';
-    if (userRole.includes('empresa') || userRole.includes('reclutador') || userRole.includes('company')) return 'company';
-    return 'graduate';
-  }, [userRole]);
-
-  const steps = useMemo(() => TOUR_STEPS_BY_ROLE[tourType] || TOUR_STEPS_BY_ROLE.graduate, [tourType]);
+  const steps = useMemo(() => TOUR_STEPS_BY_ROLE[tourType] || [], [tourType]);
 
   const userIdentifier = useMemo(() => {
     return currentUser?.user_id || currentUser?.id || currentUser?.correo || 'guest';
   }, [currentUser]);
 
-  const storageKey = `vincula.spotlight_tour.v3.${userIdentifier}`;
-  const sessionStepKey = `vincula.spotlight_step.v3.${userIdentifier}`;
+  const storageKey = `vincula.spotlight_tour.v4.${userIdentifier}.${tourType}`;
+  const sessionStepKey = `vincula.spotlight_step.v4.${userIdentifier}.${tourType}`;
 
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(() => {
@@ -318,21 +421,22 @@ function OnboardingTourContent({ showLauncher = true, autoStart = true, currentU
     }, 60);
   }, [activeStep, updateTargetRect]);
 
-  // Apertura automática en primer ingreso (solo 1 vez en la vida del usuario)
+  // Apertura automática en primer ingreso (solo 1 vez en la vida del usuario y SOLO en la raíz de su propio portal)
   useEffect(() => {
     if (!autoStart || !currentUser) return;
     try {
       const seen = localStorage.getItem(storageKey);
       if (!seen) {
-        const portalRoots = [
-          '/dashboard',
-          '/institucion/admin/perfil',
-          '/institucion/dashboard',
-          '/empresa/admin/perfil',
-          '/empresa/reclutador/dashboard',
-          '/admin/dashboard',
-        ];
-        if (portalRoots.includes(location.pathname)) {
+        const portalRoots = {
+          superadmin: '/admin/dashboard',
+          institution_admin: '/institucion/admin/perfil',
+          institution_advisor: '/institucion/dashboard',
+          company_admin: '/empresa/admin/perfil',
+          company_recruiter: '/empresa/reclutador/dashboard',
+          graduate: '/dashboard',
+        };
+        const expectedRoot = portalRoots[tourType];
+        if (expectedRoot && location.pathname === expectedRoot) {
           const timer = setTimeout(() => {
             setIsOpen(true);
           }, 800);
@@ -342,7 +446,7 @@ function OnboardingTourContent({ showLauncher = true, autoStart = true, currentU
     } catch {
       // noop
     }
-  }, [storageKey, autoStart, currentUser, location.pathname]);
+  }, [storageKey, autoStart, currentUser, location.pathname, tourType]);
 
   // Si el tour está abierto, localizar el elemento objetivo
   useEffect(() => {
@@ -356,6 +460,24 @@ function OnboardingTourContent({ showLauncher = true, autoStart = true, currentU
     };
   }, [isOpen, currentStep, location.pathname, location.search, locateElement]);
 
+  // Función segura de navegación confinada
+  const safeNavigate = useCallback(
+    (targetRoute) => {
+      if (!targetRoute) return;
+      if (!targetRoute.startsWith(expectedPrefix)) {
+        console.warn(`[OnboardingTour] Bloqueada navegación fuera del portal: ${targetRoute}`);
+        return;
+      }
+      const currentFull = location.pathname + location.search;
+      if (targetRoute !== currentFull) {
+        setIsNavigating(true);
+        setTargetRect(null);
+        navigate(targetRoute);
+      }
+    },
+    [expectedPrefix, location.pathname, location.search, navigate]
+  );
+
   // Escuchar evento global para reabrir desde menús
   useEffect(() => {
     function handleOpenEvent() {
@@ -368,16 +490,14 @@ function OnboardingTourContent({ showLauncher = true, autoStart = true, currentU
       }
       setIsOpen(true);
       const firstStep = steps[0];
-      const currentFullRoute = location.pathname + location.search;
-      if (firstStep?.route && firstStep.route !== currentFullRoute) {
-        setIsNavigating(true);
-        navigate(firstStep.route);
+      if (firstStep?.route) {
+        safeNavigate(firstStep.route);
       }
     }
 
     window.addEventListener('vincula:open-onboarding-tour', handleOpenEvent);
     return () => window.removeEventListener('vincula:open-onboarding-tour', handleOpenEvent);
-  }, [sessionStepKey, steps, location.pathname, location.search, navigate]);
+  }, [sessionStepKey, steps, safeNavigate]);
 
   // Reposicionar el reflector ante scroll o resize de la ventana
   useEffect(() => {
@@ -437,12 +557,8 @@ function OnboardingTourContent({ showLauncher = true, autoStart = true, currentU
       } catch {
         // noop
       }
-
-      const currentFull = location.pathname + location.search;
-      if (nextStep?.route && nextStep.route !== currentFull) {
-        setIsNavigating(true);
-        setTargetRect(null);
-        navigate(nextStep.route);
+      if (nextStep?.route) {
+        safeNavigate(nextStep.route);
       }
     } else {
       handleClose();
@@ -459,14 +575,15 @@ function OnboardingTourContent({ showLauncher = true, autoStart = true, currentU
       } catch {
         // noop
       }
-
-      const currentFull = location.pathname + location.search;
-      if (prevStep?.route && prevStep.route !== currentFull) {
-        setIsNavigating(true);
-        setTargetRect(null);
-        navigate(prevStep.route);
+      if (prevStep?.route) {
+        safeNavigate(prevStep.route);
       }
     }
+  }
+
+  // Si no hay pasos definidos para este tipo de tour, no renderizar nada
+  if (!steps || steps.length === 0) {
+    return null;
   }
 
   // Cálculo de posición suave del Popover tooltip flotante
@@ -533,10 +650,8 @@ function OnboardingTourContent({ showLauncher = true, autoStart = true, currentU
             }
             setIsOpen(true);
             const firstStep = steps[0];
-            const currentFull = location.pathname + location.search;
-            if (firstStep?.route && firstStep.route !== currentFull) {
-              setIsNavigating(true);
-              navigate(firstStep.route);
+            if (firstStep?.route) {
+              safeNavigate(firstStep.route);
             }
           }}
           title="Ver tutorial guiado interactivo de la plataforma"

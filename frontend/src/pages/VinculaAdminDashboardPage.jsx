@@ -91,30 +91,32 @@ export default function VinculaAdminDashboardPage() {
       <main className="w-full pb-20">
         <div className="mx-auto max-w-7xl px-5 pt-8 sm:px-8 lg:px-10 space-y-8">
           {/* ─── 1. Hero Showcase del Super Admin ─── */}
-          <CompanyPageHero
-            photo={companyPhotos.actividad}
-            title="Panel Central de Administración"
-            subtitle="Supervisa el ecosistema de Vincula, valida la documentación legal de nuevas empresas y gestiona la acreditación de instituciones de educación superior para garantizar la seguridad de los egresados."
-            stats={heroStats}
-            actions={
-              <div className="flex flex-wrap items-center gap-2">
-                <Link
-                  to="/admin/empresas"
-                  className="inline-flex items-center gap-2 rounded-xl bg-ochre hover:bg-ochre-light text-cocoa font-bold px-4 py-2.5 text-xs shadow-xs transition-all no-underline cursor-pointer"
-                >
-                  <i className="bx bx-buildings text-base" />
-                  <span>Aprobar Empresas ({metrics.pendingCompanies})</span>
-                </Link>
-                <Link
-                  to="/admin/instituciones"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3.5 py-2 text-xs font-semibold text-white backdrop-blur-xs hover:bg-white/20 no-underline transition-colors cursor-pointer"
-                >
-                  <i className="bx bx-graduation text-sm" />
-                  <span>Aprobar IES ({metrics.pendingInstitutions})</span>
-                </Link>
-              </div>
-            }
-          />
+          <div data-tour="admin-kpis">
+            <CompanyPageHero
+              photo={companyPhotos.actividad}
+              title="Panel Central de Administración"
+              subtitle="Supervisa el ecosistema de Vincula, valida la documentación legal de nuevas empresas y gestiona la acreditación de instituciones de educación superior para garantizar la seguridad de los egresados."
+              stats={heroStats}
+              actions={
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    to="/admin/empresas"
+                    className="inline-flex items-center gap-2 rounded-xl bg-ochre hover:bg-ochre-light text-cocoa font-bold px-4 py-2.5 text-xs shadow-xs transition-all no-underline cursor-pointer"
+                  >
+                    <i className="bx bx-buildings text-base" />
+                    <span>Aprobar Empresas ({metrics.pendingCompanies})</span>
+                  </Link>
+                  <Link
+                    to="/admin/instituciones"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3.5 py-2 text-xs font-semibold text-white backdrop-blur-xs hover:bg-white/20 no-underline transition-colors cursor-pointer"
+                  >
+                    <i className="bx bx-graduation text-sm" />
+                    <span>Aprobar IES ({metrics.pendingInstitutions})</span>
+                  </Link>
+                </div>
+              }
+            />
+          </div>
 
           {/* Toast Notification */}
           {toast && (
