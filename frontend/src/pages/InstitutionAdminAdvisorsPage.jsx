@@ -490,6 +490,7 @@ export default function InstitutionAdminAdvisorsPage() {
               {activeView === 'asesores' ? (
                 <button
                   type="button"
+                  data-tour="vincular-asesor"
                   onClick={openCreateAdvisorModal}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-terracotta hover:bg-terracotta-dark px-4 py-2.5 text-xs font-bold text-white transition-colors cursor-pointer shadow-xs"
                 >

@@ -205,7 +205,7 @@ export default function InstitutionAdminTraceabilityPage() {
         />
 
         {/* Filtro de Selección por Facultad y Carrera */}
-        <section className="rounded-card border border-sand-line bg-white p-5 sm:p-6 shadow-card">
+        <section data-tour="ies-trazabilidad-grafica" className="rounded-card border border-sand-line bg-white p-5 sm:p-6 shadow-card">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
               <span className="text-[0.68rem] font-bold uppercase tracking-wider text-secondary block">

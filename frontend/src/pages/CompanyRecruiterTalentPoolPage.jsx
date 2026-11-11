@@ -220,7 +220,7 @@ export default function CompanyRecruiterTalentPoolPage() {
           )}
 
           {/* ─── 2. Panel de Filtros y Comparador de Afinidad ─── */}
-          <section className="rounded-2xl border border-sand-line bg-white p-5 shadow-xs space-y-4">
+          <section data-tour="company-buscar-talento" className="rounded-2xl border border-sand-line bg-white p-5 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-sand-line pb-4">
               <div>
                 <h3 className="m-0 font-display text-sm font-bold text-ink flex items-center gap-2">

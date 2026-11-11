@@ -50,6 +50,7 @@ export default function InstitutionDashboardPage() {
             actions={
               <Link
                 to="/institucion/estudiantes/solicitudes"
+                data-tour="ies-atender-solicitudes"
                 className="inline-flex items-center gap-2 rounded-xl bg-lime hover:bg-lime/85 text-ink font-bold px-4 py-2.5 text-xs shadow-xs transition-all no-underline cursor-pointer"
               >
                 <i className="bx bx-check-shield text-base" />
@@ -59,7 +60,7 @@ export default function InstitutionDashboardPage() {
           />
 
           {/* ─── Barra de Control de Periodo Académico & Estado en Vivo ─── */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-line bg-white p-4 shadow-xs">
+          <div data-tour="ies-kpis" className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-line bg-white p-4 shadow-xs">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-semibold text-secondary">
                 Periodo de corte institucional:

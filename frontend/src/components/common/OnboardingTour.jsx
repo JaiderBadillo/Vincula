@@ -1,248 +1,176 @@
-import { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../../services/authService.js';
 
 /**
- * Pasos del Tutorial Guiado clasificados por Rol
+ * Pasos del Tutorial Guiado con Spotlight y Navegación entre Páginas
  */
 const TOUR_STEPS_BY_ROLE = {
-  graduate: [
+  institution: [
     {
-      id: 'welcome',
-      tabLabel: '1. Bienvenida',
-      badge: 'Inicio & Visión',
-      icon: 'bx-rocket',
-      iconColor: 'bg-lime text-ink',
-      title: '¡Bienvenido(a) a Vincula!',
-      subtitle: 'La red oficial de talento universitario y empleabilidad formal',
+      id: 'ies-kpis',
+      route: '/institucion/dashboard',
+      targetSelector: '[data-tour="ies-kpis"]',
+      badge: 'Paso 1 de 6 · Observatorio IES',
+      title: 'Monitoreo de Indicadores en Vivo',
       description:
-        'Vincula conecta a graduados y practicantes con empresas legalmente constituidas y universidades acreditadas. Cada postulación cuenta con respaldo institucional y validación digital directa.',
-      highlights: [
-        'Cero ofertas falsas: empresas verificadas ante Cámaras de Comercio y DIAN.',
-        'Vacantes exclusivas que priorizan a egresados de tu institución.',
-        'Trazabilidad transparente en cada etapa de selección.',
-      ],
-      route: '/dashboard',
-      actionLabel: 'Ver Dashboard',
+        '¡Mira este panel! Aquí puedes cambiar el periodo académico y monitorear la tasa de inserción laboral formal, graduados registrados y vacantes disponibles en tiempo real.',
+      actionHint: 'Filtra por semestres para ver el histórico de empleo.',
     },
     {
-      id: 'profile',
-      tabLabel: '2. Mi Perfil & CV',
-      badge: 'Pestaña: Mi Perfil & CV',
-      icon: 'bx-user-check',
-      iconColor: 'bg-emerald-500 text-white',
-      title: 'Mi Perfil & Hoja de Vida (CV)',
-      subtitle: 'Tu carta de presentación ante las empresas aliadas',
+      id: 'ies-atender-solicitudes',
+      route: '/institucion/dashboard',
+      targetSelector: '[data-tour="ies-atender-solicitudes"]',
+      badge: 'Paso 2 de 6 · Solicitudes Pendientes',
+      title: 'Acceso Rápido a la Cola de Validación',
       description:
-        'En esta sección puedes cargar tu hoja de vida en PDF, registrar tus competencias técnicas, indicar tu aspiración salarial y solicitar la verificación digital de tu diploma a tu universidad.',
-      highlights: [
-        'Carga tu CV en formato PDF para que los reclutadores lo analicen con IA.',
-        'Sello de Egresado Verificado: tu universidad certifica tu título oficial.',
-        'Los perfiles completos reciben hasta 3 veces más llamadas de selección.',
-      ],
-      route: '/dashboard/perfil',
-      actionLabel: 'Ir a Mi Perfil',
+        '¡Mira este botón! Te lleva de inmediato a la bandeja de solicitudes de egresados que están esperando la certificación oficial de su diploma.',
+      actionHint: 'Haz clic para ir directamente a revisar títulos.',
     },
     {
-      id: 'vacancies',
-      tabLabel: '3. Vacantes',
-      badge: 'Pestaña: Explorar Vacantes',
-      icon: 'bx-briefcase-alt-2',
-      iconColor: 'bg-blue-600 text-white',
-      title: 'Explorar Vacantes con Convenio',
-      subtitle: 'Oportunidades laborales que valoran tu formación académica',
+      id: 'ies-validar-sello',
+      route: '/institucion/estudiantes/solicitudes',
+      targetSelector: '[data-tour="ies-validar-sello"]',
+      badge: 'Paso 3 de 6 · Validación de Títulos',
+      title: 'Validar y Expedir el Sello Digital',
       description:
-        'Busca vacantes con salarios transparentes, contratos de ley y filtros específicos por carrera, modalidad (remoto, híbrido o presencial) y ciudad de residencia.',
-      highlights: [
-        'Filtros por carrera y afinidad con tu perfil profesional.',
-        'Identificador de vacantes con convenio directo con tu institución.',
-        'Guarda vacantes con la estrella para postularte cuando tengas tiempo.',
-      ],
-      route: '/dashboard/vacantes',
-      actionLabel: 'Explorar Vacantes',
+        '¡Mira este botón de acción! Te permite abrir el expediente académico en PDF del egresado, verificar su acta de grado y expedir el Sello Digital Oficial de tu universidad con 1 clic.',
+      actionHint: 'Los títulos validados garantizan a las empresas cero fraudes.',
     },
     {
-      id: 'applications',
-      tabLabel: '4. Postulaciones',
-      badge: 'Pestaña: Mis Postulaciones',
-      icon: 'bx-list-check',
-      iconColor: 'bg-amber-500 text-white',
-      title: 'Mis Postulaciones & Trazabilidad ATS',
-      subtitle: 'Seguimiento en tiempo real de tus 6 fases de selección',
+      id: 'vincular-asesor',
+      route: '/institucion/admin/asesores',
+      targetSelector: '[data-tour="vincular-asesor"]',
+      badge: 'Paso 4 de 6 · Equipo Institucional',
+      title: '¡Mira este botón: Vincular Nuevo Asesor!',
       description:
-        'Olvídate de no saber qué pasó con tu candidatura. Aquí monitoreas exactamente en qué fase se encuentra tu proceso de selección.',
-      highlights: [
-        'Fases claras: Recibida → En Revisión → Preseleccionado → Entrevista → Pruebas → Vinculado.',
-        'Historial de estados y notificaciones automáticas en tu correo.',
-        'Gestión de entrevistas y retroalimentación de los reclutadores.',
-      ],
-      route: '/dashboard/postulaciones',
-      actionLabel: 'Ver Mis Postulaciones',
+        'Desde este botón puedes dar de alta a nuevos coordinadores o asesores de empleabilidad. Les asignas sus sedes de atención y el sistema les crea automáticamente su cuenta oficial (no necesitan registrarse previamente).',
+      actionHint: 'Podrán iniciar sesión con Google Workspace o con su contraseña provisional.',
     },
     {
-      id: 'safety',
-      tabLabel: '5. Seguridad',
-      badge: 'Garantía & Privacidad',
-      icon: 'bx-shield-quarter',
-      iconColor: 'bg-purple-600 text-white',
-      title: 'Privacidad y Respaldo Institucional',
-      subtitle: 'Control total sobre tus datos personales y disponibilidad',
+      id: 'nueva-carrera',
+      route: '/institucion/admin/programas',
+      targetSelector: '[data-tour="nueva-carrera"]',
+      badge: 'Paso 5 de 6 · Oferta Académica',
+      title: 'Registrar y Asignar Carreras',
       description:
-        'Tú decides si tu perfil está activo para búsqueda inmediata o confidencial. Puedes reactivar este tutorial guiado cuando desees desde tu menú de usuario en la esquina superior.',
-      highlights: [
-        'Control de visibilidad: decide si los reclutadores pueden ver tu contacto.',
-        'Alertas de nuevas vacantes acordes a tu carrera e intereses.',
-        'Botón de ayuda y tutorial siempre disponible en tu menú.',
-      ],
-      route: '/dashboard',
-      actionLabel: '¡Comenzar ahora!',
+        '¡Mira este botón! Aquí registras los programas académicos oficiales y vinculas a los asesores responsables de validar a los graduados de cada facultad.',
+      actionHint: 'Organiza la cobertura por facultades y programas.',
+    },
+    {
+      id: 'ies-trazabilidad-grafica',
+      route: '/institucion/admin/trazabilidad',
+      targetSelector: '[data-tour="ies-trazabilidad-grafica"]',
+      badge: 'Paso 6 de 6 · Pertinencia Curricular',
+      title: 'Auditoría y Brecha de Empleabilidad',
+      description:
+        'Esta sección compara los planes de estudio con las habilidades técnicas que más contratan las empresas en el mercado, ayudándote a cerrar la brecha laboral y actualizar los microcurrículos.',
+      actionHint: 'Exporta reportes oficiales para acreditación ante el MEN.',
     },
   ],
 
-  institution: [
+  graduate: [
     {
-      id: 'obs',
-      tabLabel: '1. Observatorio',
-      badge: 'Pestaña: Observatorio IES',
-      icon: 'bxs-institution',
-      iconColor: 'bg-emerald-600 text-white',
-      title: 'Observatorio de Empleabilidad IES',
-      subtitle: 'Métricas de inserción laboral en tiempo real para tu institución',
+      id: 'grad-perfil-kpi',
+      route: '/dashboard',
+      targetSelector: '[data-tour="grad-perfil-kpi"]',
+      badge: 'Paso 1 de 5 · Inicio & Estado',
+      title: 'Nivel de Completitud de tu Perfil',
       description:
-        'Monitorea la tasa de vinculación de tus graduados, estudiantes activos en búsqueda y la efectividad de las alianzas empresariales.',
-      highlights: [
-        'Tasa de empleabilidad formal por facultades y programas académicos.',
-        'Trazabilidad de egresados vinculados y vacantes disponibles.',
-        'Reportes exportables para acreditación de alta calidad (CNA/MEN).',
-      ],
-      route: '/institucion/dashboard',
-      actionLabel: 'Ir al Observatorio',
+        '¡Mira este indicador! Muestra qué tan completo está tu perfil profesional. Entre más alto sea tu porcentaje, más empresas aliadas te contactarán para ofertas de empleo.',
+      actionHint: 'Un perfil al 100% triplica tus oportunidades de selección.',
     },
     {
-      id: 'grad-validation',
-      tabLabel: '2. Validación',
-      badge: 'Pestaña: Validación de Títulos',
-      icon: 'bx-check-shield',
-      iconColor: 'bg-lime text-ink',
-      title: 'Validación Oficial de Diplomas',
-      subtitle: 'Certifica los títulos y actas de grado de tus graduados',
+      id: 'grad-subir-cv',
+      route: '/dashboard',
+      targetSelector: '[data-tour="grad-subir-cv"]',
+      badge: 'Paso 2 de 5 · Tu Hoja de Vida',
+      title: 'Carga de tu CV en Formato PDF',
       description:
-        'Revisa y aprueba las solicitudes de verificación de diploma cargadas por tus egresados para estampar el sello digital de título auténtico.',
-      highlights: [
-        'Inspección de actas de grado y diplomas en PDF.',
-        'Aprobación con 1 clic para otorgar el sello oficial de Egresado Verificado.',
-        'Blindaje de la reputación institucional ante las empresas.',
-      ],
-      route: '/institucion/estudiantes/solicitudes',
-      actionLabel: 'Ver Solicitudes',
+        '¡Mira esta sección! Sube aquí tu hoja de vida en PDF. La inteligencia artificial de Vincula extraerá automáticamente tus habilidades y las conectará con vacantes que encajan con tu perfil.',
+      actionHint: 'Mantén tu CV actualizado para recibir alertas inteligentes.',
     },
     {
-      id: 'agreements',
-      tabLabel: '3. Convenios',
-      badge: 'Pestaña: Convenios Empresariales',
-      icon: 'bx-link-alt',
-      iconColor: 'bg-blue-600 text-white',
-      title: 'Convenios con Empresas Aliadas',
-      subtitle: 'Gestión de acuerdos de práctica y empleo preferencial',
+      id: 'grad-perfil-tabs',
+      route: '/dashboard/perfil',
+      targetSelector: '[data-tour="grad-perfil-tabs"]',
+      badge: 'Paso 3 de 5 · Mi Perfil Profesional',
+      title: 'Formación y Solicitud de Verificación',
       description:
-        'Administra convenios marco y específicos con organizaciones públicas y privadas para abrir plazas de empleo exclusivas a tu comunidad estudiantil.',
-      highlights: [
-        'Seguimiento a vigencia y cupos de convenios activos.',
-        'Auditoría documental de las empresas solicitantes.',
-        'Historial de egresados vinculados por cada empresa aliada.',
-      ],
-      route: '/institucion/empresas/convenios',
-      actionLabel: 'Gestionar Convenios',
+        'En esta barra de pestañas puedes registrar tu formación académica, competencias técnicas, aspiración salarial y solicitar a tu universidad el sello oficial de Egresado Verificado.',
+      actionHint: 'El sello oficial valida digitalmente la autenticidad de tu título.',
     },
     {
-      id: 'market',
-      tabLabel: '4. Brecha Laboral',
-      badge: 'Pestaña: Demanda y Cualificaciones',
-      icon: 'bx-line-chart',
-      iconColor: 'bg-amber-500 text-white',
-      title: 'Pertinencia Curricular y Demanda',
-      subtitle: 'Alineación de planes de estudio con las necesidades de la industria',
+      id: 'grad-vacantes-search',
+      route: '/dashboard/vacantes',
+      targetSelector: '[data-tour="grad-vacantes-search"]',
+      badge: 'Paso 4 de 5 · Explorar Vacantes',
+      title: 'Buscador de Vacantes con Convenio',
       description:
-        'Compara las competencias de tus programas académicos con las demandas reales del mercado laboral regional y nacional en tiempo real.',
-      highlights: [
-        'Identificación de competencias más demandadas por sector.',
-        'Detección temprana de brechas técnicas y de habilidades blandas.',
-        'Insumos clave para la actualización de pensums y microcurrículos.',
-      ],
-      route: '/institucion/competencias',
-      actionLabel: 'Ver Demanda Laboral',
+        '¡Mira este buscador! Filtra oportunidades laborales formales por palabra clave, tu carrera, modalidad de trabajo (remoto, híbrido o presencial) y ofertas exclusivas para tu universidad.',
+      actionHint: 'Todas las empresas registradas están legalmente auditadas.',
+    },
+    {
+      id: 'grad-postulaciones-pipeline',
+      route: '/dashboard/postulaciones',
+      targetSelector: '[data-tour="grad-postulaciones-pipeline"]',
+      badge: 'Paso 5 de 5 · Trazabilidad ATS',
+      title: 'Monitoreo de tus 6 Fases de Selección',
+      description:
+        '¡Olvídate de la incertidumbre! Aquí ves en tiempo real en qué fase se encuentra tu candidatura: si fue leída, si estás preseleccionado o cuándo es tu próxima entrevista en vivo.',
+      actionHint: 'Recibirás notificaciones inmediatas con cada avance.',
     },
   ],
 
   company: [
     {
-      id: 'ats',
-      tabLabel: '1. Embudo ATS',
-      badge: 'Pestaña: Candidatos & Embudo',
-      icon: 'bx-user-check',
-      iconColor: 'bg-ochre text-cocoa',
-      title: 'Sistema ATS Kanban de 6 Fases',
-      subtitle: 'Gestión eficiente y ágil de postulantes a tus convocatorias',
-      description:
-        'Califica y mueve candidatos entre las fases del proceso: Recibido, En Revisión, Preseleccionado, Entrevista, Pruebas y Contratado.',
-      highlights: [
-        'Tablero Kanban interactivo con filtrado por vacante y sede.',
-        'Visualización de CVs y diplomas validados por universidades.',
-        'Agendamiento de entrevistas con retroalimentación inmediata.',
-      ],
+      id: 'company-kanban',
       route: '/empresa/reclutador/candidatos',
-      actionLabel: 'Ir al Embudo ATS',
+      targetSelector: '[data-tour="company-kanban"]',
+      badge: 'Paso 1 de 3 · Embudo ATS',
+      title: 'Tablero Kanban ATS de Candidatos',
+      description:
+        '¡Mira este tablero Kanban! Mueve a tus postulantes entre las 6 fases de selección (Recibido, En Revisión, Preseleccionado, Entrevista, Pruebas y Contratado) con retroalimentación ágil.',
+      actionHint: 'Arrastra candidatos o cambia su fase directamente.',
     },
     {
-      id: 'vacancies',
-      tabLabel: '2. Vacantes',
-      badge: 'Pestaña: Gestión de Vacantes',
-      icon: 'bx-briefcase',
-      iconColor: 'bg-cocoa text-white',
-      title: 'Publicación de Vacantes Oficiales',
-      subtitle: 'Convocatorias formales y transparentes con alcance universitario',
-      description:
-        'Crea y administra ofertas de empleo con bandas salariales claras, requisitos de carrera y vinculación a convenios universitarios.',
-      highlights: [
-        'Publicación rápida con plantillas por áreas y sedes.',
-        'Segmentación exclusiva para universidades con convenio.',
-        'Control del periodo de vigencia y cupos disponibles.',
-      ],
+      id: 'company-publicar-vacante',
       route: '/empresa/admin/vacantes',
-      actionLabel: 'Ver Mis Vacantes',
+      targetSelector: '[data-tour="company-publicar-vacante"]',
+      badge: 'Paso 2 de 3 · Ofertas Laborales',
+      title: '¡Mira este botón: Nueva Vacante!',
+      description:
+        'Desde este botón puedes publicar convocatorias formales con bandas salariales transparentes, requisitos de carrera y alcance prioritario para egresados de universidades con convenio.',
+      actionHint: 'Puedes activar o pausar vacantes en cualquier momento.',
     },
     {
-      id: 'talent',
-      tabLabel: '3. Talento IES',
-      badge: 'Pestaña: Banco de Talento',
-      icon: 'bx-search',
-      iconColor: 'bg-terracotta text-white',
-      title: 'Búsqueda de Talento Universitario',
-      subtitle: 'Acceso directo a egresados con título verificado',
-      description:
-        'Filtra egresados certificados por carrera, universidad de egreso, nivel educativo, ciudad y disponibilidad laboral inmediata.',
-      highlights: [
-        'Perfiles con títulos verificados por las universidades.',
-        'Filtros por promedio académico, carrera y habilidades clave.',
-        'Invitación directa a postularse a tus convocatorias activas.',
-      ],
+      id: 'company-buscar-talento',
       route: '/empresa/reclutador/talento',
-      actionLabel: 'Explorar Talento',
+      targetSelector: '[data-tour="company-buscar-talento"]',
+      badge: 'Paso 3 de 3 · Banco de Talento',
+      title: 'Filtros de Búsqueda y Sourcing',
+      description:
+        'Filtra egresados certificados por institución aliada, programa académico, promedio de notas y disponibilidad inmediata. Puedes invitarlos a tus vacantes con un solo clic.',
+      actionHint: 'Accede a talento con título verificado ante las universidades.',
     },
   ],
 };
 
 export default function OnboardingTour() {
   const navigate = useNavigate();
+  const location = useLocation();
+
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [targetRect, setTargetRect] = useState(null);
+  const [isNavigating, setIsNavigating] = useState(false);
 
-  // Determinar rol del usuario
   const currentUser = authService.getCurrentUser();
-  const userRole = currentUser?.rol || 'egresado';
+  const userRole = (currentUser?.rol || '').toLowerCase();
 
+  // Determinar rol del tour
   const tourType = useMemo(() => {
-    if (userRole.includes('ies') || userRole.includes('institucion')) return 'institution';
+    if (userRole.includes('ies') || userRole.includes('institucion') || userRole.includes('advisor')) return 'institution';
     if (userRole.includes('empresa') || userRole.includes('reclutador') || userRole.includes('company')) return 'company';
     return 'graduate';
   }, [userRole]);
@@ -250,11 +178,61 @@ export default function OnboardingTour() {
   const steps = useMemo(() => TOUR_STEPS_BY_ROLE[tourType] || TOUR_STEPS_BY_ROLE.graduate, [tourType]);
   const activeStep = steps[currentStep] || steps[0];
 
-  // Identificador de almacenamiento por usuario
+  // Almacenamiento local por usuario
   const storageKey = useMemo(() => {
     const id = currentUser?.user_id || currentUser?.id || currentUser?.correo || 'guest';
-    return `vincula.tour.seen.v2.${id}`;
+    return `vincula.spotlight_tour.v1.${id}`;
   }, [currentUser]);
+
+  // Actualizar coordenadas del elemento seleccionado
+  const updateTargetRect = useCallback(() => {
+    if (!isOpen || !activeStep?.targetSelector) return;
+    const el = document.querySelector(activeStep.targetSelector);
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      setTargetRect({
+        top: Math.round(rect.top),
+        left: Math.round(rect.left),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+        bottom: Math.round(rect.bottom),
+        right: Math.round(rect.right),
+      });
+    } else {
+      setTargetRect(null);
+    }
+  }, [isOpen, activeStep]);
+
+  // Intentar encontrar el elemento en el DOM (reintentos ante transiciones y renders)
+  const locateElement = useCallback(() => {
+    if (!isOpen || !activeStep) return;
+
+    let attempts = 0;
+    const maxAttempts = 30; // 30 * 80ms = ~2.4 segundos de espera máxima
+
+    const interval = setInterval(() => {
+      attempts++;
+      const el = document.querySelector(activeStep.targetSelector);
+      if (el) {
+        clearInterval(interval);
+        setIsNavigating(false);
+        try {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+        } catch {
+          // fallback silencioso
+        }
+        setTimeout(() => {
+          updateTargetRect();
+        }, 150);
+      } else if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        setIsNavigating(false);
+        setTargetRect(null); // Fallback centrado
+      }
+    }, 80);
+
+    return () => clearInterval(interval);
+  }, [isOpen, activeStep, updateTargetRect]);
 
   // Apertura automática si el usuario nunca lo ha completado
   useEffect(() => {
@@ -263,7 +241,7 @@ export default function OnboardingTour() {
       if (!seen) {
         const timer = setTimeout(() => {
           setIsOpen(true);
-        }, 800);
+        }, 900);
         return () => clearTimeout(timer);
       }
     } catch {
@@ -271,7 +249,7 @@ export default function OnboardingTour() {
     }
   }, [storageKey]);
 
-  // Escuchar evento global para reabrir el tutorial desde cualquier menú
+  // Escuchar evento global para reabrir el tour
   useEffect(() => {
     function handleOpenEvent() {
       setCurrentStep(0);
@@ -280,6 +258,35 @@ export default function OnboardingTour() {
     window.addEventListener('vincula:open-onboarding-tour', handleOpenEvent);
     return () => window.removeEventListener('vincula:open-onboarding-tour', handleOpenEvent);
   }, []);
+
+  // Manejar cambio de paso y navegación entre páginas
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (activeStep?.route && location.pathname !== activeStep.route) {
+      setIsNavigating(true);
+      setTargetRect(null);
+      navigate(activeStep.route);
+    } else {
+      locateElement();
+    }
+  }, [isOpen, currentStep, activeStep, location.pathname, navigate, locateElement]);
+
+  // Reposicionar spotlight ante scroll o resize
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function handleScrollOrResize() {
+      updateTargetRect();
+    }
+
+    window.addEventListener('scroll', handleScrollOrResize, { passive: true });
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [isOpen, updateTargetRect]);
 
   // Navegación con teclado
   useEffect(() => {
@@ -304,6 +311,7 @@ export default function OnboardingTour() {
   function handleClose() {
     markAsSeen();
     setIsOpen(false);
+    setTargetRect(null);
   }
 
   function handleNext() {
@@ -320,184 +328,200 @@ export default function OnboardingTour() {
     }
   }
 
-  function handleGoToTab(route) {
-    handleClose();
-    if (route) {
-      navigate(route);
+  // Cálculo de posición del Popover flotante
+  const popoverStyle = useMemo(() => {
+    if (!targetRect || typeof window === 'undefined') {
+      // Fallback: centrado en pantalla si el elemento no se encuentra
+      return {
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 10001,
+      };
     }
-  }
+
+    const POPOVER_WIDTH = 420;
+    const POPOVER_EST_HEIGHT = 260;
+    const MARGIN = 16;
+    const GAP = 14;
+
+    const viewportW = window.innerWidth;
+    const viewportH = window.innerHeight;
+
+    // Decidir si va abajo o arriba del objetivo
+    const spaceBelow = viewportH - targetRect.bottom;
+    const spaceAbove = targetRect.top;
+    const placeBelow = spaceBelow >= POPOVER_EST_HEIGHT || spaceBelow >= spaceAbove;
+
+    let top = placeBelow ? targetRect.bottom + GAP : targetRect.top - POPOVER_EST_HEIGHT - GAP;
+    if (top < MARGIN) top = MARGIN;
+    if (top + POPOVER_EST_HEIGHT > viewportH - MARGIN) {
+      top = viewportH - POPOVER_EST_HEIGHT - MARGIN;
+    }
+
+    // Centrado horizontal relativo al objetivo, clamped a los bordes
+    const targetCenterX = targetRect.left + targetRect.width / 2;
+    let left = targetCenterX - POPOVER_WIDTH / 2;
+    if (left < MARGIN) left = MARGIN;
+    if (left + POPOVER_WIDTH > viewportW - MARGIN) {
+      left = viewportW - POPOVER_WIDTH - MARGIN;
+    }
+
+    return {
+      position: 'fixed',
+      top: `${Math.round(top)}px`,
+      left: `${Math.round(left)}px`,
+      width: `min(${POPOVER_WIDTH}px, calc(100vw - 32px))`,
+      zIndex: 10001,
+    };
+  }, [targetRect]);
 
   return (
     <>
-      {/* Botón Flotante Permanente para Reabrir el Tutorial en Cualquier Momento */}
+      {/* Botón Flotante Permanente para Reabrir el Tutorial Guiado */}
       <button
         type="button"
         onClick={() => {
           setCurrentStep(0);
           setIsOpen(true);
         }}
-        title="Ver tutorial guiado de la plataforma"
+        title="Ver tutorial guiado interactivo de la plataforma"
         className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full border border-line bg-white/95 px-3.5 py-2 text-xs font-bold text-ink shadow-lg backdrop-blur transition-all hover:bg-page hover:border-green/50 hover:shadow-xl hover:scale-105 cursor-pointer"
         aria-label="Abrir tutorial guiado"
       >
         <span className="grid size-6 place-items-center rounded-full bg-lime text-ink text-sm font-bold shadow-2xs">
           <i className="bx bx-help-circle" />
         </span>
-        <span className="hidden sm:inline">Guía de uso</span>
+        <span className="hidden sm:inline">Guía interactiva</span>
       </button>
 
-      {/* Modal / Overlay del Tour Guiado */}
+      {/* ─── OVERLAY SPOTLIGHT INTERACTIVO ─── */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-ink/75 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-[10000] pointer-events-auto"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="tour-modal-title"
+          aria-labelledby="spotlight-tour-title"
         >
-          <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-line bg-white shadow-2xl animate-in zoom-in-95 duration-200">
-            {/* Barra de progreso superior continua */}
-            <div className="h-1.5 w-full bg-line-soft">
-              <div
-                className="h-full bg-green transition-all duration-300 ease-out"
-                style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
-              />
+          {/* Spotlight Cutout sobre el elemento exacto */}
+          {targetRect ? (
+            <div
+              className="fixed pointer-events-none transition-all duration-300 ease-out"
+              style={{
+                top: `${Math.max(0, targetRect.top - 6)}px`,
+                left: `${Math.max(0, targetRect.left - 6)}px`,
+                width: `${targetRect.width + 12}px`,
+                height: `${targetRect.height + 12}px`,
+                borderRadius: '16px',
+                boxShadow: '0 0 0 9999px rgba(15, 23, 42, 0.78)',
+                border: '2px solid #a3e635',
+              }}
+            >
+              {/* Anillo exterior animado de énfasis visual */}
+              <div className="absolute -inset-1.5 rounded-[18px] border-2 border-lime/60 animate-ping opacity-60 pointer-events-none" />
+              <div className="absolute -inset-1 rounded-[18px] ring-4 ring-lime/30 animate-pulse pointer-events-none" />
             </div>
+          ) : (
+            /* Backdrop oscuro continuo si está cargando o no se encuentra el elemento */
+            <div className="fixed inset-0 bg-ink/75 backdrop-blur-xs transition-opacity duration-200" />
+          )}
 
-            {/* Cabecera del Tour */}
-            <div className="flex items-center justify-between border-b border-line px-6 py-4 bg-page/50">
-              <div className="flex items-center gap-2.5">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-ink px-3 py-1 text-[0.68rem] font-bold text-lime">
-                  <i className="bx bx-compass text-xs" />
-                  Guía de la Plataforma
+          {/* Tarjeta Flotante (Tooltip Popover) */}
+          <div
+            style={popoverStyle}
+            className="rounded-3xl border border-line bg-white p-5 sm:p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+          >
+            {/* Header del Popover */}
+            <div className="flex items-center justify-between border-b border-line pb-3.5 mb-3">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-ink px-2.5 py-0.5 text-[0.68rem] font-bold text-lime">
+                  <i className="bx bx-navigation text-xs" />
+                  {activeStep.badge}
                 </span>
-                <span className="text-xs font-semibold text-secondary">
-                  Paso {currentStep + 1} de {steps.length}
-                </span>
+                {isNavigating && (
+                  <span className="inline-flex items-center gap-1 text-[0.68rem] font-bold text-secondary animate-pulse">
+                    <i className="bx bx-loader-alt bx-spin" />
+                    Cargando pestaña...
+                  </span>
+                )}
               </div>
+
               <button
                 type="button"
                 onClick={handleClose}
-                className="grid size-8 place-items-center rounded-xl text-secondary hover:bg-line/60 hover:text-ink transition-colors cursor-pointer"
-                aria-label="Cerrar tutorial"
-                title="Cerrar y omitir"
+                className="grid size-7 place-items-center rounded-lg text-secondary hover:bg-page hover:text-ink transition-colors cursor-pointer"
+                title="Cerrar tutorial"
+                aria-label="Cerrar"
               >
-                <i className="bx bx-x text-2xl" />
+                <i className="bx bx-x text-xl" />
               </button>
             </div>
 
-            {/* Cuerpo del Paso Activo */}
-            <div className="p-6 sm:p-8">
-              <div className="flex flex-col sm:flex-row gap-5 items-start">
-                {/* Icono del Paso */}
-                <div
-                  className={`grid size-14 shrink-0 place-items-center rounded-2xl text-2xl shadow-md ${
-                    activeStep.iconColor || 'bg-ink text-lime'
-                  }`}
-                >
-                  <i className={`bx ${activeStep.icon}`} />
+            {/* Título y Descripción con Énfasis en el Botón/Sección */}
+            <div>
+              <h3
+                id="spotlight-tour-title"
+                className="m-0 font-display text-base sm:text-lg font-bold text-ink leading-snug"
+              >
+                {activeStep.title}
+              </h3>
+
+              <p className="mt-2 text-xs leading-relaxed text-body-muted font-medium">
+                {activeStep.description}
+              </p>
+
+              {/* Tip o Recordatorio de Acción */}
+              {activeStep.actionHint && (
+                <div className="mt-3 flex items-start gap-2 rounded-xl bg-lime/15 border border-lime/40 px-3 py-2 text-[0.7rem] font-bold text-green-dark">
+                  <i className="bx bx-bulb text-sm shrink-0 mt-0.5" />
+                  <span>{activeStep.actionHint}</span>
                 </div>
-
-                {/* Contenido Textual */}
-                <div className="min-w-0 flex-1">
-                  <span className="inline-block rounded-md border border-line bg-page px-2 py-0.5 text-[0.68rem] font-bold uppercase tracking-wider text-green-dark">
-                    {activeStep.badge}
-                  </span>
-                  <h2
-                    id="tour-modal-title"
-                    className="mt-1 font-display text-xl sm:text-2xl font-bold tracking-tight text-ink leading-snug"
-                  >
-                    {activeStep.title}
-                  </h2>
-                  <p className="mt-0.5 text-xs sm:text-sm font-semibold text-secondary">
-                    {activeStep.subtitle}
-                  </p>
-                  <p className="mt-3 text-xs sm:text-sm leading-relaxed text-body-muted">
-                    {activeStep.description}
-                  </p>
-
-                  {/* Puntos destacados / Funcionalidades clave */}
-                  <div className="mt-4 rounded-2xl border border-line bg-page/70 p-3.5 space-y-2">
-                    <p className="m-0 text-[0.68rem] font-bold uppercase tracking-wider text-secondary">
-                      Qué puedes hacer aquí:
-                    </p>
-                    <ul className="m-0 list-none space-y-1.5 p-0 text-xs text-ink font-medium">
-                      {activeStep.highlights.map((item, idx) => (
-                        <li key={idx} className="flex items-start gap-2">
-                          <i className="bx bxs-check-circle text-green text-sm shrink-0 mt-0.5" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Selector de Pestañas / Pasos inferiores (Clickable) */}
-            <div className="px-6 py-3 border-t border-line bg-sand/20 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 overflow-x-auto py-1">
-                {steps.map((st, idx) => {
-                  const isActive = idx === currentStep;
-                  return (
-                    <button
-                      key={st.id}
-                      type="button"
-                      onClick={() => setCurrentStep(idx)}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        isActive
-                          ? 'bg-ink text-white shadow-xs'
-                          : 'bg-white border border-line text-secondary hover:text-ink hover:bg-page'
-                      }`}
-                      title={st.title}
-                    >
-                      <span className={`size-1.5 rounded-full ${isActive ? 'bg-lime' : 'bg-secondary/40'}`} />
-                      <span>{st.tabLabel}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Botón para navegar directamente a la pestaña explicada */}
-              {activeStep.route && (
-                <button
-                  type="button"
-                  onClick={() => handleGoToTab(activeStep.route)}
-                  className="text-xs font-semibold text-green-dark hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <span>{activeStep.actionLabel}</span>
-                  <i className="bx bx-right-arrow-alt text-sm" />
-                </button>
               )}
             </div>
 
-            {/* Botones de Navegación del Modal */}
-            <div className="flex items-center justify-between border-t border-line bg-page/70 px-6 py-4">
+            {/* Footer con Progreso y Botones de Navegación */}
+            <div className="mt-5 pt-3 border-t border-line flex items-center justify-between gap-2">
               <button
                 type="button"
                 onClick={handleClose}
                 className="text-xs font-bold text-secondary hover:text-ink transition-colors cursor-pointer"
               >
-                Omitir tutorial
+                Omitir
               </button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                {/* Pastillas de progreso */}
+                <div className="hidden sm:flex items-center gap-1 mr-2">
+                  {steps.map((_, idx) => (
+                    <span
+                      key={idx}
+                      className={`size-1.5 rounded-full transition-all ${
+                        idx === currentStep ? 'bg-ink w-3' : 'bg-line'
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                {/* Botón Anterior */}
                 <button
                   type="button"
                   onClick={handlePrev}
                   disabled={currentStep === 0}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-white px-3.5 py-2 text-xs font-bold text-ink shadow-xs transition-colors hover:bg-panel disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  className="inline-flex items-center gap-1 rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-bold text-ink shadow-2xs hover:bg-page disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
                 >
                   <i className="bx bx-left-arrow-alt text-base" />
                   <span>Anterior</span>
                 </button>
 
+                {/* Botón Siguiente */}
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-ink hover:bg-ink-soft px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:scale-[1.02] cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-ink hover:bg-ink-soft text-white px-4 py-1.5 text-xs font-bold shadow-xs hover:scale-102 cursor-pointer transition-all"
                 >
                   <span>
-                    {currentStep === steps.length - 1 ? '¡Entendido, comenzar!' : 'Siguiente'}
+                    {currentStep === steps.length - 1 ? '¡Finalizar!' : 'Siguiente'}
                   </span>
                   <i
                     className={`bx ${
@@ -513,4 +537,3 @@ export default function OnboardingTour() {
     </>
   );
 }
-

@@ -129,7 +129,7 @@ export default function GraduateDashboard() {
         <div className="mx-auto max-w-6xl px-5 pt-8 sm:px-8 sm:pt-10 lg:px-10 lg:pt-12">
           <div className="grid gap-8 sm:gap-10">
             {/* Stat Cards Row */}
-            <section aria-label="Resumen de tu perfil">
+            <section data-tour="grad-perfil-kpi" aria-label="Resumen de tu perfil">
               <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-blue-muted">Tu punto de partida</p>
@@ -144,7 +144,9 @@ export default function GraduateDashboard() {
             </section>
 
             {/* Resume Upload */}
-            <ResumeUploadCard />
+            <div data-tour="grad-subir-cv">
+              <ResumeUploadCard />
+            </div>
 
             {/* ─── Sección de Vacantes Guardadas (Favoritas) ─── */}
             <SavedVacanciesSection

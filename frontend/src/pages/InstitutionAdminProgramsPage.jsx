@@ -281,6 +281,7 @@ export default function InstitutionAdminProgramsPage() {
 
                   <button
                     type="button"
+                    data-tour="nueva-carrera"
                     onClick={() => {
                       setEditingProgram(null);
                       setIsModalOpen(true);

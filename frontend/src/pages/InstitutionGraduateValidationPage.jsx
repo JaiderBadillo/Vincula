@@ -527,7 +527,7 @@ export default function InstitutionGraduateValidationPage() {
                       </div>
 
                       {/* Acciones Rápidas */}
-                      <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end pt-2 lg:pt-0 border-t border-line lg:border-t-0">
+                      <div data-tour="ies-validar-sello" className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end pt-2 lg:pt-0 border-t border-line lg:border-t-0">
                         {tab === 'pending' && (
                           <>
                             <button

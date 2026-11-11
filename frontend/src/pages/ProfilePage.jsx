@@ -224,6 +224,7 @@ export default function ProfilePage() {
         {/* Sub-pages Navigation Bar */}
         <nav
           id="profile-tabs-nav"
+          data-tour="grad-perfil-tabs"
           className="sticky top-[4.75rem] z-20 mt-1 sm:mt-2 border-y border-line-soft bg-page/95 backdrop-blur-md shadow-2xs"
           aria-label="Páginas del perfil de egresado"
         >

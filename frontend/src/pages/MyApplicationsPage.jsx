@@ -305,6 +305,7 @@ export default function MyApplicationsPage() {
 
           {/* ─── Bloque de Filtros: Fases en sí y Buscador ─── */}
           <section
+            data-tour="grad-postulaciones-pipeline"
             className="rounded-2xl border border-lime/40 bg-gradient-to-r from-lime/15 via-white to-lime/10 p-4 sm:p-5 shadow-xs"
             aria-label="Filtros de postulaciones"
           >

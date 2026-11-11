@@ -555,7 +555,7 @@ export default function CompanyRecruiterCandidatesPage() {
                 </div>
               ) : viewMode === 'kanban' ? (
                 /* ─── 3A. VISTA DE TABLERO KANBAN / EMBUDO ATS ─── */
-                <div className="flex gap-4 overflow-x-auto pb-6 pt-1 items-start min-w-full">
+                <div data-tour="company-kanban" className="flex gap-4 overflow-x-auto pb-6 pt-1 items-start min-w-full">
                   {ATS_STAGES.map((stage) => {
                     const stageCandidates = candidatesByStage[stage.id] || [];
                     return (

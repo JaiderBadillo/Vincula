@@ -387,6 +387,7 @@ export default function VacanciesPage() {
 
             {/* Buscador Principal: Palabra clave + Desplegables Departamento, Ciudad y Modalidad */}
             <form
+              data-tour="grad-vacantes-search"
               onSubmit={(e) => e.preventDefault()}
               className="mt-8 grid gap-2 rounded-2xl border border-line bg-white p-2 shadow-hero sm:grid-cols-[1.4fr_1.1fr_1.1fr_1fr_auto] sm:items-center max-w-6xl"
               role="search"

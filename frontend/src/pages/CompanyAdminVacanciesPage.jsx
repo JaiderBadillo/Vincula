@@ -191,6 +191,7 @@ export default function CompanyAdminVacanciesPage() {
             actions={
               <button
                 type="button"
+                data-tour="company-publicar-vacante"
                 onClick={() => goToEditor(null)}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-terracotta px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-terracotta-dark cursor-pointer"
               >
