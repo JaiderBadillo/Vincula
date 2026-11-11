@@ -17,6 +17,11 @@ export default class ErrorBoundary extends React.Component {
   handleReload = () => {
     try {
       sessionStorage.clear();
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('vincula.spotlight_')) {
+          localStorage.removeItem(key);
+        }
+      });
     } catch {
       // noop
     }
@@ -42,6 +47,12 @@ export default class ErrorBoundary extends React.Component {
             >
               Ir al inicio de Vincula
             </button>
+            {this.state.error && (
+              <details className="text-left text-[0.65rem] bg-black/40 p-3 rounded-xl text-red-300 font-mono overflow-auto max-h-32">
+                <summary className="cursor-pointer text-white/60 hover:text-white">Detalle técnico</summary>
+                <p className="mt-1 m-0">{String(this.state.error)}</p>
+              </details>
+            )}
           </div>
         </div>
       );
@@ -50,3 +61,4 @@ export default class ErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
+
