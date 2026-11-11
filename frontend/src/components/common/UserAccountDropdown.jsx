@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AccountSettingsModal from './AccountSettingsModal.jsx';
+import AdvisorSettingsModal from '../institution/AdvisorSettingsModal.jsx';
 import { useAuthCredentials } from '../../hooks/useAuthCredentials.js';
 import { authService } from '../../services/authService.js';
 
@@ -162,14 +163,20 @@ export default function UserAccountDropdown({
       )}
 
       {/* Modal rectangular de configuración de credenciales */}
-      <AccountSettingsModal
+      {role === 'institution_advisor' ? <AdvisorSettingsModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        userName={userName}
+        userAvatar={userAvatar}
+        userInitials={userInitials}
+      /> : <AccountSettingsModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         role={role}
         userName={userName}
         userAvatar={userAvatar}
         userInitials={userInitials}
-      />
+      />}
     </div>
   );
 }

@@ -8,7 +8,7 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
 import base64
 import uuid
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -20,8 +20,15 @@ from app.integrations.n8n_webhooks import N8nWebhookDispatcher
 from app.integrations.email_service import EmailService
 from app.modules.iam.models import Usuario
 from app.modules.companies.models import Empresa, ReclutadorEmpresa, DocumentoEmpresa
-from app.modules.institutions.models import Institucion, AsesorIES, DocumentoInstitucion
-from app.modules.graduates.models import Egresado
+from app.modules.institutions.models import (
+    Institucion,
+    AsesorIES,
+    DocumentoInstitucion,
+    ProgramaAcademico,
+    SedeInstitucion,
+    Facultad,
+)
+from app.modules.graduates.models import Egresado, AcademicoEgresado
 from app.modules.iam.schemas import (
     LoginRequest,
     TokenResponse,
@@ -190,6 +197,11 @@ class IAMService:
         if usuario.estado != "activo":
             raise ValueError("Tu cuenta se encuentra inactiva o suspendida. Comunícate con soporte.")
 
+        if usuario.rol == "asesor_ies" and (
+            not idinfo.get("email_verified") or not google_sub or usuario.google_sub != google_sub
+        ):
+            raise ValueError("Vincula primero tu cuenta de Google desde Configuración, ingresando con tu contraseña.")
+
         usuario.ultimo_acceso_en = datetime.now(timezone.utc)
         await session.commit()
 
@@ -333,6 +345,117 @@ class IAMService:
             disponible_para_trabajar=True
         )
         session.add(nuevo_egresado)
+        await session.flush()
+
+        # 3. Vincular Historial Académico para Validación IES
+        target_ies: Optional[Institucion] = None
+        if data.id_institucion:
+            try:
+                val_uuid = uuid.UUID(str(data.id_institucion))
+                res_ies = await session.execute(select(Institucion).where(Institucion.id == val_uuid))
+                target_ies = res_ies.scalar_one_or_none()
+            except (ValueError, TypeError):
+                pass
+            
+            if not target_ies:
+                clean_term = str(data.id_institucion).strip().lower()
+                res_ies = await session.execute(
+                    select(Institucion).where(
+                        (func.lower(Institucion.nombre_corto) == clean_term) |
+                        (func.lower(Institucion.nombre_oficial).ilike(f"%{clean_term}%"))
+                    )
+                )
+                row_ies = res_ies.first()
+                if row_ies:
+                    target_ies = row_ies[0]
+
+        if not target_ies:
+            res_uts = await session.execute(
+                select(Institucion).where(
+                    (func.lower(Institucion.nombre_corto) == "uts") |
+                    (func.lower(Institucion.nombre_oficial).ilike("%santander%"))
+                )
+            )
+            row_uts = res_uts.first()
+            if row_uts:
+                target_ies = row_uts[0]
+            else:
+                first_ies = await session.execute(select(Institucion))
+                row_first = first_ies.first()
+                if row_first:
+                    target_ies = row_first[0]
+
+        if target_ies:
+            target_prog: Optional[ProgramaAcademico] = None
+            if data.carrera:
+                clean_carrera = data.carrera.strip().lower()
+                res_prog = await session.execute(
+                    select(ProgramaAcademico).where(
+                        ProgramaAcademico.id_institucion == target_ies.id,
+                        (func.lower(ProgramaAcademico.nombre) == clean_carrera) |
+                        (func.lower(ProgramaAcademico.nombre).ilike(f"%{clean_carrera}%"))
+                    )
+                )
+                row_prog = res_prog.first()
+                if row_prog:
+                    target_prog = row_prog[0]
+
+            if not target_prog:
+                res_fac = await session.execute(select(Facultad).where(Facultad.id_institucion == target_ies.id))
+                fac_row = res_fac.first()
+                res_sede = await session.execute(select(SedeInstitucion).where(SedeInstitucion.id_institucion == target_ies.id))
+                sede_row = res_sede.first()
+
+                if fac_row and sede_row:
+                    fac_obj = fac_row[0]
+                    sede_obj = sede_row[0]
+                    new_prog_id = uuid.uuid4()
+                    snies_num = str(abs(hash(data.carrera)) % 900000 + 100000)
+                    target_prog = ProgramaAcademico(
+                        id=new_prog_id,
+                        id_institucion=target_ies.id,
+                        id_facultad=fac_obj.id,
+                        id_sede=sede_obj.id,
+                        codigo_interno=f"{target_ies.nombre_corto[:3].upper()}-{abs(hash(data.carrera)) % 900 + 100}",
+                        codigo_snies=snies_num,
+                        nombre=data.carrera.strip(),
+                        nivel_formacion=data.nivel_educativo or "Profesional Universitario",
+                        modalidad="Presencial",
+                        duracion_semestres=10,
+                        total_creditos=160,
+                        estado="activo"
+                    )
+                    session.add(target_prog)
+                    await session.flush()
+                else:
+                    res_any_prog = await session.execute(select(ProgramaAcademico).where(ProgramaAcademico.id_institucion == target_ies.id))
+                    any_prog_row = res_any_prog.first()
+                    if any_prog_row:
+                        target_prog = any_prog_row[0]
+
+            if target_prog:
+                ano_grad = 2025
+                try:
+                    ano_grad = int(data.ano_graduacion) if data.ano_graduacion else 2025
+                except (ValueError, TypeError):
+                    ano_grad = 2025
+
+                nuevo_academico = AcademicoEgresado(
+                    id_egresado=nuevo_egresado.id,
+                    id_institucion=target_ies.id,
+                    id_programa=target_prog.id,
+                    id_sede=target_prog.id_sede,
+                    nivel_formacion=data.nivel_educativo or target_prog.nivel_formacion or "Profesional Universitario",
+                    ano_graduacion=ano_grad,
+                    periodo_graduacion=f"{ano_grad}-2",
+                    estado_academico="recien-egresado",
+                    estado_laboral="buscando",
+                    validado_por_ies=False,
+                    estado_verificacion="pendiente",
+                    url_diploma_pdf="https://vincula-henna.vercel.app/assets/sample-diploma.pdf"
+                )
+                session.add(nuevo_academico)
+
         await session.commit()
 
         # 3. Disparar webhook asíncrono hacia n8n para bienvenida y notificación

@@ -219,6 +219,7 @@ export default function InstitutionGraduateValidationPage() {
       );
       setDrawerId(null);
       notify(`✓ Diploma validado para ${target?.studentName || 'el egresado'}. Sello Digital expedido.`);
+      window.dispatchEvent(new CustomEvent('vincula:graduate-validated'));
     } catch (err) {
       console.warn('Error al validar diploma:', err);
       if (err.details?.codigo === 'DIPLOMA_YA_APROBADO') {
@@ -263,6 +264,7 @@ export default function InstitutionGraduateValidationPage() {
       setObservationId(null);
       setDrawerId(null);
       notify(`Observación formal remitida a ${target?.studentName || 'el egresado'}.`);
+      window.dispatchEvent(new CustomEvent('vincula:graduate-validated'));
     } catch (err) {
       console.warn('Error al observar diploma:', err);
       // Fallback local

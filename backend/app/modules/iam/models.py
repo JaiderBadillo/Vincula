@@ -35,6 +35,7 @@ class Usuario(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     correo_electronico = Column(String(255), unique=True, nullable=False, index=True)
     contrasena_hash = Column(String(255), nullable=False)
+    google_sub = Column(String(255), unique=True, nullable=True)
     rol = Column(RolUsuarioEnum, nullable=False, index=True)
     estado = Column(EstadoCuentaEnum, default="activo", nullable=False)
     ultimo_acceso_en = Column(DateTime(timezone=True), nullable=True)

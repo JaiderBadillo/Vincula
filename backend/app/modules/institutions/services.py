@@ -877,7 +877,7 @@ class InstitutionService:
         stmt = (
             select(AcademicoEgresado, Egresado, ProgramaAcademico)
             .join(Egresado, AcademicoEgresado.id_egresado == Egresado.id)
-            .join(ProgramaAcademico, AcademicoEgresado.id_programa == ProgramaAcademico.id)
+            .outerjoin(ProgramaAcademico, AcademicoEgresado.id_programa == ProgramaAcademico.id)
             .where(AcademicoEgresado.id_institucion == val_ies)
         )
 
@@ -908,7 +908,7 @@ class InstitutionService:
             stmt = stmt.where(
                 (func.lower(Egresado.nombre_completo).like(patron)) |
                 (func.lower(Egresado.numero_documento).like(patron)) |
-                (func.lower(ProgramaAcademico.nombre).like(patron))
+                (func.lower(func.coalesce(ProgramaAcademico.nombre, "")).like(patron))
             )
 
         # 5. Conteo global por estado para pestañas de la bandeja institucional
@@ -946,6 +946,10 @@ class InstitutionService:
             if acad.url_diploma_pdf:
                 nom_arch = acad.url_diploma_pdf.split("/")[-1].split("?")[0]
 
+            prog_nombre = prog.nombre if prog else (egr.titular_profesional or "Programa Académico")
+            prog_snies = prog.codigo_snies if prog else "N/A"
+            nivel_form = acad.nivel_formacion or (prog.nivel_formacion if prog else "Profesional Universitario")
+
             items.append(
                 GraduatePendingValidationItem(
                     id_academico=str(acad.id),
@@ -956,10 +960,10 @@ class InstitutionService:
                     tipo_documento=egr.tipo_documento,
                     numero_documento=egr.numero_documento,
                     codigo_estudiantil=egr.codigo_estudiantil,
-                    carrera=prog.nombre,
-                    nombre_programa=prog.nombre,
-                    codigo_snies=prog.codigo_snies,
-                    nivel_formacion=acad.nivel_formacion or prog.nivel_formacion,
+                    carrera=prog_nombre,
+                    nombre_programa=prog_nombre,
+                    codigo_snies=prog_snies,
+                    nivel_formacion=nivel_form,
                     ano_graduacion=acad.ano_graduacion,
                     periodo_graduacion=acad.periodo_graduacion,
                     promedio_ponderado=float(acad.promedio_ponderado) if acad.promedio_ponderado else None,

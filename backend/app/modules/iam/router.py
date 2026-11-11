@@ -24,7 +24,9 @@ from app.integrations.email_service import EmailService
 
 router = APIRouter(prefix="/auth", tags=["IAM - Autenticación y Registro"])
 from app.modules.iam.password_reset import router as password_reset_router
+from app.modules.iam.advisor_settings import router as advisor_settings_router
 router.include_router(password_reset_router)
+router.include_router(advisor_settings_router)
 
 
 @router.post("/login", response_model=TokenResponse)

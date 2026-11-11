@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import InstitutionPortalLayout from '../components/institution/InstitutionPortalLayout.jsx';
 import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
 import { advisorPhotos } from '../data/institutionImages.js';
 import { authService } from '../services/authService.js';
+import { institutionService } from '../services/institutionService.js';
 import {
   advisorProfile,
   institutionMetrics,
@@ -15,8 +16,35 @@ import {
 
 export default function InstitutionDashboardPage() {
   const [selectedPeriod, setSelectedPeriod] = useState('2026-2');
+  const [pendingGraduates, setPendingGraduates] = useState([]);
+  const [pendingCount, setPendingCount] = useState(0);
   const currentUser = authService.getCurrentUser();
   const advisorName = currentUser?.nombre || advisorProfile.fullName || 'Coordinación IES';
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadPending() {
+      try {
+        const res = await institutionService.getPendingGraduates({ estado: 'pendiente', limit: 5 });
+        if (isMounted && res) {
+          if (Array.isArray(res.items)) {
+            setPendingGraduates(res.items);
+          }
+          if (res.resumen_estados?.pendientes !== undefined) {
+            setPendingCount(res.resumen_estados.pendientes);
+          } else if (typeof res.total === 'number') {
+            setPendingCount(res.total);
+          }
+        }
+      } catch (err) {
+        console.warn('[InstitutionDashboardPage] Error al consultar egresados pendientes:', err);
+      }
+    }
+    loadPending();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <InstitutionPortalLayout activePage="dashboard">
@@ -43,7 +71,7 @@ export default function InstitutionDashboardPage() {
                 label: 'Vacantes',
               },
               {
-                value: '19',
+                value: String(pendingCount),
                 label: 'En Cola',
               },
             ]}
@@ -54,7 +82,7 @@ export default function InstitutionDashboardPage() {
                 className="inline-flex items-center gap-2 rounded-xl bg-lime hover:bg-lime/85 text-ink font-bold px-4 py-2.5 text-xs shadow-xs transition-all no-underline cursor-pointer"
               >
                 <i className="bx bx-check-shield text-base" />
-                <span>Atender Solicitudes (19)</span>
+                <span>Atender Solicitudes ({pendingCount})</span>
               </Link>
             }
           />
@@ -293,44 +321,51 @@ export default function InstitutionDashboardPage() {
                     to="/institucion/estudiantes/solicitudes"
                     className="text-xs font-bold text-green-dark hover:underline no-underline"
                   >
-                    Ver todas (14) →
+                    Ver todas ({pendingCount}) →
                   </Link>
                 </div>
 
                 <div className="divide-y divide-line-soft mt-3">
-                  {pendingStudentRequests.map((req) => (
-                    <div key={req.id} className="py-3 flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <img
-                          src={req.avatar}
-                          alt={req.studentName}
-                          className="size-10 rounded-full object-cover shrink-0 border border-line"
-                        />
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-ink truncate m-0">
-                            {req.studentName}
-                          </p>
-                          <p className="text-[0.68rem] text-secondary truncate m-0">
-                            {req.program} · Grad: {req.graduationYear}
-                          </p>
-                          <span className="inline-block mt-0.5 text-[0.62rem] font-semibold text-amber-800 bg-amber-50 px-2 py-0.2 rounded border border-amber-200">
-                            {req.requestType}
+                  {pendingGraduates.length > 0 ? (
+                    pendingGraduates.map((req) => (
+                      <div key={req.id_academico} className="py-3 flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="grid size-10 place-items-center rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs shrink-0 border border-emerald-200">
+                            {(req.nombre_completo || 'EG').slice(0, 2).toUpperCase()}
                           </span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-ink truncate m-0">
+                              {req.nombre_completo}
+                            </p>
+                            <p className="text-[0.68rem] text-secondary truncate m-0">
+                              {req.carrera || req.nombre_programa} · Grad: {req.ano_graduacion}
+                            </p>
+                            <span className="inline-block mt-0.5 text-[0.62rem] font-semibold text-amber-800 bg-amber-50 px-2 py-0.2 rounded border border-amber-200">
+                              Validación de Diploma
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 text-right">
+                          <span className="text-[0.65rem] text-secondary block">
+                            {req.creado_en ? new Date(req.creado_en).toLocaleDateString('es-CO') : 'Reciente'}
+                          </span>
+                          <Link
+                            to="/institucion/estudiantes/solicitudes"
+                            className="mt-1 inline-flex items-center gap-1 rounded-lg border border-line bg-page px-2 py-1 text-[0.68rem] font-bold text-ink hover:bg-green hover:text-white hover:border-green transition-colors no-underline"
+                          >
+                            <span>Revisar</span>
+                            <i className="bx bx-chevron-right text-xs" />
+                          </Link>
                         </div>
                       </div>
-
-                      <div className="shrink-0 text-right">
-                        <span className="text-[0.65rem] text-secondary block">{req.requestedAt}</span>
-                        <Link
-                          to="/institucion/estudiantes/solicitudes"
-                          className="mt-1 inline-flex items-center gap-1 rounded-lg border border-line bg-page px-2 py-1 text-[0.68rem] font-bold text-ink hover:bg-green hover:text-white hover:border-green transition-colors no-underline"
-                        >
-                          <span>Revisar</span>
-                          <i className="bx bx-chevron-right text-xs" />
-                        </Link>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="py-8 text-center text-secondary text-xs">
+                      <i className="bx bx-check-circle text-2xl text-emerald-600 mb-1 block" />
+                      No hay egresados pendientes de validación en este momento.
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 
@@ -369,44 +404,51 @@ export default function InstitutionDashboardPage() {
                     to="/institucion/empresas/solicitudes"
                     className="text-xs font-bold text-green-dark hover:underline no-underline"
                   >
-                    Ver todas (5) →
+                    Ver todas ({pendingCompanyRequests.length}) →
                   </Link>
                 </div>
 
                 <div className="divide-y divide-line-soft mt-3">
-                  {pendingCompanyRequests.map((emp) => (
-                    <div key={emp.id} className="py-3 flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className={`grid size-10 place-items-center rounded-xl font-display font-bold text-xs shrink-0 ${emp.logoBg}`}>
-                          {emp.logoInitials}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-ink truncate m-0">
-                            {emp.companyName}
-                          </p>
-                          <p className="text-[0.68rem] text-secondary truncate m-0">
-                            NIT: {emp.nit} · {emp.sector}
-                          </p>
-                          <p className="text-[0.65rem] text-body-muted truncate m-0 mt-0.5">
-                            {emp.contactPerson}
-                          </p>
+                  {pendingCompanyRequests.length > 0 ? (
+                    pendingCompanyRequests.map((emp) => (
+                      <div key={emp.id} className="py-3 flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className={`grid size-10 place-items-center rounded-xl font-display font-bold text-xs shrink-0 ${emp.logoBg}`}>
+                            {emp.logoInitials}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-ink truncate m-0">
+                              {emp.companyName}
+                            </p>
+                            <p className="text-[0.68rem] text-secondary truncate m-0">
+                              NIT: {emp.nit} · {emp.sector}
+                            </p>
+                            <p className="text-[0.65rem] text-body-muted truncate m-0 mt-0.5">
+                              {emp.contactPerson}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 text-right">
+                          <span className="rounded-full bg-lime/25 text-ink border border-lime/60 px-2 py-0.5 text-[0.62rem] font-bold block mb-1">
+                            ~{emp.vacanciesProjected} vacantes
+                          </span>
+                          <Link
+                            to="/institucion/empresas/solicitudes"
+                            className="inline-flex items-center gap-1 rounded-lg border border-line bg-page px-2 py-1 text-[0.68rem] font-bold text-ink hover:bg-lime hover:border-lime/60 transition-colors no-underline"
+                          >
+                            <span>Validar</span>
+                            <i className="bx bx-chevron-right text-xs" />
+                          </Link>
                         </div>
                       </div>
-
-                      <div className="shrink-0 text-right">
-                        <span className="rounded-full bg-lime/25 text-ink border border-lime/60 px-2 py-0.5 text-[0.62rem] font-bold block mb-1">
-                          ~{emp.vacanciesProjected} vacantes
-                        </span>
-                        <Link
-                          to="/institucion/empresas/solicitudes"
-                          className="inline-flex items-center gap-1 rounded-lg border border-line bg-page px-2 py-1 text-[0.68rem] font-bold text-ink hover:bg-lime hover:border-lime/60 transition-colors no-underline"
-                        >
-                          <span>Validar</span>
-                          <i className="bx bx-chevron-right text-xs" />
-                        </Link>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="py-8 text-center text-secondary text-xs">
+                      <i className="bx bx-buildings text-2xl text-slate-400 mb-1 block" />
+                      No hay convenios empresariales pendientes por validar.
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 

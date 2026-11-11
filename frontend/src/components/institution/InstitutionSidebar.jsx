@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { advisorProfile } from '../../data/institutionData.js';
 import { useInstitutionProfile } from '../../hooks/useInstitutionProfile.js';
 import { authService } from '../../services/authService.js';
+import { institutionService } from '../../services/institutionService.js';
 
 function Brand({ collapsed = false, role = 'advisor' }) {
   const isAdmin = role === 'admin';
@@ -155,8 +156,6 @@ const advisorNavSections = [
         label: 'Validar Egresados',
         icon: 'bx-user-check',
         to: '/institucion/estudiantes/solicitudes',
-        badge: '14',
-        badgeColor: 'bg-emerald-700 text-white font-bold',
       },
       {
         id: 'estudiantes-seguimiento',
@@ -180,8 +179,6 @@ const advisorNavSections = [
         label: 'Validar Convenios',
         icon: 'bx-buildings',
         to: '/institucion/empresas/solicitudes',
-        badge: '5',
-        badgeColor: 'bg-sand text-cocoa font-bold border border-sand-line',
       },
       {
         id: 'empresas-seguimiento',
@@ -212,6 +209,33 @@ export default function InstitutionSidebar({
   role = 'advisor',
 }) {
   const { institutionProfile } = useInstitutionProfile();
+  const [pendingGraduatesCount, setPendingGraduatesCount] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchCounts() {
+      try {
+        const res = await institutionService.getPendingGraduates({ estado: 'pendiente', limit: 1 });
+        if (isMounted && res?.resumen_estados?.pendientes !== undefined) {
+          setPendingGraduatesCount(res.resumen_estados.pendientes);
+        } else if (isMounted && typeof res?.total === 'number') {
+          setPendingGraduatesCount(res.total);
+        }
+      } catch {
+        if (isMounted) setPendingGraduatesCount(0);
+      }
+    }
+
+    fetchCounts();
+
+    const handleUpdate = () => fetchCounts();
+    window.addEventListener('vincula:graduate-validated', handleUpdate);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('vincula:graduate-validated', handleUpdate);
+    };
+  }, []);
+
   const navSections = role === 'admin' ? adminNavSections : advisorNavSections;
 
   return (
@@ -325,15 +349,20 @@ export default function InstitutionSidebar({
 
                         <span className={`truncate flex-1 ${collapsed ? 'sr-only' : ''}`}>{item.label}</span>
 
-                        {!collapsed && item.badge && (
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[0.62rem] ${
-                              item.badgeColor || 'bg-panel text-ink border border-line'
-                            }`}
-                          >
-                            {item.badge}
-                          </span>
-                        )}
+                        {(() => {
+                          let badgeVal = item.badge;
+                          let badgeStyle = item.badgeColor || 'bg-panel text-ink border border-line';
+                          if (item.id === 'estudiantes-solicitudes') {
+                            badgeVal = pendingGraduatesCount && pendingGraduatesCount > 0 ? String(pendingGraduatesCount) : null;
+                            badgeStyle = 'bg-emerald-700 text-white font-bold';
+                          }
+                          if (collapsed || !badgeVal) return null;
+                          return (
+                            <span className={`rounded-full px-2 py-0.5 text-[0.62rem] ${badgeStyle}`}>
+                              {badgeVal}
+                            </span>
+                          );
+                        })()}
                       </Link>
                     </li>
                   );
