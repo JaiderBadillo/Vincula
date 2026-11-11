@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import DashboardSidebar from './DashboardSidebar.jsx';
 import DashboardTopbar from './DashboardTopbar.jsx';
+import OnboardingTour from '../common/OnboardingTour.jsx';
 
 const SIDEBAR_PREFERENCE_KEY = 'vincula.dashboard.sidebar-collapsed';
 
@@ -63,6 +64,7 @@ export default function GraduatePortalLayout({ activePage = 'home', children }) 
         />
         {children}
       </div>
+      <OnboardingTour />
     </div>
   );
 }

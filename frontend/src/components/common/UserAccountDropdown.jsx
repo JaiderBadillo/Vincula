@@ -117,7 +117,23 @@ export default function UserAccountDropdown({
           aria-orientation="vertical"
           className="absolute right-0 top-full mt-2 w-56 origin-top-right rounded-2xl border border-sand-line bg-white p-1.5 shadow-xl ring-1 ring-black/5 z-50 animate-in fade-in zoom-in-95 duration-100 space-y-1"
         >
-          {/* Opción 1: Configuración */}
+          {/* Opción 1: Tutorial Guiado */}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setIsOpen(false);
+              window.dispatchEvent(new CustomEvent('vincula:open-onboarding-tour'));
+            }}
+            className="group flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-ink hover:bg-cream hover:text-green-dark transition-colors cursor-pointer"
+          >
+            <span className="grid size-7 place-items-center rounded-lg bg-emerald-50 text-green-dark group-hover:bg-emerald-100 transition-colors">
+              <i className="bx bx-help-circle text-base" />
+            </span>
+            <span>Ver tutorial guiado</span>
+          </button>
+
+          {/* Opción 2: Configuración */}
           <button
             type="button"
             role="menuitem"
@@ -130,7 +146,7 @@ export default function UserAccountDropdown({
             <span>Configuración</span>
           </button>
 
-          {/* Opción 2: Salir */}
+          {/* Opción 3: Salir */}
           <button
             type="button"
             role="menuitem"

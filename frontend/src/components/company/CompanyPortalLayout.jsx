@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import CompanySidebar from './CompanySidebar.jsx';
 import CompanyTopbar from './CompanyTopbar.jsx';
+import OnboardingTour from '../common/OnboardingTour.jsx';
 
 const SIDEBAR_PREFERENCE_KEY = 'vincula.company.sidebar-collapsed';
 
@@ -78,6 +79,7 @@ export default function CompanyPortalLayout({
         />
         {children}
       </div>
+      <OnboardingTour />
     </div>
   );
 }
