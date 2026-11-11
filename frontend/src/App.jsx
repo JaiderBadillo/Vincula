@@ -41,11 +41,13 @@ import VinculaAdminDashboardPage from './pages/VinculaAdminDashboardPage.jsx';
 import VinculaAdminCompaniesPage from './pages/VinculaAdminCompaniesPage.jsx';
 import VinculaAdminInstitutionsPage from './pages/VinculaAdminInstitutionsPage.jsx';
 import OnboardingTour from './components/common/OnboardingTour.jsx';
+import ErrorBoundary from './components/common/ErrorBoundary.jsx';
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
+      <ErrorBoundary>
+        <Routes>
         {/* ─── Rutas Públicas (Landing y Registro / Login) ─── */}
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -152,6 +154,7 @@ export default function App() {
       </Routes>
       <OnboardingTour />
       <GraduateChatbot />
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

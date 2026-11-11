@@ -191,10 +191,38 @@ const TOUR_STEPS_BY_ROLE = {
 };
 
 export default function OnboardingTour({ showLauncher = true, autoStart = true }) {
+  const location = useLocation();
+  const isAuthenticated = authService.isAuthenticated();
+  const currentUser = authService.getCurrentUser();
+
+  // El tour interactivo solo existe y se ejecuta dentro de portales protegidos y autenticados
+  const isPortalRoute =
+    location.pathname.startsWith('/dashboard') ||
+    location.pathname.startsWith('/institucion') ||
+    location.pathname.startsWith('/empresa') ||
+    location.pathname.startsWith('/admin');
+
+  // En la landing page (/), login, registro o sin autenticación, no se monta nada
+  if (!isAuthenticated || !currentUser || !isPortalRoute) {
+    return null;
+  }
+
+  const userIdentifier = currentUser?.user_id || currentUser?.id || currentUser?.correo || 'guest';
+
+  return (
+    <OnboardingTourContent
+      key={userIdentifier}
+      showLauncher={showLauncher}
+      autoStart={autoStart}
+      currentUser={currentUser}
+    />
+  );
+}
+
+function OnboardingTourContent({ showLauncher = true, autoStart = true, currentUser }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const currentUser = authService.getCurrentUser();
   const userRole = (currentUser?.rol || '').toLowerCase();
 
   // Determinar rol específico para el tour
@@ -295,21 +323,30 @@ export default function OnboardingTour({ showLauncher = true, autoStart = true }
     return () => clearInterval(interval);
   }, [isOpen, activeStep, updateTargetRect]);
 
-  // Apertura automática en primer ingreso (solo si está logueado en rutas protegidas)
+  // Apertura automática en primer ingreso (solo si está logueado en páginas principales de portal)
   useEffect(() => {
     if (!autoStart || !currentUser) return;
     try {
       const seen = localStorage.getItem(storageKey);
       if (!seen) {
-        const timer = setTimeout(() => {
-          setIsOpen(true);
-        }, 900);
-        return () => clearTimeout(timer);
+        const initialPortalRoutes = [
+          '/dashboard',
+          '/institucion/dashboard',
+          '/empresa/reclutador/candidatos',
+          '/empresa/admin/perfil',
+          '/admin/dashboard',
+        ];
+        if (initialPortalRoutes.includes(location.pathname)) {
+          const timer = setTimeout(() => {
+            setIsOpen(true);
+          }, 900);
+          return () => clearTimeout(timer);
+        }
       }
     } catch {
       // noop
     }
-  }, [storageKey, autoStart, currentUser]);
+  }, [storageKey, autoStart, currentUser, location.pathname]);
 
   // Escuchar evento global para reabrir el tour desde cualquier menú
   useEffect(() => {
@@ -335,7 +372,7 @@ export default function OnboardingTour({ showLauncher = true, autoStart = true }
       setTargetRect(null); // Oculta el reflector para que no brinque de forma brusca
       navigate(activeStep.route);
     } else {
-      locateElement();
+      return locateElement();
     }
   }, [isOpen, currentStep, activeStep, location.pathname, navigate, locateElement]);
 
@@ -407,12 +444,6 @@ export default function OnboardingTour({ showLauncher = true, autoStart = true }
         // noop
       }
     }
-  }
-
-  // No renderizar si no hay sesión iniciada o estamos en páginas públicas
-  const isPublicRoute = ['/', '/login', '/registro-egresado', '/registro-empresa', '/registro-institucion'].includes(location.pathname);
-  if (!currentUser || isPublicRoute) {
-    return null;
   }
 
   // Cálculo de posición del Popover flotante
