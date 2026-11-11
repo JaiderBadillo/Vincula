@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { advisorProfile } from '../../data/institutionData.js';
 import { useInstitutionProfile } from '../../hooks/useInstitutionProfile.js';
+import { authService } from '../../services/authService.js';
 import InstitutionThemeSelector from './InstitutionThemeSelector.jsx';
 import UserAccountDropdown from '../common/UserAccountDropdown.jsx';
 
@@ -24,14 +25,21 @@ export default function InstitutionTopbar({
 }) {
   const { institutionProfile } = useInstitutionProfile();
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const currentUser = authService.getCurrentUser();
 
-  const advisorInitials = advisorProfile.fullName
+  const rawAdvisorName = currentUser?.nombre || advisorProfile.fullName || 'Coordinación IES';
+  const advisorInitials = rawAdvisorName
     .replace('Dra. ', '')
+    .replace('Dr. ', '')
     .split(' ')
+    .filter(Boolean)
     .slice(0, 2)
     .map((p) => p[0])
     .join('')
-    .toUpperCase();
+    .toUpperCase() || 'IES';
+
+  const currentDisplayName = role === 'admin' ? (currentUser?.nombre || institutionProfile.name) : rawAdvisorName;
+
   return (
     <header
       className={`sticky top-0 z-20 border-b backdrop-blur-sm ${
@@ -90,7 +98,7 @@ export default function InstitutionTopbar({
           {/* Menú de cuenta con desplegable (Configuración y Salir) */}
           <UserAccountDropdown
             role={role === 'admin' ? 'institution_admin' : 'institution_advisor'}
-            userName={role === 'admin' ? institutionProfile.name : advisorProfile.fullName}
+            userName={currentDisplayName}
             userSubtitle={
               role === 'admin'
                 ? `Cuenta Institucional · NIT ${institutionProfile.nit}`

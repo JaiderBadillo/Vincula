@@ -1,4 +1,5 @@
 import { getInitials, useProfile } from '../../hooks/useProfile.js';
+import { authService } from '../../services/authService.js';
 import UserAccountDropdown from '../common/UserAccountDropdown.jsx';
 
 function formatDashboardDate(date) {
@@ -13,6 +14,8 @@ function formatDashboardDate(date) {
 
 export default function DashboardTopbar({ onMenuToggle, mobileMenuOpen, menuButtonRef, sidebarCollapsed, onSidebarToggle }) {
   const { profile } = useProfile();
+  const currentUser = authService.getCurrentUser();
+  const displayName = profile?.fullName || currentUser?.nombre || 'Egresado';
 
   return (
     <header className="sticky top-0 z-20 border-b border-line-soft bg-page/95 backdrop-blur-sm">
@@ -45,10 +48,10 @@ export default function DashboardTopbar({ onMenuToggle, mobileMenuOpen, menuButt
         {/* Menú de cuenta con desplegable (Configuración y Salir) */}
         <UserAccountDropdown
           role="graduate"
-          userName={profile.fullName}
+          userName={displayName}
           userSubtitle="Cuenta de Egresado"
-          userAvatar={profile.photo}
-          userInitials={getInitials(profile.fullName)}
+          userAvatar={profile?.photo}
+          userInitials={getInitials(displayName)}
           borderClass="border-line-soft"
         />
       </div>

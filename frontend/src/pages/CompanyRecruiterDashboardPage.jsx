@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import CompanyPortalLayout from '../components/company/CompanyPortalLayout.jsx';
 import CompanyPageHero from '../components/company/CompanyPageHero.jsx';
 import { companyPhotos } from '../data/companyImages.js';
+import { authService } from '../services/authService.js';
 import {
   pendingApplicantsQueue,
   quickActionModules,
@@ -15,6 +16,10 @@ export default function CompanyRecruiterDashboardPage() {
   const [selectedSiteFilter, setSelectedSiteFilter] = useState('all');
   const [evaluatedApplicant, setEvaluatedApplicant] = useState(null);
   const [feedbackToast, setFeedbackToast] = useState(null);
+
+  const currentUser = authService.getCurrentUser();
+  const recruiterDisplayName = currentUser?.nombre || recruiterProfile.fullName || 'Reclutador';
+  const firstName = recruiterDisplayName.trim().split(' ')[0] || 'Reclutador';
 
   // Filtrado de la cola de postulantes por sede asignada
   const filteredApplicants =
@@ -59,7 +64,7 @@ export default function CompanyRecruiterDashboardPage() {
           {/* ─── 1. Hero Showcase del Reclutador (Estilo Sonnet cálido) ─── */}
           <CompanyPageHero
             photo={companyPhotos.reclutadores || companyPhotos.talento}
-            title={`¡Hola, ${recruiterProfile.fullName.split(' ')[0]}!`}
+            title={`¡Hola, ${firstName}!`}
             subtitle="Gestiona el embudo de selección de tus vacantes asignadas, califica candidatos en cola y atiende las entrevistas de hoy."
             stats={heroStats}
             actions={

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useCompanyProfile } from '../../hooks/useCompanyProfile.js';
 import CompanyLogo from './CompanyLogo.jsx';
 import { recruiterProfile } from '../../data/companyRecruiterDashboardData.js';
+import { authService } from '../../services/authService.js';
 
 export const companyNavSections = [
   {
@@ -145,28 +146,32 @@ export default function CompanySidebar({
 
         {/* Identidad del perfil activo en el sidebar */}
         <div className={`px-5 pt-4 pb-2 ${collapsed ? 'px-2 py-3' : ''}`}>
-          {role === 'recruiter' ? (
-            <div
-              className={`flex items-center min-w-0 ${collapsed ? 'justify-center' : 'gap-3'}`}
-              title={recruiterProfile.fullName}
-            >
-              <img
-                src={recruiterProfile.avatar}
-                alt=""
-                className="size-9 rounded-xl object-cover border border-sand-line shadow-2xs shrink-0"
-              />
-              {!collapsed && (
-                <div className="min-w-0">
-                  <p className="m-0 truncate text-sm font-semibold text-ink leading-tight">
-                    {recruiterProfile.fullName}
-                  </p>
-                  <span className="text-[0.62rem] text-secondary">
-                    {recruiterProfile.role}
-                  </span>
-                </div>
-              )}
-            </div>
-          ) : (
+          {role === 'recruiter' ? (() => {
+            const currentUser = authService.getCurrentUser();
+            const recruiterName = currentUser?.nombre || recruiterProfile.fullName || 'Equipo de Selección';
+            return (
+              <div
+                className={`flex items-center min-w-0 ${collapsed ? 'justify-center' : 'gap-3'}`}
+                title={recruiterName}
+              >
+                <img
+                  src={recruiterProfile.avatar}
+                  alt=""
+                  className="size-9 rounded-xl object-cover border border-sand-line shadow-2xs shrink-0"
+                />
+                {!collapsed && (
+                  <div className="min-w-0">
+                    <p className="m-0 truncate text-sm font-semibold text-ink leading-tight">
+                      {recruiterName}
+                    </p>
+                    <span className="text-[0.62rem] text-secondary">
+                      {recruiterProfile.role}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })() : (
             <div
               className={`flex items-center min-w-0 ${collapsed ? 'justify-center' : 'gap-3'}`}
               title={companyProfile.name}

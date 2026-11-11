@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import InstitutionPortalLayout from '../components/institution/InstitutionPortalLayout.jsx';
 import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
 import { advisorPhotos } from '../data/institutionImages.js';
+import { authService } from '../services/authService.js';
 import {
   advisorProfile,
   institutionMetrics,
@@ -14,6 +15,8 @@ import {
 
 export default function InstitutionDashboardPage() {
   const [selectedPeriod, setSelectedPeriod] = useState('2026-2');
+  const currentUser = authService.getCurrentUser();
+  const advisorName = currentUser?.nombre || advisorProfile.fullName || 'Coordinación IES';
 
   return (
     <InstitutionPortalLayout activePage="dashboard">
@@ -23,7 +26,7 @@ export default function InstitutionDashboardPage() {
           {/* ─── Hero Showcase Institucional (Estilo Sonnet con Identidad UTS) ─── */}
           <InstitutionPageHero
             eyebrow="Observatorio de Empleabilidad & Gestión IES"
-            title={`¡Bienvenida, ${advisorProfile.fullName}!`}
+            title={`¡Bienvenido(a), ${advisorName}!`}
             subtitle="Supervisa la inserción laboral de los egresados de la institución, valida solicitudes académicas en cola y gestiona los convenios empresariales activos."
             photo={advisorPhotos.dashboard}
             stats={[

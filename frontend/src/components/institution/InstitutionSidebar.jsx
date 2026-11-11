@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { advisorProfile } from '../../data/institutionData.js';
 import { useInstitutionProfile } from '../../hooks/useInstitutionProfile.js';
+import { authService } from '../../services/authService.js';
 
 function Brand({ collapsed = false, role = 'advisor' }) {
   const isAdmin = role === 'admin';
@@ -43,20 +44,24 @@ function Brand({ collapsed = false, role = 'advisor' }) {
 
 function AdvisorProfileCard({ collapsed = false }) {
   const [imgError, setImgError] = useState(false);
-  const initials = advisorProfile.fullName
+  const currentUser = authService.getCurrentUser();
+  const advisorName = currentUser?.nombre || advisorProfile.fullName || 'Coordinación IES';
+  const initials = advisorName
     .replace('Dra. ', '')
+    .replace('Dr. ', '')
     .split(' ')
+    .filter(Boolean)
     .slice(0, 2)
     .map((p) => p[0])
     .join('')
-    .toUpperCase();
+    .toUpperCase() || 'IES';
 
   const avatar = (
     <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full border border-line bg-page font-display text-xs font-bold text-green-dark shadow-xs">
       {advisorProfile.avatar && !imgError ? (
         <img
           src={advisorProfile.avatar}
-          alt={advisorProfile.fullName}
+          alt={advisorName}
           onError={() => setImgError(true)}
           className="size-full object-cover"
         />
@@ -68,17 +73,17 @@ function AdvisorProfileCard({ collapsed = false }) {
 
   if (collapsed) {
     return (
-      <div className="flex w-full justify-center" title={advisorProfile.fullName}>
+      <div className="flex w-full justify-center" title={advisorName}>
         {avatar}
       </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-3 min-w-0" title={advisorProfile.fullName}>
+    <div className="flex items-center gap-3 min-w-0" title={advisorName}>
       {avatar}
       <p className="m-0 min-w-0 truncate text-sm font-semibold text-ink">
-        {advisorProfile.fullName}
+        {advisorName}
       </p>
     </div>
   );

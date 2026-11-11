@@ -6,9 +6,17 @@ import ResumeUploadCard from '../components/dashboard/ResumeUploadCard.jsx';
 import SavedVacanciesSection from '../components/dashboard/SavedVacanciesSection.jsx';
 import JobBoardPreview from '../components/landing/JobBoardPreview.jsx';
 import { useSavedJobs } from '../hooks/useSavedJobs.js';
+import { useProfile, computeProfileStrength } from '../hooks/useProfile.js';
+import { authService } from '../services/authService.js';
 
 export default function GraduateDashboard() {
   const { savedJobs, savedCount, isSaved, toggleSave } = useSavedJobs();
+  const { profile } = useProfile();
+  const currentUser = authService.getCurrentUser();
+  const rawName = profile?.fullName || currentUser?.nombre || '';
+  const firstName = rawName.trim().split(' ')[0] || 'Egresado';
+  const { score: profileScore } = useMemo(() => computeProfileStrength(profile), [profile]);
+
   const [detailJob, setDetailJob] = useState(null);
   const [appliedJobs, setAppliedJobs] = useState(new Set());
   const [toastMessage, setToastMessage] = useState(null);
@@ -40,10 +48,10 @@ export default function GraduateDashboard() {
     () => [
       {
         label: 'Perfil Completado',
-        value: '85%',
+        value: `${profileScore}%`,
         icon: 'bx-user-check',
         isProgress: true,
-        progressValue: 85,
+        progressValue: profileScore,
         accent: 'green',
         onClick: () => handleScrollToSection('subir-cv'),
         actionText: 'Bajar a CV y perfil',
@@ -58,14 +66,14 @@ export default function GraduateDashboard() {
       },
       {
         label: 'Vacantes con alto Match',
-        value: '6',
+        value: '0',
         icon: 'bx-target-lock',
         accent: 'blue',
         onClick: () => handleScrollToSection('oportunidades'),
         actionText: 'Bajar a vacantes',
       },
     ],
-    [savedCount]
+    [profileScore, savedCount]
   );
 
   return (
@@ -106,7 +114,7 @@ export default function GraduateDashboard() {
                   className="font-display text-[clamp(1.8rem,4vw,2.8rem)] font-semibold leading-[1.12] tracking-[-0.045em]"
                   id="dashboard-title"
                 >
-                  ¡Hola, Jaider!{' '}
+                  ¡Hola{firstName && firstName !== 'Egresado' ? `, ${firstName}` : ''}!{' '}
                   <span className="text-lime">Tenemos algunas vacantes para ti</span>
                 </h1>
                 <p className="mt-4 max-w-xl text-sm leading-6 text-white/65">

@@ -1,4 +1,5 @@
 import UserAccountDropdown from '../common/UserAccountDropdown.jsx';
+import { authService } from '../../services/authService.js';
 
 function formatDashboardDate(date) {
   const formattedDate = new Intl.DateTimeFormat('es-CO', {
@@ -17,6 +18,8 @@ export default function VinculaAdminTopbar({
   sidebarCollapsed,
   onSidebarToggle,
 }) {
+  const currentUser = authService.getCurrentUser();
+
   return (
     <header className="sticky top-0 z-20 border-b border-sand-line bg-cream/95 backdrop-blur-sm">
       <div className="flex min-h-[4.75rem] w-full items-center justify-between gap-4 px-5 sm:px-8 lg:px-10">
@@ -51,7 +54,7 @@ export default function VinculaAdminTopbar({
         <div className="flex items-center gap-3">
           <UserAccountDropdown
             role="vincula_admin"
-            userName="Super Administrador"
+            userName={currentUser?.nombre || "Super Administrador"}
             userSubtitle="Plataforma Vincula Central"
             borderClass="border-sand-line"
           />

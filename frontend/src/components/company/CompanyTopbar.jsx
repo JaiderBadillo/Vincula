@@ -1,5 +1,6 @@
 import { useCompanyProfile } from '../../hooks/useCompanyProfile.js';
 import { recruiterProfile } from '../../data/companyRecruiterDashboardData.js';
+import { authService } from '../../services/authService.js';
 import UserAccountDropdown from '../common/UserAccountDropdown.jsx';
 
 function formatDashboardDate(date) {
@@ -21,6 +22,25 @@ export default function CompanyTopbar({
   role = 'admin',
 }) {
   const { companyProfile } = useCompanyProfile();
+  const currentUser = authService.getCurrentUser();
+
+  const recruiterName = currentUser?.nombre || recruiterProfile.fullName || 'Equipo de Selección';
+  const recruiterInitials = recruiterName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase() || 'RC';
+
+  const companyAdminName = currentUser?.nombre || companyProfile.name || 'Empresa';
+  const companyInitials = companyAdminName
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join('')
+    .toUpperCase() || 'EM';
 
   return (
     <header className="sticky top-0 z-20 border-b border-sand-line bg-cream/95 backdrop-blur-sm">
@@ -56,19 +76,19 @@ export default function CompanyTopbar({
         {role === 'recruiter' ? (
           <UserAccountDropdown
             role="company_recruiter"
-            userName={recruiterProfile.fullName}
-            userSubtitle={`Reclutadora · ${companyProfile.name}`}
+            userName={recruiterName}
+            userSubtitle={`Reclutador(a) · ${companyProfile.name}`}
             userAvatar={recruiterProfile.avatar}
-            userInitials="MF"
+            userInitials={recruiterInitials}
             borderClass="border-sand-line"
           />
         ) : (
           <UserAccountDropdown
             role="company_admin"
-            userName={companyProfile.name}
+            userName={companyAdminName}
             userSubtitle={`Cuenta Empresarial · NIT ${companyProfile.nit}`}
             userAvatar={companyProfile.logo}
-            userInitials="CE"
+            userInitials={companyInitials}
             borderClass="border-sand-line"
           />
         )}

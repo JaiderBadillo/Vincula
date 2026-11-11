@@ -43,11 +43,14 @@ function Avatar({ profile }) {
 
 function UserProfile({ collapsed = false }) {
   const { profile } = useProfile();
+  const currentUser = authService.getCurrentUser();
+  const displayName = profile?.fullName || currentUser?.nombre || 'Egresado';
+  const displayProfile = { ...profile, fullName: displayName };
 
   if (collapsed) {
     return (
-      <div className="flex w-full justify-center" title={profile.fullName}>
-        <Avatar profile={profile} />
+      <div className="flex w-full justify-center" title={displayName}>
+        <Avatar profile={displayProfile} />
       </div>
     );
   }
@@ -56,11 +59,11 @@ function UserProfile({ collapsed = false }) {
     <Link
       to="/dashboard/perfil"
       className="flex items-center gap-3 px-1 no-underline transition-opacity hover:opacity-85 min-w-0"
-      title={profile.fullName}
+      title={displayName}
     >
-      <Avatar profile={profile} />
+      <Avatar profile={displayProfile} />
       <p className="m-0 min-w-0 truncate text-sm font-semibold text-ink">
-        {profile.fullName}
+        {displayName}
       </p>
     </Link>
   );

@@ -19,6 +19,9 @@ export default function UserAccountDropdown({
   const { getCredentials } = useAuthCredentials();
 
   const currentCreds = getCredentials(role);
+  const currentUser = authService.getCurrentUser();
+  const effectiveUserName = userName || currentUser?.nombre || currentCreds?.name || 'Usuario';
+  const effectiveInitials = userInitials || effectiveUserName.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase() || 'ID';
 
   // Cierre al hacer clic afuera
   useEffect(() => {
@@ -71,7 +74,7 @@ export default function UserAccountDropdown({
         className={`group flex items-center gap-2.5 pl-3 border-l ${borderClass} shrink-0 text-left rounded-2xl py-1.5 pr-2.5 transition-all hover:bg-sand/30 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-terracotta/40`}
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        aria-label={`Menú de usuario para ${userName || 'cuenta'}`}
+        aria-label={`Menú de usuario para ${effectiveUserName}`}
       >
         {/* Avatar / Logo */}
         {userAvatar ? (
@@ -84,14 +87,14 @@ export default function UserAccountDropdown({
           </span>
         ) : (
           <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-cocoa text-ochre font-display text-xs font-bold shadow-2xs">
-            {userInitials || 'ID'}
+            {effectiveInitials}
           </span>
         )}
 
         {/* Nombre y Rol / NIT */}
         <div className="hidden lg:block text-left min-w-0">
           <p className="m-0 font-display text-xs font-bold text-ink leading-tight truncate max-w-[190px]">
-            {userName || currentCreds?.name}
+            {effectiveUserName}
           </p>
           <p className="m-0 text-[0.62rem] text-secondary truncate max-w-[190px]">
             {userSubtitle || currentCreds?.roleLabel}
