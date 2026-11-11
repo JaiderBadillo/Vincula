@@ -40,6 +40,8 @@ wheels/
 .env.development.local
 .env.test.local
 .env.production.local
+.test_credentials.local
+*.local
 
 # Logs
 npm-debug.log*
