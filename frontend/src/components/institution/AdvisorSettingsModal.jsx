@@ -17,14 +17,19 @@ async function settingsRequest(path = '', method = 'GET', body) {
 
 const sections = [
   { id: 'cuenta', icon: 'bx-user', title: 'Cuenta', detail: 'Correo de acceso' },
+  { id: 'perfil', icon: 'bx-id-card', title: 'Perfil', detail: 'Datos del asesor' },
   { id: 'seguridad', icon: 'bx-shield-quarter', title: 'Seguridad', detail: 'Contraseña y Google' },
-  { id: 'sesiones', icon: 'bx-devices', title: 'Sesiones', detail: 'Acceso actual' },
+  { id: 'notificaciones', icon: 'bx-bell', title: 'Notificaciones', detail: 'Avisos por correo' },
+  { id: 'sesiones', icon: 'bx-devices', title: 'Accesos', detail: 'Historial y sesión' },
 ];
 
 export default function AdvisorSettingsModal({ isOpen, onClose, userName, userAvatar, userInitials }) {
   const [section, setSection] = useState('cuenta');
   const [account, setAccount] = useState(null);
   const [email, setEmail] = useState('');
+  const [profile, setProfile] = useState({ nombre_completo: '', telefono: '', cargo: '' });
+  const [notifications, setNotifications] = useState({ avisar_accesos_email: false, avisar_cambios_email: true });
+  const [accesses, setAccesses] = useState(null);
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -38,14 +43,22 @@ export default function AdvisorSettingsModal({ isOpen, onClose, userName, userAv
     if (!isOpen) return undefined;
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    setSection('cuenta'); setError(''); setSuccess(''); setCurrent(''); setNext(''); setConfirm('');
+    setSection('cuenta'); setAccount(null); setAccesses(null); setError(''); setSuccess(''); setCurrent(''); setNext(''); setConfirm('');
     let cancelled = false;
-    settingsRequest().then(data => { if (!cancelled) { setAccount(data); setEmail(data.correo); } })
+    settingsRequest().then(data => { if (!cancelled) { setAccount(data); setEmail(data.correo); setProfile(data.perfil); setNotifications(data.notificaciones); } })
       .catch(err => { if (!cancelled) setError(err.message); });
     const escape = event => { if (event.key === 'Escape') onClose(); };
     window.addEventListener('keydown', escape);
     return () => { cancelled = true; document.body.style.overflow = previous; window.removeEventListener('keydown', escape); };
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen || section !== 'sesiones' || !account) return undefined;
+    let cancelled = false;
+    settingsRequest('/accesos').then(data => { if (!cancelled) setAccesses(data.accesos); })
+      .catch(err => { if (!cancelled) setError(err.message); });
+    return () => { cancelled = true; };
+  }, [isOpen, section, account]);
 
   useEffect(() => {
     if (!isOpen || section !== 'seguridad' || account?.google_vinculado || !googleSlot.current) return undefined;
@@ -88,6 +101,21 @@ export default function AdvisorSettingsModal({ isOpen, onClose, userName, userAv
     finally { setBusy(false); }
   }
 
+  async function saveExtra(event, type) {
+    event.preventDefault(); setBusy(true); setError(''); setSuccess('');
+    try {
+      const data = await settingsRequest(type === 'perfil' ? '/perfil' : '/notificaciones', 'PUT', type === 'perfil' ? profile : notifications);
+      if (type === 'perfil') {
+        setProfile(data.perfil);
+        const user = authService.getCurrentUser();
+        if (user) localStorage.setItem('vincula.auth.user', JSON.stringify({ ...user, nombre: data.perfil.nombre_completo }));
+        window.dispatchEvent(new Event('vincula:user-updated'));
+      } else { setNotifications(data.notificaciones); }
+      setSuccess(data.mensaje);
+    } catch (err) { setError(err.message); }
+    finally { setBusy(false); }
+  }
+
   async function unlink() {
     if (!current) return setError('Escribe tu contraseña actual para desvincular Google.');
     setBusy(true); setError(''); setSuccess('');
@@ -111,12 +139,12 @@ export default function AdvisorSettingsModal({ isOpen, onClose, userName, userAv
         <div className="relative z-10">
           <p className="m-0 text-[0.7rem] font-bold uppercase tracking-widest text-white/70">Perfil en uso</p>
           <h3 className="mt-1 font-display text-lg font-bold text-white">{userName || 'Asesor IES'}</h3>
-          <p className="text-xs font-semibold text-ochre">Asesor IES · UTS</p>
+          <p className="text-xs font-semibold text-ochre">Asesor IES · {account?.institucion || 'Institución'}</p>
           <nav aria-label="Secciones de configuración" className="mt-4 grid grid-cols-3 gap-2 md:mt-7 md:grid-cols-1">
             {sections.map(item => <button type="button" key={item.id} onClick={() => { setSection(item.id); setError(''); setSuccess(''); setCurrent(''); passwordRef.current = ''; }}
               aria-current={section === item.id ? 'page' : undefined}
               className={`flex items-center justify-center gap-3 rounded-xl border px-2 py-2 text-center transition-colors md:justify-start md:px-3 md:py-3 md:text-left ${section === item.id ? 'border-lime/60 bg-white/20' : 'border-transparent hover:bg-white/10'}`}>
-              <i className={`bx ${item.icon} hidden text-xl text-lime md:block`} aria-hidden="true" /><span><strong className="block text-xs text-white">{item.title}</strong><small className="hidden text-[0.65rem] text-white/70 md:block">{item.detail}</small></span>
+              <i className={`bx ${item.icon} hidden text-xl text-lime md:block`} aria-hidden="true" /><span><strong className="block text-[0.68rem] text-white md:text-xs">{item.title}</strong><small className="hidden text-[0.65rem] text-white/70 md:block">{item.detail}</small></span>
             </button>)}
           </nav>
         </div>
@@ -143,6 +171,16 @@ export default function AdvisorSettingsModal({ isOpen, onClose, userName, userAv
             {account.google_vinculado && <p className="rounded-xl bg-sand/60 p-3 text-xs text-cocoa">Para cambiar el correo, desvincula Google primero en Seguridad.</p>}
             <div className="flex justify-end"><button type="submit" disabled={busy || email.trim().toLowerCase() === account.correo} className={button}>Guardar correo</button></div>
           </form>}
+          {account && section === 'perfil' && <form onSubmit={event => saveExtra(event, 'perfil')} className="grid gap-4">
+            <div><h3 className="m-0 text-lg font-bold text-ink">Datos de perfil</h3><p className="mt-1 text-xs text-secondary">Estos datos identifican al asesor dentro de Víncula.</p></div>
+            <label className="grid gap-1 text-xs font-semibold text-ink">Nombre completo<input className={input} required minLength={3} maxLength={150} value={profile.nombre_completo} onChange={event => setProfile({ ...profile, nombre_completo: event.target.value })} /></label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1 text-xs font-semibold text-ink">Teléfono<input type="tel" className={input} maxLength={50} value={profile.telefono} onChange={event => setProfile({ ...profile, telefono: event.target.value })} /></label>
+              <label className="grid gap-1 text-xs font-semibold text-ink">Cargo<input className={input} maxLength={100} value={profile.cargo} onChange={event => setProfile({ ...profile, cargo: event.target.value })} /></label>
+            </div>
+            <div className="rounded-xl bg-sand/50 p-3 text-xs text-secondary">Institución: {account.institucion} · Correo institucional: {profile.correo_institucional}</div>
+            <div className="flex justify-end"><button type="submit" disabled={busy} className={button}>Guardar perfil</button></div>
+          </form>}
           {account && section === 'seguridad' && <div className="grid gap-6">
             <form onSubmit={event => save(event, 'password')} className="grid gap-3 border-b border-sand-line pb-6">
               <div><h3 className="m-0 text-lg font-bold text-ink">Cambiar contraseña</h3><p className="mt-1 text-xs text-secondary">Elige una clave diferente de al menos 10 caracteres.</p></div>
@@ -157,8 +195,23 @@ export default function AdvisorSettingsModal({ isOpen, onClose, userName, userAv
               <p className="m-0 text-[0.68rem] text-secondary">Para vincular o desvincular, escribe primero tu contraseña actual en el campo de arriba.</p>
             </div>
           </div>}
-          {account && section === 'sesiones' && <div className="grid gap-4"><div><h3 className="m-0 text-lg font-bold text-ink">Tu sesión actual</h3><p className="mt-1 text-xs text-secondary">Información del acceso que estás usando ahora.</p></div>
+          {account && section === 'notificaciones' && <form onSubmit={event => saveExtra(event, 'notificaciones')} className="grid gap-5">
+            <div><h3 className="m-0 text-lg font-bold text-ink">Preferencias de notificaciones</h3><p className="mt-1 text-xs text-secondary">Elige los avisos que recibirás en tu correo de acceso.</p></div>
+            <label className="flex items-start gap-3 rounded-xl border border-sand-line p-4 text-sm text-ink"><input type="checkbox" className="mt-1 accent-green" checked={notifications.avisar_accesos_email} onChange={event => setNotifications({ ...notifications, avisar_accesos_email: event.target.checked })} /><span><strong className="block">Nuevos accesos</strong><small className="text-secondary">Recibe un correo cuando alguien inicie sesión en tu cuenta.</small></span></label>
+            <label className="flex items-start gap-3 rounded-xl border border-sand-line p-4 text-sm text-ink"><input type="checkbox" className="mt-1 accent-green" checked={notifications.avisar_cambios_email} onChange={event => setNotifications({ ...notifications, avisar_cambios_email: event.target.checked })} /><span><strong className="block">Cambios de cuenta</strong><small className="text-secondary">Recibe un correo al cambiar tu dirección de acceso o contraseña.</small></span></label>
+            <p className="m-0 text-xs text-secondary">Los correos necesarios para recuperar la cuenta se seguirán enviando.</p>
+            <div className="flex justify-end"><button type="submit" disabled={busy} className={button}>Guardar preferencias</button></div>
+          </form>}
+          {account && section === 'sesiones' && <div className="grid gap-4"><div><h3 className="m-0 text-lg font-bold text-ink">Accesos recientes</h3><p className="mt-1 text-xs text-secondary">Inicios de sesión exitosos registrados desde que se activó este historial.</p></div>
             <div className="rounded-2xl border border-sand-line p-4"><p className="m-0 text-sm font-bold text-ink">Sesión activa en este navegador</p><p className="mt-1 text-xs text-secondary">Correo: {account.correo}</p><p className="mt-1 text-xs text-secondary">Tu sesión termina al cerrar sesión o cuando expire el acceso.</p></div>
+            <div className="max-h-60 space-y-2 overflow-y-auto" aria-live="polite">
+              {accesses === null && <p className="text-xs text-secondary">Cargando accesos…</p>}
+              {accesses?.length === 0 && <p className="text-xs text-secondary">Todavía no hay accesos registrados.</p>}
+              {accesses?.map(access => <div key={access.id} className="flex items-start justify-between gap-3 rounded-xl border border-sand-line p-3 text-xs">
+                <div><strong className="block text-ink">{access.navegador} · {access.metodo === 'google' ? 'Google' : 'Contraseña'}</strong><span className="text-secondary">{access.direccion_ip ? `IP: ${access.direccion_ip}` : 'IP no disponible'}</span></div>
+                <time className="text-right text-secondary" dateTime={access.fecha}>{new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(access.fecha))}</time>
+              </div>)}
+            </div>
             <button type="button" onClick={() => { authService.logout(); window.location.assign('/login?logout=1'); }} className="w-fit rounded-xl border border-sand-line px-4 py-2 text-xs font-semibold text-ink hover:bg-sand/50">Cerrar esta sesión</button>
           </div>}
         </div>

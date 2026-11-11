@@ -427,22 +427,25 @@ export default function GraduateRegistrationPage() {
     setIsSubmitting(true);
 
     try {
-      // 1. Invocar endpoint real de FastAPI: /api/v1/auth/registro-egresado
-      const result = await authService.registerGraduate({
-        docType,
-        docNumber,
-        fullName,
-        email,
-        phone,
-        dept,
-        city,
-        institutionId: selectedUniversityId,
-        career,
-        educationLevel,
-        graduationYear,
-        habeasData,
-        password,
-      });
+      // 1. Invocar endpoint real de FastAPI: /api/v1/auth/registro-egresado-form (multipart con PDF real)
+      const result = await authService.registerGraduate(
+        {
+          docType,
+          docNumber,
+          fullName,
+          email,
+          phone,
+          dept,
+          city,
+          institutionId: selectedUniversityId,
+          career,
+          educationLevel,
+          graduationYear,
+          habeasData,
+          password,
+        },
+        diplomaFile
+      );
 
       // Actualizar perfil global con los datos consolidados
       updateProfile((current) => ({

@@ -557,19 +557,8 @@ export default function CompanyVerificationDrawer({
           documentUrl={securePdfUrl}
           title={previewDoc ? `${previewDoc.label} · ${company.businessName}` : 'Documento de Auditoría'}
           subtitle={`Auditoría Super Admin · NIT ${company.nit}`}
-          documentType="camara_comercio"
           metadata={{
-            studentName: company.legalRepName || company.businessName,
-            documentId: `NIT ${company.nit}`,
-            institution: company.businessName,
-            sniesCode: company.ciiuCode || '6201',
-            program: company.sector || 'Sector Empresarial',
-            degreeLevel: company.companySize || 'Empresa Vinculada',
-            actaNumber: `RAD-${company.radicado || '2026-VINCULA'}`,
-            bookFolio: `Matrícula Mercantil ${company.matriculaMercantil || 'Vigente'}`,
-            degreeDate: company.createdAt || 'Noviembre 2026',
-            selloDigital: 'b4a8e291c9ff7a118e21ad0192847a94ef2018274a123490bca8192837461928',
-            verified: company.status === 'active',
+            noFileMessage: 'La empresa aún no ha adjuntado este soporte documental a la plataforma.',
           }}
         />
       </div>

@@ -3,7 +3,7 @@ Modelos ORM de Usuarios y Autenticación (IAM) mapeados a schema_vincula_complet
 """
 
 import uuid
-from sqlalchemy import Column, String, DateTime, Integer, ForeignKey, func
+from sqlalchemy import Column, String, DateTime, Integer, ForeignKey, func, Index
 from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
 from app.core.database import Base
 
@@ -50,3 +50,15 @@ class PasswordResetCode(Base):
     expira_en = Column(DateTime(timezone=True), nullable=False)
     solicitado_en = Column(DateTime(timezone=True), nullable=False)
     intentos = Column(Integer, nullable=False, default=0)
+
+
+class AccesoAsesorIES(Base):
+    __tablename__ = "accesos_asesor_ies"
+    __table_args__ = (Index("ix_accesos_asesor_usuario_fecha", "id_usuario", "fecha"),)
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id_usuario = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), nullable=False)
+    fecha = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    metodo = Column(String(20), nullable=False)
+    navegador = Column(String(120), nullable=False)
+    direccion_ip = Column(String(45), nullable=True)

@@ -403,33 +403,59 @@ class AuthService {
   }
 
   /**
-   * Registro y pre-registro de Egresado Universitario
+   * Registro y pre-registro de Egresado Universitario con soporte para subida real de Diploma PDF.
    * @param {Object} data Datos del egresado
+   * @param {File|null} diplomaFile Archivo PDF del diploma o acta de grado seleccionado por el usuario
    */
-  async registerGraduate(data) {
-    const payload = {
-      tipo_documento: data.docType || 'CC',
-      numero_documento: data.docNumber?.trim() || '',
-      nombre_completo: data.fullName?.trim() || '',
-      correo: data.email?.trim().toLowerCase() || '',
-      password: data.password || 'Egresado123*',
-      telefono: data.phone?.trim() || null,
-      departamento: data.dept || 'Santander',
-      ciudad: data.city || 'Bucaramanga',
-      id_institucion: data.institutionId || null,
-      carrera: data.career?.trim() || 'Profesional Universitario',
-      nivel_educativo: data.educationLevel || 'Profesional Universitario',
-      ano_graduacion: String(data.graduationYear || '2025'),
-      autoriza_datos: data.habeasData ?? true,
-    };
+  async registerGraduate(data, diplomaFile = null) {
+    let response;
 
-    const response = await fetch(`${API_BASE_URL}/auth/registro-egresado`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+    if (diplomaFile) {
+      const formData = new FormData();
+      formData.append('tipo_documento', data.docType || 'CC');
+      formData.append('numero_documento', data.docNumber?.trim() || '');
+      formData.append('nombre_completo', data.fullName?.trim() || '');
+      formData.append('correo', data.email?.trim().toLowerCase() || '');
+      formData.append('password', data.password || 'Egresado123*');
+      if (data.phone) formData.append('telefono', data.phone.trim());
+      formData.append('departamento', data.dept || 'Santander');
+      formData.append('ciudad', data.city || 'Bucaramanga');
+      if (data.institutionId) formData.append('id_institucion', data.institutionId);
+      formData.append('carrera', data.career?.trim() || 'Profesional Universitario');
+      formData.append('nivel_educativo', data.educationLevel || 'Profesional Universitario');
+      formData.append('ano_graduacion', String(data.graduationYear || '2025'));
+      formData.append('autoriza_datos', String(data.habeasData ?? true));
+      formData.append('diploma_pdf', diplomaFile);
+
+      response = await fetch(`${API_BASE_URL}/auth/registro-egresado-form`, {
+        method: 'POST',
+        body: formData,
+      });
+    } else {
+      const payload = {
+        tipo_documento: data.docType || 'CC',
+        numero_documento: data.docNumber?.trim() || '',
+        nombre_completo: data.fullName?.trim() || '',
+        correo: data.email?.trim().toLowerCase() || '',
+        password: data.password || 'Egresado123*',
+        telefono: data.phone?.trim() || null,
+        departamento: data.dept || 'Santander',
+        ciudad: data.city || 'Bucaramanga',
+        id_institucion: data.institutionId || null,
+        carrera: data.career?.trim() || 'Profesional Universitario',
+        nivel_educativo: data.educationLevel || 'Profesional Universitario',
+        ano_graduacion: String(data.graduationYear || '2025'),
+        autoriza_datos: data.habeasData ?? true,
+      };
+
+      response = await fetch(`${API_BASE_URL}/auth/registro-egresado`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+    }
 
     if (!response.ok) {
       let msg = 'Error al registrar egresado.';

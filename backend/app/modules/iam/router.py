@@ -5,7 +5,8 @@ Soporta registro JSON (con base64) y multipart/form-data (con UploadFile) para P
 """
 
 from typing import Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, status
+import uuid
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, status, Request, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -24,13 +25,13 @@ from app.integrations.email_service import EmailService
 
 router = APIRouter(prefix="/auth", tags=["IAM - Autenticación y Registro"])
 from app.modules.iam.password_reset import router as password_reset_router
-from app.modules.iam.advisor_settings import router as advisor_settings_router
+from app.modules.iam.advisor_settings import router as advisor_settings_router, record_advisor_access
 router.include_router(password_reset_router)
 router.include_router(advisor_settings_router)
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(credentials: LoginRequest, db: AsyncSession = Depends(get_db)):
+async def login(credentials: LoginRequest, request: Request, tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     """
     Inicio de sesión multi-rol contra PostgreSQL (Supabase).
     Retorna JWT firmado que incluye rol, estado_validacion ('pendiente', 'aprobado', etc.) e id_entidad.
@@ -44,22 +45,28 @@ async def login(credentials: LoginRequest, db: AsyncSession = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return IAMService.create_token_for_user(user)
+    token = IAMService.create_token_for_user(user)
+    if user["rol"] == "asesor_ies":
+        await record_advisor_access(db, uuid.UUID(user["id"]), "contraseña", request, tasks)
+    return token
 
 
 @router.post("/google", response_model=TokenResponse)
-async def login_google(payload: GoogleAuthRequest, db: AsyncSession = Depends(get_db)):
+async def login_google(payload: GoogleAuthRequest, request: Request, tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     """
     Inicio de sesión con Google Identity Services (OAuth 2.0).
     Verifica el token de Google. Si el correo existe en la base de datos, emite el JWT de sesión.
     Si el correo no está registrado, responde con 404 y datos para redireccionar al registro.
     """
     try:
-        return await IAMService.authenticate_google(
+        token = await IAMService.authenticate_google(
             db,
             credential=payload.credential,
             access_token=payload.access_token
         )
+        if token.rol == "asesor_ies":
+            await record_advisor_access(db, uuid.UUID(token.user_id), "google", request, tasks)
+        return token
     except UserNotRegisteredError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -78,10 +85,59 @@ async def login_google(payload: GoogleAuthRequest, db: AsyncSession = Depends(ge
 @router.post("/registro-egresado")
 async def registro_egresado(payload: RegisterGraduateRequest, db: AsyncSession = Depends(get_db)):
     """
-    Registro y pre-registro de egresados universitarios con persistencia real.
+    Registro y pre-registro de egresados universitarios con persistencia real (JSON).
     """
     try:
         return await IAMService.register_graduate(db, payload)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post("/registro-egresado-form")
+async def registro_egresado_form(
+    tipo_documento: str = Form("CC"),
+    numero_documento: str = Form(...),
+    nombre_completo: str = Form(...),
+    correo: str = Form(...),
+    password: Optional[str] = Form("Egresado123*"),
+    telefono: Optional[str] = Form(None),
+    departamento: str = Form("Santander"),
+    ciudad: str = Form("Bucaramanga"),
+    id_institucion: Optional[str] = Form(None),
+    carrera: str = Form("Profesional Universitario"),
+    nivel_educativo: Optional[str] = Form("Profesional Universitario"),
+    ano_graduacion: Optional[str] = Form("2025"),
+    autoriza_datos: bool = Form(True),
+    diploma_pdf: Optional[UploadFile] = File(None),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Registro de egresado vía multipart/form-data con carga real del archivo de diploma PDF a Supabase Storage.
+    """
+    req = RegisterGraduateRequest(
+        tipo_documento=tipo_documento,
+        numero_documento=numero_documento,
+        nombre_completo=nombre_completo,
+        correo=correo,
+        password=password,
+        telefono=telefono,
+        departamento=departamento,
+        ciudad=ciudad,
+        id_institucion=id_institucion,
+        carrera=carrera,
+        nivel_educativo=nivel_educativo,
+        ano_graduacion=ano_graduacion,
+        autoriza_datos=autoriza_datos,
+    )
+
+    raw_diploma = None
+    if diploma_pdf and diploma_pdf.filename:
+        file_bytes = await diploma_pdf.read()
+        if len(file_bytes) > 0:
+            raw_diploma = (diploma_pdf.filename, file_bytes)
+
+    try:
+        return await IAMService.register_graduate(db, req, raw_diploma=raw_diploma)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 

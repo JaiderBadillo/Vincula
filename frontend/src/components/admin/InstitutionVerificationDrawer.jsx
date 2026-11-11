@@ -539,19 +539,8 @@ export default function InstitutionVerificationDrawer({
           documentUrl={securePdfUrl}
           title={previewDoc ? `${previewDoc.label} · ${institution.officialName}` : 'Soporte Institucional'}
           subtitle={`Auditoría Super Admin · SNIES ${institution.sniesCode}`}
-          documentType="diploma"
           metadata={{
-            studentName: institution.rectorName || institution.officialName,
-            documentId: `SNIES ${institution.sniesCode}`,
-            institution: institution.officialName,
-            sniesCode: institution.sniesCode,
-            program: institution.academicCharacter || 'Educación Superior',
-            degreeLevel: 'Institución de Educación Superior',
-            actaNumber: `RES-${institution.resolutionNumber || 'MEN-VINCULA'}`,
-            bookFolio: `Personería Jurídica ${institution.nit || 'Oficial'}`,
-            degreeDate: institution.createdAt || 'Noviembre 2026',
-            selloDigital: 'c891e4a1982bca98127398127389172398127389127398127398127389127398',
-            verified: institution.status === 'active',
+            noFileMessage: 'La institución aún no ha adjuntado este soporte documental a la plataforma.',
           }}
         />
       </div>

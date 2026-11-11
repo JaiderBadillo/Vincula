@@ -15,7 +15,6 @@ from google.auth.transport import requests as google_requests
 
 from app.core.config import settings
 from app.core.security import verify_password, get_password_hash, create_access_token
-from app.core.pdf_generator import generate_official_diploma_pdf
 from app.integrations.supabase_storage import SupabaseStorageService
 from app.integrations.n8n_webhooks import N8nWebhookDispatcher
 from app.integrations.email_service import EmailService
@@ -313,7 +312,11 @@ class IAMService:
         )
 
     @staticmethod
-    async def register_graduate(session: AsyncSession, data: RegisterGraduateRequest) -> Dict[str, Any]:
+    async def register_graduate(
+        session: AsyncSession,
+        data: RegisterGraduateRequest,
+        raw_diploma: Optional[tuple] = None
+    ) -> Dict[str, Any]:
         """
         Registro de egresado con inserción real en las tablas 'usuarios' y 'egresados'.
         """
@@ -441,29 +444,24 @@ class IAMService:
                 except (ValueError, TypeError):
                     ano_grad = 2025
 
-                # Generar y almacenar diploma oficial en Supabase Storage
-                url_diploma_generado = None
-                try:
-                    pdf_bytes = generate_official_diploma_pdf(
-                        student_name=data.nombre_completo,
-                        doc_type=data.tipo_documento or "CC",
-                        doc_number=data.numero_documento,
-                        institution_name=target_ies.nombre_oficial,
-                        snies_code=target_ies.codigo_snies or "103241",
-                        career=target_prog.nombre,
-                        degree_level=data.nivel_educativo or target_prog.nivel_formacion or "Profesional Universitario",
-                    )
-                    clean_slug = "".join(c for c in data.nombre_completo if c.isalnum() or c in (" ", "_", "-")).replace(" ", "_")
-                    dest_path = f"diplomas/{nuevo_egresado.id}/Diploma_Oficial_{clean_slug}.pdf"
-                    storage_res = await SupabaseStorageService.upload_document_pdf(
-                        bucket_name=settings.SUPABASE_STORAGE_BUCKET_DIPLOMAS,
-                        file_bytes=pdf_bytes,
-                        destination_path=dest_path
-                    )
-                    url_diploma_generado = storage_res.get("url")
-                except Exception as ex:
-                    print(f"[IAMService] Advertencia subiendo diploma inicial a Supabase Storage: {ex}")
-                    url_diploma_generado = f"{settings.SUPABASE_URL}/storage/v1/object/public/{settings.SUPABASE_STORAGE_BUCKET_DIPLOMAS}/diplomas/{nuevo_egresado.id}/Diploma_Oficial_Radicado.pdf"
+                # Almacenar el archivo real del diploma en Supabase Storage si fue adjuntado por el egresado
+                url_diploma_cargado = None
+                if raw_diploma and len(raw_diploma) == 2 and raw_diploma[1]:
+                    try:
+                        nombre_original, bytes_archivo = raw_diploma
+                        clean_slug = "".join(c for c in nombre_original if c.isalnum() or c in (".", "_", "-")).strip() or "diploma_oficial.pdf"
+                        if not clean_slug.lower().endswith(".pdf"):
+                            clean_slug += ".pdf"
+                        dest_path = f"diplomas/{nuevo_egresado.id}/{clean_slug}"
+                        storage_res = await SupabaseStorageService.upload_document_pdf(
+                            bucket_name=settings.SUPABASE_STORAGE_BUCKET_DIPLOMAS,
+                            file_bytes=bytes_archivo,
+                            destination_path=dest_path
+                        )
+                        url_diploma_cargado = storage_res.get("url")
+                    except Exception as ex:
+                        print(f"[IAMService] Advertencia subiendo diploma adjunto a Supabase Storage: {ex}")
+                        url_diploma_cargado = None
 
                 nuevo_academico = AcademicoEgresado(
                     id_egresado=nuevo_egresado.id,
@@ -477,7 +475,7 @@ class IAMService:
                     estado_laboral="buscando",
                     validado_por_ies=False,
                     estado_verificacion="pendiente",
-                    url_diploma_pdf=url_diploma_generado
+                    url_diploma_pdf=url_diploma_cargado
                 )
                 session.add(nuevo_academico)
 

@@ -268,10 +268,10 @@ export default function StudentValidationDrawer({
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 space-y-2">
                   <p className="m-0 font-bold flex items-center gap-1.5">
                     <i className="bx bx-info-circle text-base text-amber-700" />
-                    <span>{pdfError || 'Documento en simulación local'}</span>
+                    <span>{pdfError || 'Documento no adjunto por el egresado'}</span>
                   </p>
                   <p className="m-0 text-amber-800">
-                    El egresado radicó el archivo soporte <strong>{student.nombre_archivo_diploma || 'Diploma_Oficial.pdf'}</strong>. Puedes aprobar o solicitar corrección si requieres nuevo PDF.
+                    El egresado no ha cargado el archivo digital del diploma o acta de grado a la plataforma. Puedes usar el botón <strong>Pedir Corrección</strong> para solicitarle que adjunte su documento de certificación oficial.
                   </p>
                 </div>
               )}
@@ -515,20 +515,9 @@ export default function StudentValidationDrawer({
           onClose={() => setShowViewerModal(false)}
           documentUrl={securePdfUrl || student.url_diploma_pdf}
           title={`Diploma Oficial · ${student.studentName || student.nombre_completo || 'Egresado'}`}
-          subtitle={`${student.program || student.carrera || 'Programa Académico'} · Folio ${actaNumber || 'ACTA-OFICIAL'}`}
-          documentType="diploma"
+          subtitle={`${student.program || student.carrera || 'Programa Académico'} · ${student.institutionName || 'Institución Universitaria'}`}
           metadata={{
-            studentName: student.studentName || student.nombre_completo || 'Angie Camargo',
-            documentId: `${student.documentType || student.tipo_documento || 'CC'} ${student.documentId || student.numero_documento || ''}`,
-            institution: student.institutionName || 'Unidades Tecnológicas de Santander - UTS',
-            sniesCode: student.codigo_snies || '103241',
-            program: student.program || student.carrera || student.nombre_programa || 'Tecnología en Desarrollo de Sistemas Informáticos',
-            degreeLevel: student.degreeLevel || student.nivel_formacion || 'Tecnológica',
-            actaNumber: actaNumber || student.numero_acta_grado || 'ACTA-2025-0842',
-            bookFolio: bookFolio || student.numero_libro_folio || 'Libro 48, Folio 112',
-            degreeDate: degreeDate || student.fecha_grado || '15 de Diciembre de 2025',
-            selloDigital: student.sello_digital || student.selloDigital || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-            verified: isApproved || matchOk,
+            noFileMessage: 'El egresado aún no ha adjuntado el archivo digital del diploma o acta de grado a la plataforma.',
           }}
         />
       </div>
