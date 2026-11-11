@@ -41,6 +41,8 @@ class SupabaseStorageService:
                 res = await client.post(url, headers=headers, json={"expiresIn": expires_in})
                 if res.status_code == 200:
                     signed_path = res.json().get("signedURL", "")
+                    if signed_path and not signed_path.startswith("/storage/v1"):
+                        signed_path = f"/storage/v1{signed_path}"
                     return f"{settings.SUPABASE_URL}{signed_path}"
                 else:
                     return SupabaseStorageService.get_public_url(bucket_name, file_path)

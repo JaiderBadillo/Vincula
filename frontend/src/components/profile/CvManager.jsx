@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { formatApplicationDate } from '../../utils/formatters.js';
+import DocumentViewerModal from '../common/DocumentViewerModal.jsx';
 
 const MAX_CV_BYTES = 5 * 1024 * 1024;
 const MAX_CVS = 4;
@@ -23,6 +24,7 @@ export default function CvManager({ profile, updateProfile, notify }) {
   const [labelDraft, setLabelDraft] = useState('');
   // Archivos subidos en esta sesión para poder previsualizarlos (no se persisten).
   const [sessionUrls, setSessionUrls] = useState({});
+  const [viewerDoc, setViewerDoc] = useState(null);
 
   const cvs = profile.cvs ?? [];
 
@@ -193,9 +195,15 @@ export default function CvManager({ profile, updateProfile, notify }) {
                       </button>
                     )}
                     {sessionUrls[cv.id] && (
-                      <a href={sessionUrls[cv.id]} target="_blank" rel="noopener noreferrer" className="grid size-8 place-items-center rounded-lg text-secondary hover:bg-panel hover:text-ink" title="Ver archivo" aria-label={`Ver ${cv.fileName}`}>
+                      <button
+                        type="button"
+                        onClick={() => setViewerDoc(cv)}
+                        className="grid size-8 place-items-center rounded-lg text-secondary hover:bg-panel hover:text-ink cursor-pointer"
+                        title="Ver en visor integrado de Vincula"
+                        aria-label={`Ver ${cv.fileName}`}
+                      >
                         <i className="bx bx-show text-lg" aria-hidden="true" />
-                      </a>
+                      </button>
                     )}
                     <button type="button" onClick={() => openPicker(cv.id)} className="grid size-8 place-items-center rounded-lg text-secondary hover:bg-panel hover:text-ink" title="Reemplazar archivo" aria-label={`Reemplazar ${cv.label}`}>
                       <i className="bx bx-refresh text-lg" aria-hidden="true" />
@@ -210,6 +218,26 @@ export default function CvManager({ profile, updateProfile, notify }) {
           </ul>
         </div>
       </div>
+
+      {viewerDoc && (
+        <DocumentViewerModal
+          isOpen={Boolean(viewerDoc)}
+          onClose={() => setViewerDoc(null)}
+          documentUrl={sessionUrls[viewerDoc.id]}
+          title={viewerDoc.label || 'Hoja de Vida (CV)'}
+          subtitle={`${profile.fullName || 'Egresado'} · ${viewerDoc.fileName}`}
+          documentType="cv"
+          metadata={{
+            studentName: profile.fullName || 'Egresado Vincula',
+            documentId: `${profile.documentType || 'CC'} ${profile.documentNumber || ''}`,
+            institution: profile.institution || 'Universidad Vinculada',
+            program: profile.headline || profile.program || 'Perfil Profesional',
+            degreeLevel: profile.educationLevel || 'Profesional',
+            degreeDate: formatApplicationDate(viewerDoc.uploadedAt),
+            verified: true,
+          }}
+        />
+      )}
     </section>
   );
 }

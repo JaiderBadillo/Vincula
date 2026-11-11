@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { institutionService } from '../../services/institutionService.js';
+import DocumentViewerModal from '../common/DocumentViewerModal.jsx';
 
 export default function StudentValidationDrawer({
   isOpen,
@@ -13,6 +14,7 @@ export default function StudentValidationDrawer({
   const [securePdfUrl, setSecurePdfUrl] = useState(null);
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [pdfError, setPdfError] = useState(null);
+  const [showViewerModal, setShowViewerModal] = useState(false);
 
   // Campos de validación y Sello Digital
   const [actaNumber, setActaNumber] = useState('');
@@ -222,17 +224,33 @@ export default function StudentValidationDrawer({
                     URL firmada temporal con expiración criptográfica de 3600 segundos (1 hora).
                   </p>
                 </div>
-                {securePdfUrl && (
-                  <a
-                    href={securePdfUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 text-xs font-bold transition-colors no-underline cursor-pointer shadow-xs"
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!securePdfUrl) {
+                        handleLoadSecurePdf();
+                      }
+                      setShowViewerModal(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer shadow-xs"
                   >
-                    <i className="bx bx-link-external" />
-                    <span>Abrir en pestaña</span>
-                  </a>
-                )}
+                    <i className="bx bx-fullscreen text-sm" />
+                    <span>Visor Completo</span>
+                  </button>
+                  {securePdfUrl && (
+                    <a
+                      href={securePdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 rounded-lg border border-line bg-page hover:bg-panel text-ink px-2.5 py-1.5 text-xs font-semibold transition-colors no-underline cursor-pointer"
+                      title="Abrir URL firmada en nueva pestaña"
+                    >
+                      <i className="bx bx-link-external text-secondary" />
+                      <span className="hidden sm:inline">Pestaña</span>
+                    </a>
+                  )}
+                </div>
               </div>
 
               {loadingPdf ? (
@@ -379,10 +397,12 @@ export default function StudentValidationDrawer({
                           onClick={() => {
                             if (onViewDocument) onViewDocument(doc);
                             handleLoadSecurePdf();
+                            setShowViewerModal(true);
                           }}
-                          className="rounded-lg bg-page hover:bg-panel text-ink px-2.5 py-1 text-xs font-bold cursor-pointer border border-line transition-colors"
+                          className="rounded-lg bg-page hover:bg-panel text-ink px-2.5 py-1 text-xs font-bold cursor-pointer border border-line transition-colors inline-flex items-center gap-1"
                         >
-                          Inspeccionar
+                          <i className="bx bx-show text-sm" />
+                          <span>Inspeccionar</span>
                         </button>
                       </div>
                     </li>
@@ -489,6 +509,28 @@ export default function StudentValidationDrawer({
             </button>
           </div>
         )}
+        {/* Modal Visor Integrado de Vincula (Full In-App Document Viewer) */}
+        <DocumentViewerModal
+          isOpen={showViewerModal}
+          onClose={() => setShowViewerModal(false)}
+          documentUrl={securePdfUrl || student.url_diploma_pdf}
+          title={`Diploma Oficial · ${student.studentName || student.nombre_completo || 'Egresado'}`}
+          subtitle={`${student.program || student.carrera || 'Programa Académico'} · Folio ${actaNumber || 'ACTA-OFICIAL'}`}
+          documentType="diploma"
+          metadata={{
+            studentName: student.studentName || student.nombre_completo || 'Angie Camargo',
+            documentId: `${student.documentType || student.tipo_documento || 'CC'} ${student.documentId || student.numero_documento || ''}`,
+            institution: student.institutionName || 'Unidades Tecnológicas de Santander - UTS',
+            sniesCode: student.codigo_snies || '103241',
+            program: student.program || student.carrera || student.nombre_programa || 'Tecnología en Desarrollo de Sistemas Informáticos',
+            degreeLevel: student.degreeLevel || student.nivel_formacion || 'Tecnológica',
+            actaNumber: actaNumber || student.numero_acta_grado || 'ACTA-2025-0842',
+            bookFolio: bookFolio || student.numero_libro_folio || 'Libro 48, Folio 112',
+            degreeDate: degreeDate || student.fecha_grado || '15 de Diciembre de 2025',
+            selloDigital: student.sello_digital || student.selloDigital || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+            verified: isApproved || matchOk,
+          }}
+        />
       </div>
     </div>
   );

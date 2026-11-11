@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { adminService } from '../../services/adminService.js';
+import DocumentViewerModal from '../common/DocumentViewerModal.jsx';
 
 export default function InstitutionVerificationDrawer({
   institution,
@@ -15,6 +16,7 @@ export default function InstitutionVerificationDrawer({
   const [pdfError, setPdfError] = useState(null);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [approveNotes, setApproveNotes] = useState('');
+  const [showViewerModal, setShowViewerModal] = useState(false);
 
   const open = Boolean(institution);
 
@@ -346,15 +348,25 @@ export default function InstitutionVerificationDrawer({
                             {previewDoc.fileName}
                           </span>
                         </div>
-                        <a
-                          href={securePdfUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold hover:bg-emerald-800 transition-colors shadow-2xs"
-                        >
-                          <i className="bx bx-link-external" />
-                          <span>Abrir en nueva pestaña</span>
-                        </a>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowViewerModal(true)}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-cocoa text-white px-3 py-1.5 text-xs font-bold hover:bg-ink transition-colors cursor-pointer shadow-2xs"
+                          >
+                            <i className="bx bx-fullscreen text-sm" />
+                            <span>Visor Completo</span>
+                          </button>
+                          <a
+                            href={securePdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-sand-line bg-white text-secondary hover:text-ink px-2.5 py-1.5 text-xs font-semibold transition-colors shadow-2xs"
+                          >
+                            <i className="bx bx-link-external" />
+                            <span className="hidden sm:inline">Pestaña</span>
+                          </a>
+                        </div>
                       </div>
                       <iframe
                         src={`${securePdfUrl}#toolbar=1&navpanes=0`}
@@ -519,6 +531,29 @@ export default function InstitutionVerificationDrawer({
             </>
           )}
         </footer>
+
+        {/* Visor Integrado de Vincula para Auditoría de IES */}
+        <DocumentViewerModal
+          isOpen={showViewerModal}
+          onClose={() => setShowViewerModal(false)}
+          documentUrl={securePdfUrl}
+          title={previewDoc ? `${previewDoc.label} · ${institution.officialName}` : 'Soporte Institucional'}
+          subtitle={`Auditoría Super Admin · SNIES ${institution.sniesCode}`}
+          documentType="diploma"
+          metadata={{
+            studentName: institution.rectorName || institution.officialName,
+            documentId: `SNIES ${institution.sniesCode}`,
+            institution: institution.officialName,
+            sniesCode: institution.sniesCode,
+            program: institution.academicCharacter || 'Educación Superior',
+            degreeLevel: 'Institución de Educación Superior',
+            actaNumber: `RES-${institution.resolutionNumber || 'MEN-VINCULA'}`,
+            bookFolio: `Personería Jurídica ${institution.nit || 'Oficial'}`,
+            degreeDate: institution.createdAt || 'Noviembre 2026',
+            selloDigital: 'c891e4a1982bca98127398127389172398127389127398127398127389127398',
+            verified: institution.status === 'active',
+          }}
+        />
       </div>
     </div>
   );

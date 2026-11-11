@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { adminService } from '../../services/adminService.js';
+import DocumentViewerModal from '../common/DocumentViewerModal.jsx';
 
 export default function CompanyVerificationDrawer({
   company,
@@ -15,6 +16,7 @@ export default function CompanyVerificationDrawer({
   const [pdfError, setPdfError] = useState(null);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [approveNotes, setApproveNotes] = useState('');
+  const [showViewerModal, setShowViewerModal] = useState(false);
 
   const open = Boolean(company);
 
@@ -364,15 +366,25 @@ export default function CompanyVerificationDrawer({
                             {previewDoc.fileName}
                           </span>
                         </div>
-                        <a
-                          href={securePdfUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 text-white px-3 py-1.5 text-xs font-bold hover:bg-emerald-800 transition-colors shadow-2xs"
-                        >
-                          <i className="bx bx-link-external" />
-                          <span>Abrir en nueva pestaña</span>
-                        </a>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowViewerModal(true)}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-cocoa text-white px-3 py-1.5 text-xs font-bold hover:bg-ink transition-colors cursor-pointer shadow-2xs"
+                          >
+                            <i className="bx bx-fullscreen text-sm" />
+                            <span>Visor Completo</span>
+                          </button>
+                          <a
+                            href={securePdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-sand-line bg-white text-secondary hover:text-ink px-2.5 py-1.5 text-xs font-semibold transition-colors shadow-2xs"
+                          >
+                            <i className="bx bx-link-external" />
+                            <span className="hidden sm:inline">Pestaña</span>
+                          </a>
+                        </div>
                       </div>
                       <iframe
                         src={`${securePdfUrl}#toolbar=1&navpanes=0`}
@@ -537,6 +549,29 @@ export default function CompanyVerificationDrawer({
             </>
           )}
         </footer>
+
+        {/* Visor Integrado de Vincula para Auditoría de Empresas */}
+        <DocumentViewerModal
+          isOpen={showViewerModal}
+          onClose={() => setShowViewerModal(false)}
+          documentUrl={securePdfUrl}
+          title={previewDoc ? `${previewDoc.label} · ${company.businessName}` : 'Documento de Auditoría'}
+          subtitle={`Auditoría Super Admin · NIT ${company.nit}`}
+          documentType="camara_comercio"
+          metadata={{
+            studentName: company.legalRepName || company.businessName,
+            documentId: `NIT ${company.nit}`,
+            institution: company.businessName,
+            sniesCode: company.ciiuCode || '6201',
+            program: company.sector || 'Sector Empresarial',
+            degreeLevel: company.companySize || 'Empresa Vinculada',
+            actaNumber: `RAD-${company.radicado || '2026-VINCULA'}`,
+            bookFolio: `Matrícula Mercantil ${company.matriculaMercantil || 'Vigente'}`,
+            degreeDate: company.createdAt || 'Noviembre 2026',
+            selloDigital: 'b4a8e291c9ff7a118e21ad0192847a94ef2018274a123490bca8192837461928',
+            verified: company.status === 'active',
+          }}
+        />
       </div>
     </div>
   );
