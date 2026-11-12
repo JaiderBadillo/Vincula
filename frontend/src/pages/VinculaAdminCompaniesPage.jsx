@@ -62,10 +62,14 @@ export default function VinculaAdminCompaniesPage() {
     { label: 'Total Registradas', value: String(metrics.totalCompaniesCount) },
   ];
 
-  function handleApprove(id, notes) {
-    approveCompany(id, notes);
-    setSelectedCompany(null);
-    showToast('Empresa verificada y aprobada con éxito.');
+  async function handleApprove(id, notes) {
+    try {
+      await approveCompany(id, notes);
+      setSelectedCompany(null);
+      showToast('Aprobación guardada correctamente.');
+    } catch (err) {
+      showToast(`No se pudo aprobar: ${err.message}`);
+    }
   }
 
   function handleOpenCorrection(target, mode = 'correction') {
@@ -73,15 +77,18 @@ export default function VinculaAdminCompaniesPage() {
     setCorrectionMode(mode);
   }
 
-  function handleCorrectionSubmit(id, reason, docs) {
-    if (correctionMode === 'correction') {
-      requestCompanyCorrection(id, reason, docs);
-      showToast('Requerimiento de subsanación enviado a la empresa.');
-    } else {
-      rejectCompany(id, reason);
-      showToast('Solicitud rechazada formalmente.');
+  async function handleCorrectionSubmit(id, reason, docs) {
+    try {
+      if (correctionMode === 'correction') {
+        await requestCompanyCorrection(id, reason, docs);
+      } else {
+        await rejectCompany(id, reason);
+      }
+      setSelectedCompany(null);
+      showToast('Decisión guardada correctamente.');
+    } catch (err) {
+      showToast(`No se pudo guardar la decisión: ${err.message}`);
     }
-    setSelectedCompany(null);
   }
 
   return (

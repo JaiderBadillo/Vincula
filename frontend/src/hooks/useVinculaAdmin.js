@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  INITIAL_COMPANIES_REQUESTS,
-  INITIAL_INSTITUTIONS_REQUESTS,
-  INITIAL_PLATFORM_METRICS,
-} from '../data/vinculaAdminData.js';
+import { INITIAL_PLATFORM_METRICS } from '../data/vinculaAdminData.js';
 import { adminService } from '../services/adminService.js';
 
 const STORAGE_KEY_COMPANIES = 'vincula.admin.companies.v2';
@@ -98,8 +94,8 @@ function mapBackendCompanyToUi(item) {
           : d.tipo_documento === 'camara_comercio'
           ? 'Cámara de Comercio'
           : 'Entidad Oficial',
-      fileName: d.nombre_archivo || `${d.tipo_documento}.pdf`,
-      fileSize: `${d.tamano_kb || 50} KB`,
+      fileName: d.nombre_archivo || 'Sin nombre de archivo',
+      fileSize: d.tamano_kb ? `${d.tamano_kb} KB` : 'Tamaño no disponible',
       urlArchivo: d.url_archivo,
       status: d.estado || 'adjunto',
       uploadedAt: d.subido_en,
@@ -162,8 +158,8 @@ function mapBackendInstitutionToUi(item) {
           ? 'Acto de Nombramiento / Cédula Rector'
           : d.tipo_documento,
       issuer: 'Ministerio de Educación Nacional',
-      fileName: d.nombre_archivo || `${d.tipo_documento}.pdf`,
-      fileSize: `${d.tamano_kb || 50} KB`,
+      fileName: d.nombre_archivo || 'Sin nombre de archivo',
+      fileSize: d.tamano_kb ? `${d.tamano_kb} KB` : 'Tamaño no disponible',
       urlArchivo: d.url_archivo,
       status: d.estado || 'adjunto',
       uploadedAt: d.subido_en,
@@ -182,10 +178,10 @@ function mapBackendInstitutionToUi(item) {
 
 export function useVinculaAdmin() {
   const [companies, setCompanies] = useState(() =>
-    readStoredData(STORAGE_KEY_COMPANIES, INITIAL_COMPANIES_REQUESTS)
+    []
   );
   const [institutions, setInstitutions] = useState(() =>
-    readStoredData(STORAGE_KEY_INSTITUTIONS, INITIAL_INSTITUTIONS_REQUESTS)
+    []
   );
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
@@ -200,7 +196,7 @@ export function useVinculaAdmin() {
       // 1. Obtener empresas desde /api/v1/admin/auditoria/empresas
       const compRes = await adminService.getCompaniesAudit({ limit: 50 });
       const rawCompList = compRes.items || compRes;
-      if (Array.isArray(rawCompList) && rawCompList.length > 0) {
+      if (Array.isArray(rawCompList)) {
         const mappedComp = rawCompList.map(mapBackendCompanyToUi);
         setCompanies(mappedComp);
         writeStoredData(STORAGE_KEY_COMPANIES, mappedComp);
@@ -209,12 +205,16 @@ export function useVinculaAdmin() {
       // 2. Obtener IES desde /api/v1/admin/auditoria/ies
       const iesRes = await adminService.getInstitutionsAudit({ limit: 50 });
       const rawIesList = iesRes.items || iesRes;
-      if (Array.isArray(rawIesList) && rawIesList.length > 0) {
+      if (Array.isArray(rawIesList)) {
         const mappedIes = rawIesList.map(mapBackendInstitutionToUi);
         setInstitutions(mappedIes);
         writeStoredData(STORAGE_KEY_INSTITUTIONS, mappedIes);
       }
     } catch (err) {
+      setCompanies([]);
+      setInstitutions([]);
+      writeStoredData(STORAGE_KEY_COMPANIES, []);
+      writeStoredData(STORAGE_KEY_INSTITUTIONS, []);
       // Si no hay sesión de admin o falla la red, conserva el fallback
       setApiError(err.message);
     } finally {
@@ -228,8 +228,8 @@ export function useVinculaAdmin() {
 
   useEffect(() => {
     function handleSync() {
-      setCompanies(readStoredData(STORAGE_KEY_COMPANIES, INITIAL_COMPANIES_REQUESTS));
-      setInstitutions(readStoredData(STORAGE_KEY_INSTITUTIONS, INITIAL_INSTITUTIONS_REQUESTS));
+      setCompanies(readStoredData(STORAGE_KEY_COMPANIES, []));
+      setInstitutions(readStoredData(STORAGE_KEY_INSTITUTIONS, []));
     }
     window.addEventListener(SYNC_EVENT, handleSync);
     return () => window.removeEventListener(SYNC_EVENT, handleSync);
@@ -245,11 +245,7 @@ export function useVinculaAdmin() {
 
   const approveCompany = useCallback(
     async (companyId, adminNotes = '') => {
-      try {
-        await adminService.approveCompany(companyId, adminNotes);
-      } catch (err) {
-        console.warn('[useVinculaAdmin] Llamada remota a /aprobar falló o simulada:', err.message);
-      }
+      await adminService.approveCompany(companyId, adminNotes);
 
       setCompanies((prev) => {
         const next = prev.map((item) => {
@@ -282,11 +278,7 @@ export function useVinculaAdmin() {
 
   const requestCompanyCorrection = useCallback(
     async (companyId, reason = '', requiredDocs = []) => {
-      try {
-        await adminService.requestCompanyCorrection(companyId, reason, requiredDocs);
-      } catch (err) {
-        console.warn('[useVinculaAdmin] Llamada remota a /solicitar-subsanacion falló o simulada:', err.message);
-      }
+      await adminService.requestCompanyCorrection(companyId, reason, requiredDocs);
 
       setCompanies((prev) => {
         const next = prev.map((item) => {
@@ -319,11 +311,7 @@ export function useVinculaAdmin() {
 
   const rejectCompany = useCallback(
     async (companyId, rejectionReason = '') => {
-      try {
-        await adminService.rejectCompany(companyId, rejectionReason);
-      } catch (err) {
-        console.warn('[useVinculaAdmin] Llamada remota a /rechazar falló o simulada:', err.message);
-      }
+      await adminService.rejectCompany(companyId, rejectionReason);
 
       setCompanies((prev) => {
         const next = prev.map((item) => {
@@ -357,11 +345,7 @@ export function useVinculaAdmin() {
 
   const approveInstitution = useCallback(
     async (iesId, adminNotes = '') => {
-      try {
-        await adminService.approveInstitution(iesId, adminNotes);
-      } catch (err) {
-        console.warn('[useVinculaAdmin] Llamada remota a /aprobar IES falló o simulada:', err.message);
-      }
+      await adminService.approveInstitution(iesId, adminNotes);
 
       setInstitutions((prev) => {
         const next = prev.map((item) => {
@@ -394,11 +378,7 @@ export function useVinculaAdmin() {
 
   const requestInstitutionCorrection = useCallback(
     async (iesId, reason = '', requiredDocs = []) => {
-      try {
-        await adminService.requestInstitutionCorrection(iesId, reason, requiredDocs);
-      } catch (err) {
-        console.warn('[useVinculaAdmin] Llamada remota a /solicitar-subsanacion IES falló o simulada:', err.message);
-      }
+      await adminService.requestInstitutionCorrection(iesId, reason, requiredDocs);
 
       setInstitutions((prev) => {
         const next = prev.map((item) => {
@@ -431,11 +411,7 @@ export function useVinculaAdmin() {
 
   const rejectInstitution = useCallback(
     async (iesId, rejectionReason = '') => {
-      try {
-        await adminService.rejectInstitution(iesId, rejectionReason);
-      } catch (err) {
-        console.warn('[useVinculaAdmin] Llamada remota a /rechazar IES falló o simulada:', err.message);
-      }
+      await adminService.rejectInstitution(iesId, rejectionReason);
 
       setInstitutions((prev) => {
         const next = prev.map((item) => {
@@ -466,10 +442,10 @@ export function useVinculaAdmin() {
   );
 
   const resetAll = useCallback(() => {
-    writeStoredData(STORAGE_KEY_COMPANIES, INITIAL_COMPANIES_REQUESTS);
-    writeStoredData(STORAGE_KEY_INSTITUTIONS, INITIAL_INSTITUTIONS_REQUESTS);
-    setCompanies(INITIAL_COMPANIES_REQUESTS);
-    setInstitutions(INITIAL_INSTITUTIONS_REQUESTS);
+    writeStoredData(STORAGE_KEY_COMPANIES, []);
+    writeStoredData(STORAGE_KEY_INSTITUTIONS, []);
+    setCompanies([]);
+    setInstitutions([]);
     dispatchUpdate();
   }, [dispatchUpdate]);
 

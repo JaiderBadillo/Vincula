@@ -17,7 +17,7 @@ from app.core.config import settings
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.integrations.supabase_storage import SupabaseStorageService
 from app.integrations.n8n_webhooks import N8nWebhookDispatcher
-from app.integrations.email_service import EmailService
+from app.integrations.transactional_notifications import send_vincula_email
 from app.modules.iam.models import Usuario
 from app.modules.companies.models import Empresa, ReclutadorEmpresa, DocumentoEmpresa
 from app.modules.institutions.models import (
@@ -460,8 +460,7 @@ class IAMService:
                         )
                         url_diploma_cargado = storage_res.get("url")
                     except Exception as ex:
-                        print(f"[IAMService] Advertencia subiendo diploma adjunto a Supabase Storage: {ex}")
-                        url_diploma_cargado = None
+                        raise ValueError("No se pudo guardar el diploma original. Intenta el registro nuevamente.") from ex
 
                 nuevo_academico = AcademicoEgresado(
                     id_egresado=nuevo_egresado.id,
@@ -497,17 +496,8 @@ class IAMService:
             }
         )
 
-        # 4. Enviar correo de bienvenida directo por Gmail SMTP (gratuito e instantáneo)
-        try:
-            city_str = f"{data.ciudad}, {data.departamento}" if (data.ciudad and data.departamento) else data.ciudad
-            await EmailService.send_graduate_welcome_email(
-                to_email=data.correo.lower(),
-                name=data.nombre_completo,
-                career=data.carrera,
-                city=city_str,
-            )
-        except Exception as mail_err:
-            print(f"[AVISO CORREO EGRESADO] No se pudo enviar el correo de bienvenida: {mail_err}")
+        await send_vincula_email("registro_egresado", data.correo.lower(),
+                                 nombre=data.nombre_completo, carrera=data.carrera)
 
         return {
             "success": True,
@@ -616,7 +606,7 @@ class IAMService:
                         "tamano_kb": max(len(file_bytes) // 1024, 1)
                     })
                 except Exception as err:
-                    print(f"[ERROR STORAGE EMPRESA BASE64] {doc.tipo_documento}: {err}")
+                    raise ValueError(f"No se pudo guardar el documento original de empresa: {doc.tipo_documento}.") from err
 
         # B) Documentos enviados vía raw bytes (multipart form-data)
         if raw_files:
@@ -648,7 +638,7 @@ class IAMService:
                             "tamano_kb": max(len(file_bytes) // 1024, 1)
                         })
                     except Exception as err:
-                        print(f"[ERROR STORAGE EMPRESA RAW] {tipo_doc}: {err}")
+                        raise ValueError(f"No se pudo guardar el documento original de empresa: {tipo_doc}.") from err
 
         await session.commit()
 
@@ -671,16 +661,8 @@ class IAMService:
             }
         )
 
-        # Enviar correo de radicación empresarial directo por Gmail SMTP (gratuito e instantáneo)
-        try:
-            await EmailService.send_company_welcome_email(
-                to_email=data.correo_contacto.lower(),
-                company_name=data.razon_social or data.nombre_comercial,
-                radicado=radicado,
-                nit=data.nit,
-            )
-        except Exception as mail_err:
-            print(f"[AVISO CORREO EMPRESA] No se pudo enviar el correo de radicación: {mail_err}")
+        await send_vincula_email("registro_empresa", data.correo_contacto.lower(),
+                                 empresa=data.razon_social or data.nombre_comercial, radicado=radicado)
 
         return {
             "success": True,
@@ -793,7 +775,7 @@ class IAMService:
                         "tamano_kb": max(len(file_bytes) // 1024, 1)
                     })
                 except Exception as err:
-                    print(f"[ERROR STORAGE IES BASE64] {doc.tipo_documento}: {err}")
+                    raise ValueError(f"No se pudo guardar el documento original de IES: {doc.tipo_documento}.") from err
 
         if raw_files:
             for tipo_doc, (filename, file_bytes) in raw_files.items():
@@ -824,7 +806,7 @@ class IAMService:
                             "tamano_kb": max(len(file_bytes) // 1024, 1)
                         })
                     except Exception as err:
-                        print(f"[ERROR STORAGE IES RAW] {tipo_doc}: {err}")
+                        raise ValueError(f"No se pudo guardar el documento original de IES: {tipo_doc}.") from err
 
         await session.commit()
 
@@ -846,16 +828,8 @@ class IAMService:
             }
         )
 
-        # Enviar correo de radicación institucional vía Gmail SMTP (gratuito e instantáneo)
-        try:
-            await EmailService.send_institution_welcome_email(
-                to_email=data.correo_institucional.lower(),
-                institution_name=data.nombre_institucion,
-                radicado=radicado,
-                snies_code=data.codigo_snies,
-            )
-        except Exception as mail_err:
-            print(f"[AVISO CORREO IES] No se pudo enviar el correo institucional: {mail_err}")
+        await send_vincula_email("registro_ies", data.correo_institucional.lower(),
+                                 institucion=data.nombre_institucion, radicado=radicado)
 
         return {
             "success": True,

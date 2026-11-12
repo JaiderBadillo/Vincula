@@ -22,6 +22,7 @@ from app.modules.institutions.models import ProgramaAcademico
 from app.modules.graduates.models import Egresado, AcademicoEgresado
 from app.integrations.email_service import EmailService
 from app.integrations.n8n_webhooks import N8nWebhookDispatcher
+from app.integrations.transactional_notifications import send_vincula_email
 from app.modules.vacancies_ats.models import (
     Vacante,
     TaxonomiaCompetencia,
@@ -1160,19 +1161,9 @@ class VacancyATSService:
                     "retroalimentacion": retro_txt,
                 }
             )
-            try:
-                await EmailService.send_application_phase_changed_email(
-                    to_email=payload.correo_candidato,
-                    graduate_name=cand_nombre,
-                    vacancy_title=vac_titulo,
-                    company_name=emp_nombre,
-                    new_stage=db_fase,
-                    previous_stage=payload.fase_anterior,
-                    vacancy_code=vac_codigo,
-                    recruiter_feedback=payload.motivo_descarte if db_fase == "descartados" else retro_txt,
-                )
-            except Exception as mail_err:
-                print(f"[AVISO CORREO CAMBIO FASE LOCAL] {mail_err}")
+            await send_vincula_email("fase_postulacion", payload.correo_candidato,
+                                     nombre=cand_nombre, vacante=vac_titulo,
+                                     empresa=emp_nombre, fase_nueva=db_fase)
 
             return KanbanCandidateCardResponse(
                 id=str(id_postulacion),
@@ -1209,6 +1200,9 @@ class VacancyATSService:
                 )
 
         fase_anterior = postulacion.fase_actual
+
+        if fase_anterior == db_fase:
+            return cls._build_candidate_card(postulacion)
 
         # Si se mueve a descartados, registrar motivo y timestamp
         if db_fase == "descartados":
@@ -1262,20 +1256,9 @@ class VacancyATSService:
             }
         )
         dest_email = (egr.correo_personal if egr else None) or payload.correo_candidato
-        if dest_email:
-            try:
-                await EmailService.send_application_phase_changed_email(
-                    to_email=dest_email,
-                    graduate_name=(egr.nombre_completo if egr else None) or payload.nombre_candidato or "Egresado Vincula",
-                    vacancy_title=vac_titulo,
-                    company_name=emp_nombre,
-                    new_stage=db_fase,
-                    previous_stage=fase_anterior,
-                    vacancy_code=vac_codigo,
-                    recruiter_feedback=postulacion.motivo_descarte if db_fase == "descartados" else retro_txt,
-                )
-            except Exception as mail_err:
-                print(f"[AVISO CORREO CAMBIO FASE] {mail_err}")
+        await send_vincula_email("fase_postulacion", dest_email,
+                                 nombre=(egr.nombre_completo if egr else None) or payload.nombre_candidato,
+                                 vacante=vac_titulo, empresa=emp_nombre, fase_nueva=db_fase)
 
         return cls._build_candidate_card(postulacion)
 
@@ -1377,18 +1360,9 @@ class VacancyATSService:
             cand_nombre = payload.nombre_candidato or "Candidato Vincula"
             vac_titulo = payload.vacante_titulo or "Convocatoria Laboral"
             emp_nombre = payload.empresa_nombre or "Empresa Aliada"
-            try:
-                await EmailService.send_application_phase_changed_email(
-                    to_email=payload.correo_candidato,
-                    graduate_name=cand_nombre,
-                    vacancy_title=vac_titulo,
-                    company_name=emp_nombre,
-                    new_stage="entrevista",
-                    recruiter_feedback=payload.objetivo,
-                    interview_details=interview_summary,
-                )
-            except Exception as mail_err:
-                print(f"[AVISO CORREO ENTREVISTA LOCAL] {mail_err}")
+            await send_vincula_email("fase_postulacion", payload.correo_candidato,
+                                     nombre=cand_nombre, vacante=vac_titulo,
+                                     empresa=emp_nombre, fase_nueva="entrevista")
 
             return EntrevistaResponse(
                 id=str(uuid.uuid4()),
@@ -1460,21 +1434,10 @@ class VacancyATSService:
         vac_titulo = vac.titulo if vac else (payload.vacante_titulo or "Convocatoria Laboral")
         dest_email = (egr.correo_personal if egr else None) or payload.correo_candidato
 
-        if dest_email:
-            try:
-                await EmailService.send_application_phase_changed_email(
-                    to_email=dest_email,
-                    graduate_name=(egr.nombre_completo if egr else None) or payload.nombre_candidato or "Egresado Vincula",
-                    vacancy_title=vac_titulo,
-                    company_name=emp_nombre,
-                    new_stage="entrevista",
-                    previous_stage=fase_ant,
-                    vacancy_code=vac.codigo_vacante if vac else None,
-                    recruiter_feedback=payload.objetivo,
-                    interview_details=interview_summary,
-                )
-            except Exception as mail_err:
-                print(f"[AVISO CORREO ENTREVISTA] {mail_err}")
+        if fase_ant != postulacion.fase_actual:
+            await send_vincula_email("fase_postulacion", dest_email,
+                                     nombre=(egr.nombre_completo if egr else None) or payload.nombre_candidato,
+                                     vacante=vac_titulo, empresa=emp_nombre, fase_nueva="entrevista")
 
         return EntrevistaResponse(
             id=str(entrevista.id),

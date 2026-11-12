@@ -28,8 +28,8 @@ from app.modules.superadmin.schemas import (
     PaginatedInstitutionAuditResponse,
 )
 from app.integrations.supabase_storage import SupabaseStorageService
-from app.integrations.email_service import EmailService
 from app.integrations.n8n_webhooks import N8nWebhookDispatcher
+from app.integrations.transactional_notifications import send_vincula_email
 
 
 class SuperAdminService:
@@ -273,7 +273,9 @@ class SuperAdminService:
             bucket = settings.SUPABASE_STORAGE_BUCKET_DOCS
             # Extraer path relativo del bucket
             raw_url = doc_emp.url_archivo
-            path = raw_url.split(f"/{bucket}/")[-1] if f"/{bucket}/" in raw_url else f"empresas/{doc_emp.id_empresa}/{doc_emp.tipo_documento}_{doc_emp.nombre_archivo}"
+            if not raw_url or f"/{bucket}/" not in raw_url or raw_url.startswith(("/storage/", "/mock/")):
+                raise ValueError("El documento no tiene un archivo original disponible en Storage.")
+            path = raw_url.split(f"/{bucket}/", 1)[1].split("?", 1)[0]
             
             signed_url = await SupabaseStorageService.create_signed_url(bucket, path, expires_in=expires_in)
             return SecureUrlResponse(
@@ -290,7 +292,9 @@ class SuperAdminService:
         if doc_ies:
             bucket = settings.SUPABASE_STORAGE_BUCKET_DOCS
             raw_url = doc_ies.url_archivo
-            path = raw_url.split(f"/{bucket}/")[-1] if f"/{bucket}/" in raw_url else f"instituciones/{doc_ies.id_institucion}/{doc_ies.tipo_documento}_{doc_ies.nombre_archivo}"
+            if not raw_url or f"/{bucket}/" not in raw_url or raw_url.startswith(("/storage/", "/mock/")):
+                raise ValueError("El documento no tiene un archivo original disponible en Storage.")
+            path = raw_url.split(f"/{bucket}/", 1)[1].split("?", 1)[0]
             
             signed_url = await SupabaseStorageService.create_signed_url(bucket, path, expires_in=expires_in)
             return SecureUrlResponse(
@@ -319,6 +323,10 @@ class SuperAdminService:
         emp = (await session.execute(select(Empresa).where(Empresa.id == comp_uuid))).scalar_one_or_none()
         if not emp:
             raise ValueError(f"Empresa con ID {company_id} no encontrada.")
+
+        docs = (await session.execute(select(DocumentoEmpresa).where(DocumentoEmpresa.id_empresa == comp_uuid))).scalars().all()
+        if not docs or any(not d.url_archivo or d.url_archivo.startswith(("/mock/", "/storage/")) for d in docs):
+            raise ValueError("No se puede aprobar la empresa sin documentos originales disponibles.")
 
         now = datetime.now(timezone.utc)
         emp.estado = "aprobado"
@@ -356,16 +364,8 @@ class SuperAdminService:
                 "notas": notas_txt,
             }
         )
-        if emp.correo_contacto:
-            try:
-                await EmailService.send_company_approved_email(
-                    to_email=emp.correo_contacto,
-                    company_name=emp.razon_social or emp.nombre_comercial,
-                    nit=emp.nit,
-                    notes=notas_txt,
-                )
-            except Exception as mail_err:
-                print(f"[AVISO CORREO APROBACION EMPRESA] {mail_err}")
+        await send_vincula_email("empresa_aprobada", emp.correo_contacto,
+                                 empresa=emp.razon_social or emp.nombre_comercial)
 
         return {
             "success": True,
@@ -492,6 +492,10 @@ class SuperAdminService:
         if not ies:
             raise ValueError(f"Institución con ID {ies_id} no encontrada.")
 
+        docs = (await session.execute(select(DocumentoInstitucion).where(DocumentoInstitucion.id_institucion == ies_uuid))).scalars().all()
+        if not docs or any(not d.url_archivo or d.url_archivo.startswith(("/mock/", "/storage/")) for d in docs):
+            raise ValueError("No se puede aprobar la IES sin documentos originales disponibles.")
+
         now = datetime.now(timezone.utc)
         ies.estado = "aprobado"
         ies.aprobado_en = now
@@ -526,16 +530,8 @@ class SuperAdminService:
                 "notas": notas_txt,
             }
         )
-        if ies.correo_institucional:
-            try:
-                await EmailService.send_institution_approved_email(
-                    to_email=ies.correo_institucional,
-                    institution_name=ies.nombre_oficial or ies.nombre_corto,
-                    snies_code=ies.codigo_snies,
-                    notes=notas_txt,
-                )
-            except Exception as mail_err:
-                print(f"[AVISO CORREO APROBACION IES] {mail_err}")
+        await send_vincula_email("ies_aprobada", ies.correo_institucional,
+                                 institucion=ies.nombre_oficial or ies.nombre_corto)
 
         return {
             "success": True,

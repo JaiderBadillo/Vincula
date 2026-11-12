@@ -40,7 +40,8 @@ class N8nWebhookDispatcher:
             headers["Authorization"] = f"Bearer {settings.N8N_WEBHOOK_SECRET}"
 
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
+            timeout = 25.0 if event_name in ("auth.asesor-notificacion", "correo-transaccional") else 5.0
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 response = await client.post(url, json=payload, headers=headers)
                 success = response.status_code in [200, 201, 202]
                 if success:

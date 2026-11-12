@@ -37,16 +37,16 @@ export default function StudentValidationDrawer({
     setActaNumber(
       student.numero_acta_grado ||
       match.diplomaNumber ||
-      `ACTA-${new Date().getFullYear()}-${String(student.documentId || '').replace(/\D/g, '').slice(-4) || '0842'}`
+      ''
     );
     setBookFolio(
       student.numero_libro_folio ||
       match.bookFolio ||
-      `Libro 48, Folio ${String(student.documentId || '').replace(/\D/g, '').slice(-3) || '112'}`
+      ''
     );
     setDegreeDate(
       student.fecha_grado ||
-      `${student.graduationYear || new Date().getFullYear()}-12-15`
+      ''
     );
     setValidationNotes('');
     setPdfError(null);
@@ -64,9 +64,16 @@ export default function StudentValidationDrawer({
   const isApproved = student.status === 'approved' || student.estado_verificacion === 'aprobado';
   const isRejected = student.status === 'rejected' || student.estado_verificacion === 'rechazado';
 
-  async function handleLoadSecurePdf() {
+  async function handleLoadSecurePdf(openViewer = false) {
     setActiveTab('visor_pdf');
-    if (securePdfUrl) return;
+    if (securePdfUrl) {
+      if (openViewer) setShowViewerModal(true);
+      return;
+    }
+    if (!student.url_diploma_pdf || /^\/(mock|storage\/)/.test(student.url_diploma_pdf)) {
+      setPdfError('El egresado no ha adjuntado un diploma original disponible.');
+      return;
+    }
 
     setLoadingPdf(true);
     setPdfError(null);
@@ -76,17 +83,13 @@ export default function StudentValidationDrawer({
       const res = await institutionService.getDiplomaSecureUrl(targetId, 3600);
       if (res && res.url_segura) {
         setSecurePdfUrl(res.url_segura);
+        if (openViewer) setShowViewerModal(true);
       } else {
         setPdfError('No se recibió la URL firmada del servidor.');
       }
     } catch (err) {
       console.warn('[StudentValidationDrawer] Error cargando URL firmada:', err);
-      // Si el egresado tiene una URL directa o simulada, fallback
-      if (student.url_diploma_pdf) {
-        setSecurePdfUrl(student.url_diploma_pdf);
-      } else {
-        setPdfError(err.message || 'No fue posible generar la URL temporal de Supabase Storage.');
-      }
+      setPdfError(err.message || 'No fue posible abrir el diploma original.');
     } finally {
       setLoadingPdf(false);
     }
@@ -112,14 +115,7 @@ export default function StudentValidationDrawer({
     }
   }
 
-  const docs = student.documentsAttached || [
-    {
-      id: 'doc-diploma',
-      name: student.nombre_archivo_diploma || 'Diploma_Oficial_Grado.pdf',
-      size: '2.4 MB',
-      type: 'diploma',
-    },
-  ];
+  const docs = student.documentsAttached || [];
 
   return (
     <div
@@ -197,7 +193,7 @@ export default function StudentValidationDrawer({
           </button>
           <button
             type="button"
-            onClick={handleLoadSecurePdf}
+            onClick={() => handleLoadSecurePdf()}
             className={`py-3 border-b-2 transition-all cursor-pointer ${
               activeTab === 'visor_pdf'
                 ? 'border-ink text-ink font-bold'
@@ -228,10 +224,7 @@ export default function StudentValidationDrawer({
                   <button
                     type="button"
                     onClick={() => {
-                      if (!securePdfUrl) {
-                        handleLoadSecurePdf();
-                      }
-                      setShowViewerModal(true);
+                      handleLoadSecurePdf(true);
                     }}
                     className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer shadow-xs"
                   >
@@ -377,7 +370,7 @@ export default function StudentValidationDrawer({
                   </h3>
                   <button
                     type="button"
-                    onClick={handleLoadSecurePdf}
+                    onClick={() => handleLoadSecurePdf()}
                     className="text-xs font-bold text-emerald-800 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <i className="bx bx-show" />
@@ -385,6 +378,7 @@ export default function StudentValidationDrawer({
                   </button>
                 </div>
                 <ul className="m-0 list-none divide-y divide-line rounded-xl border border-line bg-white p-0">
+                  {docs.length === 0 && <li className="px-4 py-3 text-xs text-amber-800">No hay diploma adjunto.</li>}
                   {docs.map((doc, idx) => (
                     <li key={doc.id || idx} className="flex items-center justify-between gap-3 px-4 py-3">
                       <div className="flex items-center gap-2.5 truncate">
@@ -396,8 +390,7 @@ export default function StudentValidationDrawer({
                           type="button"
                           onClick={() => {
                             if (onViewDocument) onViewDocument(doc);
-                            handleLoadSecurePdf();
-                            setShowViewerModal(true);
+                            handleLoadSecurePdf(true);
                           }}
                           className="rounded-lg bg-page hover:bg-panel text-ink px-2.5 py-1 text-xs font-bold cursor-pointer border border-line transition-colors inline-flex items-center gap-1"
                         >
@@ -491,7 +484,7 @@ export default function StudentValidationDrawer({
 
             <button
               type="button"
-              disabled={submittingApproval}
+              disabled={submittingApproval || !student.url_diploma_pdf || !securePdfUrl}
               onClick={handleConfirmApprove}
               className="inline-flex items-center gap-2 rounded-xl bg-ink hover:bg-ink-soft text-white px-5 py-2.5 text-xs font-bold cursor-pointer transition-all shadow-xs disabled:opacity-50"
             >
@@ -513,7 +506,7 @@ export default function StudentValidationDrawer({
         <DocumentViewerModal
           isOpen={showViewerModal}
           onClose={() => setShowViewerModal(false)}
-          documentUrl={securePdfUrl || student.url_diploma_pdf}
+          documentUrl={securePdfUrl}
           title={`Diploma Oficial · ${student.studentName || student.nombre_completo || 'Egresado'}`}
           subtitle={`${student.program || student.carrera || 'Programa Académico'} · ${student.institutionName || 'Institución Universitaria'}`}
           metadata={{

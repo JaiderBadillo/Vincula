@@ -1,0 +1,173 @@
+{
+  "id": "vinculaAdvisor01",
+  "name": "Víncula - Avisos del asesor IES (Gmail API)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "auth.asesor-notificacion",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "63a3967b-ca6e-49ba-9ca7-9381bdfe39cf",
+      "name": "Recibir aviso",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "webhookId": "auth.asesor-notificacion"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "4ae2e336-79c4-462c-8d74-ef982e9e4c36",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "Bearer vincula_n8n_sec_2026_9b2ab61",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "e7104f23-05e3-4ac2-9c8f-67701e26e5f4",
+              "leftValue": "={{ $json.body.correo }}",
+              "rightValue": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "285820e2-047d-4d51-981d-51c021cd2e3f",
+      "name": "Validar origen",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "email",
+        "operation": "send",
+        "fromEmail": "jaiderbadillo@gmail.com",
+        "toEmail": "={{ $json.body.correo }}",
+        "subject": "={{ $json.body.asunto }}",
+        "emailFormat": "text",
+        "message": "={{ $json.body.mensaje + \"\n\nSi no reconoces esta actividad, cambia tu contraseña en Víncula.\" }}",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "ad60a5de-8bba-4e8e-bcd5-be179ce0bb06",
+      "name": "Enviar correo",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        700,
+        180
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "R6MRRtFobqyOgleB",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"success\":true}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "ec3268fa-6dd3-4215-b3d2-7c4bffeab4c6",
+      "name": "Confirmar envío",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        940,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"error\":\"No autorizado\"}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "374c1326-7912-4dca-b29b-76d15c88da67",
+      "name": "Rechazar petición",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Validar origen": {
+      "main": [
+        [
+          {
+            "node": "Enviar correo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rechazar petición",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir aviso": {
+      "main": [
+        [
+          {
+            "node": "Validar origen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar correo": {
+      "main": [
+        [
+          {
+            "node": "Confirmar envío",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": true
+}

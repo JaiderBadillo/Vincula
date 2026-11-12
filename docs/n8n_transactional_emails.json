@@ -1,0 +1,191 @@
+{
+  "id": "vinculaTransac01",
+  "name": "Vincula - Correo transaccional (Gmail API)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "correo-transaccional",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "586f3a74-c67b-4687-86f2-a5402afa986e",
+      "name": "Recibir aviso",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "webhookId": "correo-transaccional"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "4ae2e336-79c4-462c-8d74-ef982e9e4c36",
+              "leftValue": "={{ $json.headers.authorization }}",
+              "rightValue": "Bearer vincula_n8n_sec_2026_9b2ab61",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "e7104f23-05e3-4ac2-9c8f-67701e26e5f4",
+              "leftValue": "={{ $json.body.correo }}",
+              "rightValue": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            },
+            {
+              "id": "f52d5db9-2031-4025-a172-228bc542617d",
+              "leftValue": "={{ $json.body.tipo }}",
+              "rightValue": "^(registro_egresado|registro_empresa|registro_ies|egresado_verificado|empresa_aprobada|ies_aprobada|fase_postulacion)$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            },
+            {
+              "id": "3f03cc4e-f08a-4e9b-90ee-67daaf8528d6",
+              "leftValue": "={{ $json.body.html }}",
+              "rightValue": "<html",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e428117b-a593-4973-82b6-da45fe2f91e1",
+      "name": "Validar origen",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "email",
+        "operation": "send",
+        "fromEmail": "jaiderbadillo@gmail.com",
+        "toEmail": "={{ $json.body.correo }}",
+        "subject": "={{ $json.body.asunto }}",
+        "emailFormat": "html",
+        "html": "={{ $json.body.html }}\n",
+        "options": {
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "e50afa31-d7e5-4e07-8cbb-803a97bcc4d7",
+      "name": "Enviar correo",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        700,
+        180
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "R6MRRtFobqyOgleB",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"success\":true}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "9c0c45e3-7c04-4750-9ce7-dee11d87c98a",
+      "name": "Confirmar envío",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        940,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"error\":\"No autorizado\"}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "d08aefd4-68cb-48d6-a291-76f1ef83fdec",
+      "name": "Rechazar petición",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Validar origen": {
+      "main": [
+        [
+          {
+            "node": "Enviar correo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rechazar petición",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir aviso": {
+      "main": [
+        [
+          {
+            "node": "Validar origen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar correo": {
+      "main": [
+        [
+          {
+            "node": "Confirmar envío",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": true
+}

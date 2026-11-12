@@ -46,16 +46,24 @@ export default function VinculaAdminDashboardPage() {
     { label: 'Convenios Marco', value: String(metrics.activeAgreements) },
   ];
 
-  function handleApproveCompany(id, notes) {
-    approveCompany(id, notes);
-    setSelectedCompany(null);
-    showToast('Empresa aprobada exitosamente y notificada.');
+  async function handleApproveCompany(id, notes) {
+    try {
+      await approveCompany(id, notes);
+      setSelectedCompany(null);
+      showToast('Empresa aprobada correctamente.');
+    } catch (err) {
+      showToast(`No se pudo aprobar la empresa: ${err.message}`);
+    }
   }
 
-  function handleApproveInstitution(id, notes) {
-    approveInstitution(id, notes);
-    setSelectedInstitution(null);
-    showToast('Institución incorporada a la red Vincula.');
+  async function handleApproveInstitution(id, notes) {
+    try {
+      await approveInstitution(id, notes);
+      setSelectedInstitution(null);
+      showToast('IES aprobada correctamente.');
+    } catch (err) {
+      showToast(`No se pudo aprobar la IES: ${err.message}`);
+    }
   }
 
   function handleOpenCorrection(target, type, mode = 'correction') {
@@ -64,25 +72,20 @@ export default function VinculaAdminDashboardPage() {
     setCorrectionMode(mode);
   }
 
-  function handleCorrectionSubmit(id, reason, docs) {
-    if (correctionType === 'company') {
-      if (correctionMode === 'correction') {
-        requestCompanyCorrection(id, reason, docs);
-        showToast('Requerimiento de subsanación enviado a la empresa.');
+  async function handleCorrectionSubmit(id, reason, docs) {
+    try {
+      if (correctionType === 'company') {
+        if (correctionMode === 'correction') await requestCompanyCorrection(id, reason, docs);
+        else await rejectCompany(id, reason);
+        setSelectedCompany(null);
       } else {
-        rejectCompany(id, reason);
-        showToast('Solicitud de empresa rechazada.');
+        if (correctionMode === 'correction') await requestInstitutionCorrection(id, reason, docs);
+        else await rejectInstitution(id, reason);
+        setSelectedInstitution(null);
       }
-      setSelectedCompany(null);
-    } else {
-      if (correctionMode === 'correction') {
-        requestInstitutionCorrection(id, reason, docs);
-        showToast('Requerimiento de subsanación enviado a la IES.');
-      } else {
-        rejectInstitution(id, reason);
-        showToast('Solicitud de IES rechazada.');
-      }
-      setSelectedInstitution(null);
+      showToast('Decisión guardada correctamente.');
+    } catch (err) {
+      showToast(`No se pudo guardar la decisión: ${err.message}`);
     }
   }
 

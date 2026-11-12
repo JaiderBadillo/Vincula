@@ -2,7 +2,6 @@
 import asyncio
 import uuid
 import logging
-from html import escape
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
@@ -18,7 +17,7 @@ from app.core.dependencies import require_role
 from app.core.security import verify_password, get_password_hash
 from app.modules.iam.models import Usuario, AccesoAsesorIES
 from app.modules.institutions.models import AsesorIES, Institucion
-from app.integrations.email_service import EmailService
+from app.integrations.n8n_webhooks import N8nWebhookDispatcher
 
 advisor_only = require_role(["asesor_ies"])
 router = APIRouter(prefix="/asesor/configuracion", tags=["Configuración Asesor IES"])
@@ -89,8 +88,15 @@ def notification_data(advisor):
 
 
 async def send_notice(email, subject, message):
-    body = f"<p>{escape(message)}</p><p>Si no reconoces esta actividad, cambia tu contraseña de Víncula.</p>"
-    await EmailService.send_email(email, subject, body, message)
+    if not settings.N8N_WEBHOOK_BASE_URL or not settings.N8N_WEBHOOK_SECRET:
+        logger.error("Aviso de asesor no enviado: webhook de n8n sin configurar")
+        return
+    sent = await N8nWebhookDispatcher.dispatch_event("auth.asesor-notificacion", {
+        "correo": email, "asunto": subject, "mensaje": message,
+        "fecha": datetime.now(timezone.utc).isoformat(),
+    })
+    if not sent:
+        logger.error("n8n no confirmó el aviso de asesor: %s", subject)
 
 
 def browser_name(user_agent):

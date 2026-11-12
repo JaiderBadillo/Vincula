@@ -52,10 +52,14 @@ export default function VinculaAdminInstitutionsPage() {
     { label: 'Total en Plataforma', value: String(metrics.totalInstitutionsCount) },
   ];
 
-  function handleApprove(id, notes) {
-    approveInstitution(id, notes);
-    setSelectedInstitution(null);
-    showToast('Institución incorporada a la red Vincula exitosamente.');
+  async function handleApprove(id, notes) {
+    try {
+      await approveInstitution(id, notes);
+      setSelectedInstitution(null);
+      showToast('Aprobación guardada correctamente.');
+    } catch (err) {
+      showToast(`No se pudo aprobar: ${err.message}`);
+    }
   }
 
   function handleOpenCorrection(target, mode = 'correction') {
@@ -63,15 +67,18 @@ export default function VinculaAdminInstitutionsPage() {
     setCorrectionMode(mode);
   }
 
-  function handleCorrectionSubmit(id, reason, docs) {
-    if (correctionMode === 'correction') {
-      requestInstitutionCorrection(id, reason, docs);
-      showToast('Requerimiento de subsanación enviado a la IES.');
-    } else {
-      rejectInstitution(id, reason);
-      showToast('Solicitud rechazada formalmente.');
+  async function handleCorrectionSubmit(id, reason, docs) {
+    try {
+      if (correctionMode === 'correction') {
+        await requestInstitutionCorrection(id, reason, docs);
+      } else {
+        await rejectInstitution(id, reason);
+      }
+      setSelectedInstitution(null);
+      showToast('Decisión guardada correctamente.');
+    } catch (err) {
+      showToast(`No se pudo guardar la decisión: ${err.message}`);
     }
-    setSelectedInstitution(null);
   }
 
   return (

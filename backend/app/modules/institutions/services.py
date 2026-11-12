@@ -18,6 +18,7 @@ from app.core.config import settings
 from app.core.security import get_password_hash
 from app.integrations.supabase_storage import SupabaseStorageService
 from app.modules.iam.models import Usuario
+from app.integrations.transactional_notifications import send_vincula_email
 from app.modules.graduates.models import Egresado, AcademicoEgresado
 from app.modules.institutions.models import (
     Institucion,
@@ -942,7 +943,7 @@ class InstitutionService:
 
         items: List[GraduatePendingValidationItem] = []
         for acad, egr, prog in filas:
-            nom_arch = "Diploma_Oficial.pdf"
+            nom_arch = None
             if acad.url_diploma_pdf:
                 nom_arch = acad.url_diploma_pdf.split("/")[-1].split("?")[0]
 
@@ -1060,7 +1061,9 @@ class InstitutionService:
                 }
             )
 
-        nombre_archivo = raw_url.split("/")[-1].split("?")[0] or "Diploma_Oficial_Grado.pdf"
+        if raw_url.startswith(("/storage/mock/", "/storage/local-mock/", "/mock/")):
+            raise HTTPException(status_code=404, detail="El diploma registrado es una referencia simulada; solicita el archivo original al egresado.")
+        nombre_archivo = raw_url.split("/")[-1].split("?")[0]
 
         # Extraer path relativo si la URL incluye dominio de Supabase
         if f"/object/public/{bucket}/" in raw_url:
@@ -1070,13 +1073,7 @@ class InstitutionService:
         elif f"/{bucket}/" in raw_url:
             path_in_bucket = raw_url.split(f"/{bucket}/")[-1].split("?")[0]
         elif raw_url.startswith("http") and not raw_url.startswith(settings.SUPABASE_URL):
-            # URL externa válida independiente
-            return DiplomaSecureUrlResponse(
-                id_academico=str(acad.id),
-                nombre_archivo=nombre_archivo,
-                url_segura=raw_url,
-                expira_en_segundos=expires_in
-            )
+            raise HTTPException(status_code=404, detail="El diploma no está almacenado en el repositorio documental autorizado.")
         else:
             path_in_bucket = raw_url.lstrip("/")
 
@@ -1144,6 +1141,9 @@ class InstitutionService:
                 }
             )
 
+        if not acad.url_diploma_pdf or acad.url_diploma_pdf.startswith(("/mock/", "/storage/")):
+            raise HTTPException(status_code=400, detail="No se puede verificar al egresado sin el diploma original adjunto.")
+
         # Candado de idempotencia: Diploma ya aprobado
         if acad.estado_verificacion == "aprobado":
             raise HTTPException(
@@ -1206,6 +1206,12 @@ class InstitutionService:
 
         await session.commit()
         await session.refresh(acad)
+
+        await send_vincula_email(
+            "egresado_verificado", egr.correo_personal,
+            nombre=egr.nombre_completo, institucion=ies.nombre_oficial,
+            programa=prog.nombre, acta=acad.numero_acta_grado,
+        )
 
         return SelloDigitalResponse(
             success=True,
@@ -1485,16 +1491,14 @@ class InstitutionService:
                 }
             )
 
-        # Decodificar o asegurar bytes del PDF
+        # Exigir los bytes originales; nunca fabricar un documento de respaldo.
         if not file_bytes:
-            if archivo_base64_o_url and len(archivo_base64_o_url) > 20:
-                try:
-                    b64_clean = archivo_base64_o_url.split(",")[-1]
-                    file_bytes = base64.b64decode(b64_clean)
-                except Exception:
-                    file_bytes = b"%PDF-1.4 Mock IES Subsanado"
-            else:
-                file_bytes = b"%PDF-1.4 Mock IES Subsanado"
+            try:
+                file_bytes = base64.b64decode((archivo_base64_o_url or "").split(",")[-1], validate=True)
+            except (ValueError, base64.binascii.Error):
+                raise HTTPException(status_code=400, detail="Adjunta un PDF válido para subsanar el documento.")
+        if not file_bytes.startswith(b"%PDF-"):
+            raise HTTPException(status_code=400, detail="El archivo adjunto no es un PDF válido.")
 
         # REGLA 3: Higiene en Supabase Storage (Ruta determinista única con x-upsert: true)
         clean_ext = ".pdf" if not nombre_archivo.lower().endswith(".pdf") else ""

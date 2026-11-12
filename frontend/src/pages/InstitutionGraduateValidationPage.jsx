@@ -4,7 +4,6 @@ import InstitutionPortalLayout from '../components/institution/InstitutionPortal
 import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
 import StudentObservationModal from '../components/institution/StudentObservationModal.jsx';
 import StudentValidationDrawer from '../components/institution/StudentValidationDrawer.jsx';
-import { studentValidationRequests } from '../data/institutionData.js';
 import { advisorPhotos } from '../data/institutionImages.js';
 import { institutionService } from '../services/institutionService.js';
 
@@ -24,7 +23,7 @@ function initials(name) {
 }
 
 export default function InstitutionGraduateValidationPage() {
-  const [requests, setRequests] = useState(studentValidationRequests);
+  const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [backendCounts, setBackendCounts] = useState(null);
   const [tab, setTab] = useState('pending');
@@ -73,8 +72,8 @@ export default function InstitutionGraduateValidationPage() {
               studentCode: it.codigo_estudiantil || `EST-${it.numero_documento.slice(-5)}`,
               documentType: it.tipo_documento || 'CC',
               documentId: it.numero_documento,
-              email: `${it.nombre_completo.toLowerCase().replace(/\s+/g, '.')}@correo.uts.edu.co`,
-              phone: '+57 (318) 450-1290',
+              email: it.correo_personal || null,
+              phone: it.telefono || null,
               faculty: 'Facultad de Ciencias Naturales e Ingenierías',
               program: it.carrera || it.nombre_programa || 'Ingeniería',
               degreeLevel: it.nivel_formacion,
@@ -92,7 +91,7 @@ export default function InstitutionGraduateValidationPage() {
                     hour: '2-digit',
                     minute: '2-digit',
                   })
-                : 'Hoy, 08:30 AM',
+                : null,
               priority: 'Alta',
               academicMatch: {
                 status:
@@ -103,24 +102,21 @@ export default function InstitutionGraduateValidationPage() {
                   it.validado_por_ies || it.estado_verificacion === 'aprobado'
                     ? '100% Coincidente en SIGA'
                     : 'Pendiente de Cotejo Institucional',
-                bookFolio: it.numero_libro_folio || 'Libro 48, Folio 112',
-                diplomaNumber: it.numero_acta_grado || 'ACTA-2026-VAL',
-                pazYSalvo: true,
+                bookFolio: it.numero_libro_folio || null,
+                diplomaNumber: it.numero_acta_grado || null,
                 lastGpa: it.promedio_ponderado
                   ? `${it.promedio_ponderado} / 5.0`
-                  : '4.50 / 5.0',
+                  : null,
                 discrepancyNote: null,
               },
-              documentsAttached: [
+              documentsAttached: it.url_diploma_pdf && !/^\/(mock|storage\/)/.test(it.url_diploma_pdf) ? [
                 {
                   id: it.id_academico,
-                  name: it.nombre_archivo_diploma || 'Diploma_Oficial_Grado.pdf',
-                  size: '2.4 MB',
+                  name: it.nombre_archivo_diploma,
                   type: 'diploma',
                   verified: it.validado_por_ies,
-                  date: '15 Dic 2025',
                 },
-              ],
+              ] : [],
               avatar: null,
               observationReason: null,
               observationNotes: it.motivo_rechazo || null,
@@ -148,8 +144,8 @@ export default function InstitutionGraduateValidationPage() {
           }
         }
       } catch (err) {
-        console.warn('[InstitutionGraduateValidationPage] Usando mock resiliente:', err);
-        setRequests(studentValidationRequests);
+        console.warn('[InstitutionGraduateValidationPage] No se pudieron cargar los expedientes:', err);
+        if (isMounted) setRequests([]);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -197,7 +193,7 @@ export default function InstitutionGraduateValidationPage() {
     const target = requests.find((r) => r.id === id);
     try {
       const res = await institutionService.validateGraduateDiploma(id, {
-        numero_acta_grado: approvalData.numero_acta_grado || 'ACTA-2026-VAL',
+        numero_acta_grado: approvalData.numero_acta_grado,
         numero_libro_folio: approvalData.numero_libro_folio || undefined,
         fecha_grado: approvalData.fecha_grado || undefined,
         observaciones: approvalData.observaciones || undefined,
@@ -229,12 +225,7 @@ export default function InstitutionGraduateValidationPage() {
         );
         setDrawerId(null);
       } else {
-        // Fallback optimista para entorno demo
-        setRequests((prev) =>
-          prev.map((r) => (r.id === id ? { ...r, status: 'approved' } : r))
-        );
-        setDrawerId(null);
-        notify(`${target?.studentName || 'El egresado'} fue aprobado.`);
+        notify(`No se pudo validar el diploma: ${err.message}`);
       }
     }
   }
@@ -267,23 +258,7 @@ export default function InstitutionGraduateValidationPage() {
       window.dispatchEvent(new CustomEvent('vincula:graduate-validated'));
     } catch (err) {
       console.warn('Error al observar diploma:', err);
-      // Fallback local
-      setRequests((prev) =>
-        prev.map((r) =>
-          r.id === id
-            ? {
-                ...r,
-                status: 'rejected',
-                observationReason: reason,
-                observationNotes: notes,
-                motivo_rechazo: motivo,
-              }
-            : r
-        )
-      );
-      setObservationId(null);
-      setDrawerId(null);
-      notify(`Observación registrada para ${target?.studentName || 'el egresado'}.`);
+      notify(`No se pudo registrar la observación: ${err.message}`);
     }
   }
 
@@ -507,7 +482,7 @@ export default function InstitutionGraduateValidationPage() {
 
                           <span className="flex items-center gap-1.5 text-secondary">
                             <i className="bx bx-file text-sm text-green" aria-hidden="true" />
-                            <span>{student.documentsAttached?.length || 1} diploma PDF</span>
+                            <span>{student.documentsAttached?.length || 0} diploma PDF</span>
                           </span>
 
                           {/* Cruce Académico Badge */}

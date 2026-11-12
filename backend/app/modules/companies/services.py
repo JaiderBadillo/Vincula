@@ -292,17 +292,14 @@ class CompanyService:
                 }
             )
 
-        # Decodificar o asegurar bytes del PDF
+        # Exigir los bytes originales; nunca fabricar un documento de respaldo.
         if not file_bytes:
-            if archivo_base64_o_url and len(archivo_base64_o_url) > 20:
-                try:
-                    # Remover prefijo data:application/pdf;base64, si existe
-                    b64_clean = archivo_base64_o_url.split(",")[-1]
-                    file_bytes = base64.b64decode(b64_clean)
-                except Exception:
-                    file_bytes = b"%PDF-1.4 Mock Subsanado"
-            else:
-                file_bytes = b"%PDF-1.4 Mock Subsanado"
+            try:
+                file_bytes = base64.b64decode((archivo_base64_o_url or "").split(",")[-1], validate=True)
+            except (ValueError, base64.binascii.Error):
+                raise HTTPException(status_code=400, detail="Adjunta un PDF válido para subsanar el documento.")
+        if not file_bytes.startswith(b"%PDF-"):
+            raise HTTPException(status_code=400, detail="El archivo adjunto no es un PDF válido.")
 
         # REGLA 3: Higiene en Supabase Storage (Ruta determinista única con x-upsert: true)
         clean_ext = ".pdf" if not nombre_archivo.lower().endswith(".pdf") else ""

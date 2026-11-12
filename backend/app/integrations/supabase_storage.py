@@ -26,7 +26,7 @@ class SupabaseStorageService:
         Vigencia por defecto: 1 hora (3600s).
         """
         if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_ROLE_KEY:
-            return f"/storage/mock/signed/{bucket_name}/{file_path}?token=mock_dev"
+            raise RuntimeError("Supabase Storage no está configurado; no se puede abrir el documento.")
 
         clean_path = file_path.lstrip("/")
         url = f"{settings.SUPABASE_URL}/storage/v1/object/sign/{bucket_name}/{clean_path}"
@@ -41,13 +41,14 @@ class SupabaseStorageService:
                 res = await client.post(url, headers=headers, json={"expiresIn": expires_in})
                 if res.status_code == 200:
                     signed_path = res.json().get("signedURL", "")
+                    if not signed_path:
+                        raise RuntimeError("Supabase Storage no devolvió un enlace firmado.")
                     if signed_path and not signed_path.startswith("/storage/v1"):
                         signed_path = f"/storage/v1{signed_path}"
                     return f"{settings.SUPABASE_URL}{signed_path}"
-                else:
-                    return SupabaseStorageService.get_public_url(bucket_name, file_path)
-        except Exception:
-            return SupabaseStorageService.get_public_url(bucket_name, file_path)
+                raise RuntimeError(f"Supabase Storage rechazó el enlace firmado ({res.status_code}).")
+        except httpx.HTTPError as exc:
+            raise RuntimeError("No se pudo consultar Supabase Storage para abrir el documento.") from exc
 
     @staticmethod
     async def upload_document_pdf(
@@ -61,16 +62,11 @@ class SupabaseStorageService:
         """
         clean_path = destination_path.lstrip("/")
 
-        # Modo de contingencia local si faltaran credenciales
+        if not file_bytes or not file_bytes.startswith(b"%PDF-"):
+            raise ValueError("Se requiere un archivo PDF real y no vacío.")
+
         if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_ROLE_KEY:
-            return {
-                "success": True,
-                "simulated": True,
-                "bucket": bucket_name,
-                "path": clean_path,
-                "url": f"/storage/local-mock/{bucket_name}/{clean_path}",
-                "size_bytes": len(file_bytes)
-            }
+            raise RuntimeError("Supabase Storage no está configurado; el documento no fue guardado.")
 
         url = f"{settings.SUPABASE_URL}/storage/v1/object/{bucket_name}/{clean_path}"
         headers = {

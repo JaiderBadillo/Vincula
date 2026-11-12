@@ -40,20 +40,23 @@ export default function CompanyVerificationDrawer({
     setPdfError(null);
     setSecurePdfUrl(null);
 
-    // Si es un documento real radicado en Supabase PostgreSQL
-    if (doc?.id && !String(doc.id).startsWith('doc-')) {
+    if (doc?.id && doc?.urlArchivo && !String(doc.id).startsWith('doc-')) {
       setLoadingPdf(true);
       try {
         const secRes = await adminService.getDocumentSecureUrl(doc.id, 3600);
         if (secRes && secRes.secure_url) {
           setSecurePdfUrl(secRes.secure_url);
+        } else {
+          setPdfError('El servidor no devolvió un enlace al archivo original.');
         }
       } catch (err) {
         console.warn('[CompanyVerificationDrawer] Error al obtener enlace seguro:', err);
-        setPdfError('No se pudo generar la URL firmada. Visualizando folio oficial simulado.');
+        setPdfError('No se pudo abrir el archivo original. Solicita que se vuelva a cargar.');
       } finally {
         setLoadingPdf(false);
       }
+    } else {
+      setPdfError('No hay archivo original disponible para este documento.');
     }
   }
 
@@ -393,40 +396,8 @@ export default function CompanyVerificationDrawer({
                       />
                     </div>
                   ) : (
-                    /* Hoja membretada simulada con marca de agua oficial (fallback / dev) */
-                    <div className="relative rounded-xl border border-sand-line bg-white p-6 shadow-sm font-sans space-y-4">
-                      {pdfError && (
-                        <p className="text-[0.72rem] text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-200">
-                          {pdfError}
-                        </p>
-                      )}
-                      <div className="flex items-center justify-between border-b border-sand-line/60 pb-3">
-                        <div>
-                          <span className="text-[0.65rem] font-bold uppercase tracking-wider text-secondary">
-                            {previewDoc.issuer}
-                          </span>
-                          <h5 className="m-0 font-display text-sm font-bold text-ink">
-                            {previewDoc.label}
-                          </h5>
-                        </div>
-                        <span className="rounded-lg bg-sand px-2 py-1 text-[0.65rem] font-mono text-cocoa">
-                          FOLIO #{company.radicado || '2026-VINCULA'}
-                        </span>
-                      </div>
-
-                      <div className="text-xs text-ink space-y-2 leading-relaxed">
-                        <p className="m-0">
-                          <strong>Certifica que:</strong> La entidad <strong>{company.businessName}</strong>, identificada con NIT <strong>{company.nit}</strong>, con domicilio en <strong>{company.city}</strong>, se encuentra registrada y activa para el ejercicio de su actividad económica ({company.ciiuCode}).
-                        </p>
-                        <p className="m-0">
-                          <strong>Representación Legal:</strong> Ostenta el cargo de Representante Legal el(la) ciudadano(a) <strong>{company.legalRepName}</strong> ({company.legalRepId}).
-                        </p>
-                      </div>
-
-                      <div className="border-t border-sand-line/60 pt-3 flex items-center justify-between text-[0.68rem] text-secondary">
-                        <span>✓ Firma Digital y Estampado Cronológico Verificados</span>
-                        <span className="font-bold text-emerald-800">DOCUMENTO AUTÉNTICO</span>
-                      </div>
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-xs text-amber-900" role="alert">
+                      {pdfError || 'No hay archivo original disponible para inspeccionar. Solicita que se vuelva a cargar.'}
                     </div>
                   )}
                 </div>
