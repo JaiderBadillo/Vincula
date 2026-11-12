@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import GraduatePortalLayout from '../components/dashboard/GraduatePortalLayout.jsx';
+import DocumentCorrections from '../components/documents/DocumentCorrections.jsx';
 import CvManager from '../components/profile/CvManager.jsx';
 import EditBasicsModal from '../components/profile/EditBasicsModal.jsx';
 import EducationSection from '../components/profile/EducationSection.jsx';
@@ -210,6 +211,7 @@ export default function ProfilePage() {
   return (
     <GraduatePortalLayout activePage="profile">
       <main className="w-full pb-16">
+          <div className="mx-auto max-w-6xl px-5 pt-5"><DocumentCorrections kind="graduate" /></div>
         {/* Profile Hero Header */}
         <ProfileHero
           profile={profile}

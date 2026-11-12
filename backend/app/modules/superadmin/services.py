@@ -395,7 +395,17 @@ class SuperAdminService:
         if not emp:
             raise ValueError(f"Empresa con ID {company_id} no encontrada.")
 
+        if not action.documentos_requeridos:
+            raise ValueError("Selecciona al menos un documento que deba corregirse.")
+        company_docs = (await session.execute(select(DocumentoEmpresa.tipo_documento).where(DocumentoEmpresa.id_empresa == comp_uuid))).scalars().all()
+        if not set(action.documentos_requeridos).issubset(set(company_docs)):
+            raise ValueError("Solo se pueden solicitar correcciones de documentos existentes en el expediente.")
+        was_rejected = emp.estado == "rechazado"
         emp.estado = "en_subsanacion"
+        if was_rejected:
+            admin_ids = (await session.execute(select(ReclutadorEmpresa.id_usuario).where(ReclutadorEmpresa.id_empresa == comp_uuid))).scalars().all()
+            if admin_ids:
+                await session.execute(update(Usuario).where(Usuario.id.in_(admin_ids)).values(estado="activo"))
 
         # Marcar los documentos requeridos
         if action.documentos_requeridos:
@@ -456,7 +466,7 @@ class SuperAdminService:
         if user_ids:
             await session.execute(
                 update(Usuario)
-                .where(Usuario.id.in_(user_ids))
+                .where(Usuario.id.in_(user_ids), Usuario.rol.notin_(["admin_empresa", "empresa_admin"]))
                 .values(estado="suspendido")
             )
 
@@ -561,6 +571,11 @@ class SuperAdminService:
         if not ies:
             raise ValueError(f"Institución con ID {ies_id} no encontrada.")
 
+        if not action.documentos_requeridos:
+            raise ValueError("Selecciona al menos un documento que deba corregirse.")
+        ies_docs = (await session.execute(select(DocumentoInstitucion.tipo_documento).where(DocumentoInstitucion.id_institucion == ies_uuid))).scalars().all()
+        if not set(action.documentos_requeridos).issubset(set(ies_docs)):
+            raise ValueError("Solo se pueden solicitar correcciones de documentos existentes en el expediente.")
         ies.estado = "en_subsanacion"
 
         if action.documentos_requeridos:

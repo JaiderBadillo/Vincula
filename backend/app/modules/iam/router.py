@@ -23,6 +23,10 @@ from app.modules.iam.schemas import (
 )
 from app.modules.iam.services import IAMService, UserNotRegisteredError
 from app.modules.institutions.models import Institucion, ProgramaAcademico
+from app.modules.institutions.models import DocumentoInstitucion
+from app.modules.companies.models import Empresa, DocumentoEmpresa
+from app.modules.graduates.models import Egresado, AcademicoEgresado
+from app.modules.superadmin.models import AuditoriaSuperadmin
 from app.integrations.email_service import EmailService
 
 router = APIRouter(prefix="/auth", tags=["IAM - Autenticación y Registro"])
@@ -30,6 +34,45 @@ from app.modules.iam.password_reset import router as password_reset_router
 from app.modules.iam.advisor_settings import router as advisor_settings_router, record_advisor_access
 router.include_router(password_reset_router)
 router.include_router(advisor_settings_router)
+
+
+@router.get("/estado-documental")
+async def estado_documental(current_user: Dict[str, Any] = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Estado y observaciones persistidas, limitado a la entidad del usuario autenticado."""
+    role = current_user.get("rol")
+    if role == "egresado":
+        user_id = uuid.UUID(str(current_user["sub"]))
+        graduate = (await db.execute(select(Egresado).where(Egresado.id_usuario == user_id))).scalar_one_or_none()
+        if graduate is None:
+            raise HTTPException(status_code=404, detail="Egresado no encontrado.")
+        academic = (await db.execute(select(AcademicoEgresado).where(AcademicoEgresado.id_egresado == graduate.id)
+                                     .order_by(AcademicoEgresado.creado_en.desc()))).scalars().first()
+        if academic is None:
+            return {"estado": "sin_registro", "motivo": None, "documentos": [], "puede_subir": False}
+        has_file = bool(academic.diploma_cargado_por_egresado and academic.url_diploma_pdf)
+        return {"estado": academic.estado_verificacion, "motivo": academic.motivo_rechazo,
+                "documentos": [{"tipo": "diploma", "nombre": academic.url_diploma_pdf.rsplit("/", 1)[-1], "estado": academic.estado_verificacion}] if has_file else [],
+                "puede_subir": academic.estado_verificacion != "aprobado"}
+
+    kind = "empresa" if role in ("admin_empresa", "empresa_admin") else "institucion" if role in ("admin_ies", "ies_admin") else None
+    if kind is None:
+        raise HTTPException(status_code=403, detail="Rol sin expediente documental.")
+    try:
+        entity_id = uuid.UUID(str(current_user["id_entidad"]))
+    except (KeyError, ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="La cuenta no tiene entidad vinculada.")
+    entity_model, doc_model, foreign_key = (Empresa, DocumentoEmpresa, DocumentoEmpresa.id_empresa) if kind == "empresa" else (Institucion, DocumentoInstitucion, DocumentoInstitucion.id_institucion)
+    entity = (await db.execute(select(entity_model).where(entity_model.id == entity_id))).scalar_one_or_none()
+    if entity is None:
+        raise HTTPException(status_code=404, detail="Expediente no encontrado.")
+    docs = (await db.execute(select(doc_model).where(foreign_key == entity_id))).scalars().all()
+    audit = (await db.execute(select(AuditoriaSuperadmin).where(
+        AuditoriaSuperadmin.id_entidad == entity_id, AuditoriaSuperadmin.tipo_entidad == kind,
+        AuditoriaSuperadmin.accion_realizada.in_(["subsanacion_solicitada", "rechazo"])
+    ).order_by(AuditoriaSuperadmin.registrado_en.desc()).limit(1))).scalar_one_or_none()
+    return {"estado": entity.estado, "motivo": audit.observaciones_correccion if audit and entity.estado in ("en_subsanacion", "rechazado") else None,
+            "documentos": [{"tipo": d.tipo_documento, "nombre": d.nombre_archivo, "estado": d.estado} for d in docs],
+            "puede_subir": entity.estado == "en_subsanacion"}
 
 
 @router.get("/catalogo-academico")

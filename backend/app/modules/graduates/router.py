@@ -136,6 +136,9 @@ async def upload_graduate_diploma(
     acad.url_diploma_pdf = storage_res["url"]
     acad.diploma_cargado_por_egresado = True
     acad.estado_verificacion = "pendiente"
+    acad.motivo_rechazo = None
+    acad.fecha_verificacion = None
+    acad.verificado_por_usuario = None
     await db.commit()
 
     return {

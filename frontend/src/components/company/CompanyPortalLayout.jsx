@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import CompanySidebar from './CompanySidebar.jsx';
 import CompanyTopbar from './CompanyTopbar.jsx';
+import DocumentCorrections from '../documents/DocumentCorrections.jsx';
 
 const SIDEBAR_PREFERENCE_KEY = 'vincula.company.sidebar-collapsed';
 
@@ -76,6 +77,7 @@ export default function CompanyPortalLayout({
           onSidebarToggle={() => setSidebarCollapsed((collapsed) => !collapsed)}
           role={role}
         />
+        {role === 'admin' && <div className="mx-auto max-w-6xl px-5 pt-5"><DocumentCorrections kind="company" /></div>}
         {children}
       </div>
     </div>

@@ -18,24 +18,8 @@ export default function CorrectionModal({
       return;
     }
 
-    if (mode === 'correction') {
-      if (targetType === 'company') {
-        setReason(
-          'El Certificado de Existencia y Representación Legal adjunto presenta inconsistencias o requiere actualización. Por favor adjunta una versión emitida por la Cámara de Comercio correspondiente.'
-        );
-        setSelectedDocs(['camara_comercio']);
-      } else {
-        setReason(
-          'Se requiere adjuntar copia reciente del acto administrativo de nombramiento o posesión de la Rectoría para completar la firma del convenio marco.'
-        );
-        setSelectedDocs(['acto_posesion']);
-      }
-    } else {
-      setReason(
-        'La información fiscal o corporativa registrada no pudo ser validada ante los registros oficiales del RUES / DIAN.'
-      );
-      setSelectedDocs([]);
-    }
+    setReason('');
+    setSelectedDocs([]);
   }, [isOpen, target, targetType, mode]);
 
   if (!isOpen || !target) return null;
@@ -48,7 +32,7 @@ export default function CorrectionModal({
 
   function handleSubmit(e) {
     e.preventDefault();
-    if (!reason.trim()) return;
+    if (!reason.trim() || (mode === 'correction' && selectedDocs.length === 0)) return;
     onSubmit(target.id, reason.trim(), selectedDocs);
     onClose();
   }
@@ -111,34 +95,22 @@ export default function CorrectionModal({
                 Selecciona los documentos que requieren corrección:
               </label>
               <div className="space-y-1.5 rounded-xl border border-sand-line bg-cream/40 p-3">
-                {(targetType === 'company'
-                  ? [
-                      { id: 'camara_comercio', label: 'Cámara de Comercio (Requiere actualización o no legible)' },
-                      { id: 'rut', label: 'RUT DIAN (Requiere actualización o verificación)' },
-                      { id: 'cedula_rep_legal', label: 'Cédula del Representante Legal' },
-                      { id: 'carta_autorizacion', label: 'Carta de Autorización / Delegación de Talento' },
-                    ]
-                  : [
-                      { id: 'resolucion_men', label: 'Resolución de Reconocimiento MEN' },
-                      { id: 'snies', label: 'Certificado de Registro Activo SNIES' },
-                      { id: 'rut', label: 'RUT Institucional de la Universidad' },
-                      { id: 'acto_posesion', label: 'Acto de Posesión de Rectoría' },
-                    ]
-                ).map((doc) => (
+                {(target.documents || []).map((doc) => (
                   <label
-                    key={doc.id}
+                    key={doc.type}
                     className="flex items-center gap-2 text-xs font-medium text-ink cursor-pointer hover:text-terracotta"
                   >
                     <input
                       type="checkbox"
-                      checked={selectedDocs.includes(doc.id)}
-                      onChange={() => toggleDoc(doc.id)}
+                      checked={selectedDocs.includes(doc.type)}
+                      onChange={() => toggleDoc(doc.type)}
                       className="accent-terracotta size-4 rounded cursor-pointer"
                     />
                     <span>{doc.label}</span>
                   </label>
                 ))}
               </div>
+              {selectedDocs.length === 0 && <p className="text-xs text-amber-800">Selecciona al menos un documento del expediente.</p>}
             </div>
           )}
 
@@ -157,7 +129,7 @@ export default function CorrectionModal({
               required
             />
             <p className="m-0 text-[0.68rem] text-secondary">
-              Este mensaje será enviado al correo institucional registrado ({target.email}).
+              Esta observación quedará visible en el expediente de la entidad.
             </p>
           </div>
 
