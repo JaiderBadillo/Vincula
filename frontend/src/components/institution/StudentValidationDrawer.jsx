@@ -57,7 +57,7 @@ export default function StudentValidationDrawer({
 
   const match = student.academicMatch || {
     status: student.validado_por_ies || student.status === 'approved' ? 'verified' : 'pending',
-    label: student.validado_por_ies || student.status === 'approved' ? '100% Coincidente en SIGA' : 'Pendiente de Cotejo Institucional',
+    label: student.validado_por_ies || student.status === 'approved' ? 'Verificado por la IES' : 'Pendiente de revisión por la IES',
   };
   const matchOk = match.status === 'verified' || student.validado_por_ies || student.status === 'approved';
   const isPending = student.status === 'pending' || student.estado_verificacion === 'pendiente';
@@ -163,7 +163,7 @@ export default function StudentValidationDrawer({
                 )}
               </div>
               <p className="m-0 mt-0.5 text-xs text-secondary truncate">
-                {student.program || student.carrera || student.nombre_programa} · Grado {student.graduationYear || student.ano_graduacion} ({student.graduationPeriod || student.periodo_graduacion || 'Oficial'})
+                {student.program || student.carrera || student.nombre_programa || 'Programa no registrado'} · Grado {student.graduationYear || student.ano_graduacion || 'sin fecha'} ({student.graduationPeriod || student.periodo_graduacion || 'periodo no registrado'})
               </p>
             </div>
           </div>
@@ -201,7 +201,7 @@ export default function StudentValidationDrawer({
             }`}
           >
             <i className="bx bxs-file-pdf mr-1.5 text-terracotta" />
-            <span>Visor Seguro Diploma (Supabase)</span>
+            <span>Diploma adjuntado por el egresado</span>
           </button>
         </div>
 
@@ -214,7 +214,7 @@ export default function StudentValidationDrawer({
                 <div>
                   <h3 className="m-0 text-sm font-bold text-ink flex items-center gap-1.5">
                     <i className="bx bxs-lock-alt text-emerald-700" />
-                    <span>Diploma Oficial Resguardado en Supabase Storage</span>
+                    <span>Archivo adjuntado por el egresado</span>
                   </h3>
                   <p className="m-0 text-[0.7rem] text-secondary">
                     URL firmada temporal con expiración criptográfica de 3600 segundos (1 hora).
@@ -302,7 +302,7 @@ export default function StudentValidationDrawer({
                   </p>
                   <div className="flex items-center justify-between text-[0.7rem] text-emerald-900 pt-1">
                     <span>Acta: <strong>{student.numero_acta_grado || student.academicMatch?.bookFolio || 'N/A'}</strong></span>
-                    <span>Libro/Folio: <strong>{student.numero_libro_folio || 'Oficial'}</strong></span>
+                    <span>Libro/Folio: <strong>{student.numero_libro_folio || 'N/A'}</strong></span>
                   </div>
                 </div>
               )}
@@ -310,7 +310,7 @@ export default function StudentValidationDrawer({
               {/* Cotejo Académico con el Sistema de Admisiones */}
               <section className="space-y-2">
                 <h3 className="m-0 text-xs font-bold uppercase tracking-wider text-secondary">
-                  Cotejo de Registro Académico (SIGA / SNIES)
+                  Revisión del registro académico
                 </h3>
                 <div className="rounded-xl border border-line bg-page p-3.5 space-y-2">
                   <div className="flex items-center justify-between">
@@ -321,7 +321,7 @@ export default function StudentValidationDrawer({
                       <span>{match.label || 'Registro Cotejado'}</span>
                     </span>
                     <span className="text-[0.68rem] font-mono font-bold text-secondary">
-                      SNIES: {student.codigo_snies || '103241'}
+                      SNIES: {student.codigo_snies || 'N/A'}
                     </span>
                   </div>
                   {match.discrepancyNote && (
@@ -358,7 +358,7 @@ export default function StudentValidationDrawer({
                   <dd className="m-0 text-ink">{student.phone || student.telefono || 'N/A'}</dd>
 
                   <dt className="text-secondary font-medium">Nivel de Formación:</dt>
-                  <dd className="m-0 text-ink">{student.degreeLevel || student.nivel_formacion || 'Profesional Universitario'}</dd>
+                  <dd className="m-0 text-ink">{student.degreeLevel || student.nivel_formacion || 'N/A'}</dd>
                 </dl>
               </section>
 
@@ -366,7 +366,7 @@ export default function StudentValidationDrawer({
               <section className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="m-0 text-xs font-bold uppercase tracking-wider text-secondary">
-                    Documentos Oficiales Radicados
+                    Documentos adjuntados
                   </h3>
                   <button
                     type="button"
@@ -507,7 +507,7 @@ export default function StudentValidationDrawer({
           isOpen={showViewerModal}
           onClose={() => setShowViewerModal(false)}
           documentUrl={securePdfUrl}
-          title={`Diploma Oficial · ${student.studentName || student.nombre_completo || 'Egresado'}`}
+          title={`Documento adjuntado · ${student.studentName || student.nombre_completo || 'Egresado'}`}
           subtitle={`${student.program || student.carrera || 'Programa Académico'} · ${student.institutionName || 'Institución Universitaria'}`}
           metadata={{
             noFileMessage: 'El egresado aún no ha adjuntado el archivo digital del diploma o acta de grado a la plataforma.',

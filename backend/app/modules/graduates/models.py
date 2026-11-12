@@ -79,6 +79,7 @@ class AcademicoEgresado(Base):
     estado_laboral = Column(String(50), default="buscando", nullable=False)
     validado_por_ies = Column(Boolean, default=False, nullable=False)
     url_diploma_pdf = Column(Text, nullable=True)
+    diploma_cargado_por_egresado = Column(Boolean, default=False, nullable=False)
     estado_verificacion = Column(String(30), default="pendiente", nullable=False, index=True)  # 'pendiente', 'aprobado', 'rechazado'
     numero_acta_grado = Column(String(60), nullable=True)
     numero_libro_folio = Column(String(60), nullable=True)

@@ -20,11 +20,11 @@ class GraduateProfileSchema(BaseModel):
     nombre_completo: str
     correo: EmailStr
     telefono: Optional[str] = None
-    departamento: str
-    ciudad: str
-    institucion_nombre: str
-    carrera: str
-    ano_graduacion: str
+    departamento: Optional[str] = None
+    ciudad: Optional[str] = None
+    institucion_nombre: Optional[str] = None
+    carrera: Optional[str] = None
+    ano_graduacion: Optional[str] = None
     titulo_verificado: bool
     sello_digital_activo: bool
     habilidades_tecnicas: List[str]

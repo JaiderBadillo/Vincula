@@ -10,7 +10,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
-from app.modules.graduates.models import Egresado
+from app.modules.graduates.models import Egresado, AcademicoEgresado, ArchivoHojaVida
 from app.modules.vacancies_ats.models import (
     Postulacion,
     HistorialFasePostulacion,
@@ -343,47 +343,35 @@ class GraduateService:
             "mensaje": f"Has retirado tu postulación para '{titulo_vacante}' exitosamente."
         }
 
-    # Compatibilidad estática hacia atrás
+    # El perfil se obtiene de los registros del usuario autenticado.
     @staticmethod
-    def get_profile(graduate_id: str) -> GraduateProfileSchema:
+    async def get_profile_async(session: AsyncSession, user_id: str) -> GraduateProfileSchema:
+        try:
+            user_uuid = uuid.UUID(user_id)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="Identificador de usuario inválido.")
+        graduate = (await session.execute(select(Egresado).where(Egresado.id_usuario == user_uuid))).scalar_one_or_none()
+        if graduate is None:
+            raise HTTPException(status_code=404, detail="Perfil de egresado no encontrado.")
+
+        academic = (await session.execute(
+            select(AcademicoEgresado).where(AcademicoEgresado.id_egresado == graduate.id)
+            .order_by(AcademicoEgresado.creado_en.desc())
+        )).scalars().first()
+        cv = (await session.execute(
+            select(ArchivoHojaVida).where(ArchivoHojaVida.id_egresado == graduate.id)
+            .order_by(ArchivoHojaVida.es_predeterminado.desc(), ArchivoHojaVida.subido_en.desc())
+        )).scalars().first()
+        approved = bool(academic and academic.estado_verificacion == "aprobado" and academic.validado_por_ies)
         return GraduateProfileSchema(
-            id=graduate_id,
-            nombre_completo="Jaider Niño",
-            correo="egresado@correo.uts.edu.co",
-            telefono="318 456 7890",
-            departamento="Santander",
-            ciudad="Bucaramanga",
-            institucion_nombre="Unidades Tecnológicas de Santander (UTS)",
-            carrera="Ingeniería de Sistemas",
-            ano_graduacion="2025",
-            titulo_verificado=True,
-            sello_digital_activo=True,
-            habilidades_tecnicas=["React", "FastAPI", "Python", "SQL", "Tailwind CSS", "Git"],
-            experiencias=[
-                {
-                    "cargo": "Desarrollador Full Stack Jr.",
-                    "empresa": "Tech Solutions",
-                    "fecha_inicio": "2024-01",
-                    "fecha_fin": None,
-                    "es_actual": True,
-                    "descripcion": "Desarrollo de microservicios en Python y frontend en React."
-                }
-            ],
-            hoja_de_vida_pdf_url="/mock/cvs/CV_Jaider_Nino.pdf"
+            id=str(graduate.id), nombre_completo=graduate.nombre_completo,
+            correo=graduate.correo_personal, telefono=graduate.telefono,
+            departamento=graduate.departamento_residencia,
+            ciudad=graduate.ciudad_residencia,
+            institucion_nombre=academic.institucion.nombre_oficial if academic else None,
+            carrera=academic.programa.nombre if academic else graduate.titular_profesional,
+            ano_graduacion=str(academic.ano_graduacion) if academic else None,
+            titulo_verificado=approved, sello_digital_activo=bool(approved and academic.sello_digital),
+            habilidades_tecnicas=[], experiencias=[],
+            hoja_de_vida_pdf_url=cv.url_archivo if cv else None,
         )
-
-    @staticmethod
-    def get_my_applications(graduate_id: str) -> List[ApplicationHistoryItem]:
-        return [
-            ApplicationHistoryItem(
-                id_postulacion="app-001",
-                id_vacante="vac-101",
-                cargo="Desarrollador Backend Python / FastAPI",
-                empresa_nombre="Tech Innovations Colombia S.A.S.",
-                fecha_postulacion="2026-03-15",
-                fase_actual="entrevista",
-                coincidencia_ia_porcentaje=92
-            )
-        ]
-
-

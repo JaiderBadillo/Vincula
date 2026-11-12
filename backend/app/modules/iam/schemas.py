@@ -40,7 +40,7 @@ class RegisterGraduateRequest(BaseModel):
     id_institucion: Optional[str] = None
     carrera: str
     nivel_educativo: Optional[str] = "Profesional Universitario"
-    ano_graduacion: Optional[str] = "2025"
+    ano_graduacion: str
     autoriza_datos: bool = True
 
 

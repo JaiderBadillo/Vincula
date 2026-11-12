@@ -944,7 +944,7 @@ class InstitutionService:
         items: List[GraduatePendingValidationItem] = []
         for acad, egr, prog in filas:
             nom_arch = None
-            if acad.url_diploma_pdf:
+            if acad.diploma_cargado_por_egresado and acad.url_diploma_pdf:
                 nom_arch = acad.url_diploma_pdf.split("/")[-1].split("?")[0]
 
             prog_nombre = prog.nombre if prog else (egr.titular_profesional or "Programa Académico")
@@ -969,7 +969,7 @@ class InstitutionService:
                     periodo_graduacion=acad.periodo_graduacion,
                     promedio_ponderado=float(acad.promedio_ponderado) if acad.promedio_ponderado else None,
                     nombre_archivo_diploma=nom_arch,
-                    url_diploma_pdf=acad.url_diploma_pdf,
+                    url_diploma_pdf=acad.url_diploma_pdf if acad.diploma_cargado_por_egresado else None,
                     estado_verificacion=acad.estado_verificacion,
                     estado_validacion=acad.estado_verificacion,
                     validado_por_ies=acad.validado_por_ies,
@@ -1048,7 +1048,7 @@ class InstitutionService:
             )
 
         bucket = settings.SUPABASE_STORAGE_BUCKET_DIPLOMAS
-        raw_url = acad.url_diploma_pdf or ""
+        raw_url = acad.url_diploma_pdf if acad.diploma_cargado_por_egresado else ""
 
         if not raw_url or not raw_url.strip():
             raise HTTPException(
@@ -1141,7 +1141,7 @@ class InstitutionService:
                 }
             )
 
-        if not acad.url_diploma_pdf or acad.url_diploma_pdf.startswith(("/mock/", "/storage/")):
+        if not acad.diploma_cargado_por_egresado or not acad.url_diploma_pdf or acad.url_diploma_pdf.startswith(("/mock/", "/storage/")):
             raise HTTPException(status_code=400, detail="No se puede verificar al egresado sin el diploma original adjunto.")
 
         # Candado de idempotencia: Diploma ya aprobado
@@ -1165,7 +1165,9 @@ class InstitutionService:
             )
 
         # Resolver número de acta
-        num_acta = payload.numero_acta_grado or payload.numero_acta_o_registro or f"ACTA-{datetime.now().year}-{str(uuid.uuid4())[:8].upper()}"
+        num_acta = payload.numero_acta_grado or payload.numero_acta_o_registro or acad.numero_acta_grado
+        if not num_acta:
+            raise HTTPException(status_code=400, detail="Indica el número real del acta de grado antes de verificar el diploma.")
         num_folio = payload.numero_libro_folio or acad.numero_libro_folio
 
         # Parsear fecha de grado
@@ -1309,38 +1311,6 @@ class InstitutionService:
         )
 
     # Fallbacks síncronos de compatibilidad
-    @staticmethod
-    def get_pending_graduates(ies_id: str) -> List[Dict[str, Any]]:
-        return [
-            {
-                "id_academico": "acad-mock-001",
-                "id_egresado": "egr-001",
-                "nombre_completo": "Jaider Niño",
-                "tipo_documento": "CC",
-                "numero_documento": "1098765432",
-                "carrera": "Ingeniería de Sistemas",
-                "ano_graduacion": 2025,
-                "nombre_archivo_diploma": "Diploma_Oficial_Jaider_Nino.pdf",
-                "url_diploma_pdf": "/mock/diplomas/Diploma_Oficial_Jaider_Nino.pdf",
-                "estado_validacion": "pendiente"
-            }
-        ]
-
-    @staticmethod
-    def validate_graduate_diploma(graduate_id: str, payload: ValidateGraduateRequest) -> Dict[str, Any]:
-        if payload.aprobado:
-            return {
-                "success": True,
-                "mensaje": "Diploma validado formalmente por la universidad. Se ha otorgado el Sello Digital Institucional.",
-                "estado": "aprobado",
-                "numero_acta": payload.numero_acta_o_registro or "ACTA-2026-VAL"
-            }
-        return {
-            "success": True,
-            "mensaje": f"Diploma observado/rechazado: {payload.observaciones}",
-            "estado": "rechazado"
-        }
-
     @classmethod
     async def subsanar_documento(
         cls,
@@ -1515,6 +1485,7 @@ class InstitutionService:
         # Actualizar documento en PostgreSQL
         existing_doc.nombre_archivo = nombre_guardado
         existing_doc.url_archivo = url_final
+        existing_doc.archivo_cargado_por_usuario = True
         existing_doc.tamano_kb = max(1, round(len(file_bytes) / 1024))
         existing_doc.subido_en = datetime.now(timezone.utc)
         existing_doc.estado = "subsanado"

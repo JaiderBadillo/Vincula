@@ -37,13 +37,13 @@ def _get_user_id(current_user: Dict[str, Any]) -> str:
 
 @router.get("/perfil", response_model=GraduateProfileSchema)
 async def get_my_profile(
-    current_user: Dict[str, Any] = Depends(require_role(["egresado"]))
+    current_user: Dict[str, Any] = Depends(require_role(["egresado"])),
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Retorna el perfil integral del egresado autenticado.
     """
-    graduate_id = current_user.get("id_entidad", "egr-001")
-    return GraduateService.get_profile(graduate_id)
+    return await GraduateService.get_profile_async(db, _get_user_id(current_user))
 
 
 @router.get("/mis-postulaciones", response_model=List[GraduateApplicationResponse])
@@ -107,32 +107,36 @@ async def upload_graduate_diploma(
     if not egresado:
         raise HTTPException(status_code=404, detail="Perfil de egresado no encontrado.")
 
-    file_bytes = await archivo_pdf.read()
-    if not file_bytes or len(file_bytes) == 0:
-        raise HTTPException(status_code=400, detail="El archivo adjunto está vacío.")
-
-    clean_name = "".join(c for c in (archivo_pdf.filename or "diploma.pdf") if c.isalnum() or c in (".", "_", "-")).strip() or "diploma_oficial.pdf"
-    if not clean_name.lower().endswith(".pdf"):
-        clean_name += ".pdf"
-
-    dest_path = f"diplomas/{egresado.id}/{clean_name}"
-    storage_res = await SupabaseStorageService.upload_document_pdf(
-        bucket_name=settings.SUPABASE_STORAGE_BUCKET_DIPLOMAS,
-        file_bytes=file_bytes,
-        destination_path=dest_path
-    )
-
-    # Actualizar registro académico
     res_acad = await db.execute(
         select(AcademicoEgresado)
         .where(AcademicoEgresado.id_egresado == egresado.id)
         .order_by(AcademicoEgresado.creado_en.desc())
     )
     acad = res_acad.scalars().first()
-    if acad:
-        acad.url_diploma_pdf = storage_res["url"]
-        acad.estado_verificacion = "pendiente"
-        await db.commit()
+    if not acad:
+        raise HTTPException(status_code=404, detail="No hay un registro académico al cual adjuntar el diploma.")
+    if acad.estado_verificacion == "aprobado":
+        raise HTTPException(status_code=409, detail="Un diploma ya verificado no puede reemplazarse sin una nueva revisión.")
+
+    file_bytes = await archivo_pdf.read()
+    if not file_bytes or len(file_bytes) == 0:
+        raise HTTPException(status_code=400, detail="El archivo adjunto está vacío.")
+
+    clean_name = "".join(c for c in (archivo_pdf.filename or "diploma.pdf") if c.isalnum() or c in (".", "_", "-")).strip() or "diploma.pdf"
+    if not clean_name.lower().endswith(".pdf"):
+        clean_name += ".pdf"
+
+    dest_path = f"diplomas/{egresado.id}/{uuid.uuid4()}/{clean_name}"
+    storage_res = await SupabaseStorageService.upload_document_pdf(
+        bucket_name=settings.SUPABASE_STORAGE_BUCKET_DIPLOMAS,
+        file_bytes=file_bytes,
+        destination_path=dest_path
+    )
+
+    acad.url_diploma_pdf = storage_res["url"]
+    acad.diploma_cargado_por_egresado = True
+    acad.estado_verificacion = "pendiente"
+    await db.commit()
 
     return {
         "success": True,

@@ -5,126 +5,12 @@ import { COLOMBIAN_LOCATIONS } from '../data/profile.js';
 import { useProfile } from '../hooks/useProfile.js';
 import { authService } from '../services/authService.js';
 
-export const REGISTERED_UNIVERSITIES = [
-  {
-    id: 'uts',
-    name: 'Unidades Tecnológicas de Santander (UTS)',
-    shortName: 'UTS',
-    logo: '/assets/uts-logo.png',
-    avatarText: 'UTS',
-    avatarBg: 'bg-[#00A86B] text-white',
-  },
-  {
-    id: 'uis',
-    name: 'Universidad Industrial de Santander (UIS)',
-    shortName: 'UIS',
-    avatarText: 'UIS',
-    avatarBg: 'bg-[#0B6623] text-white',
-  },
-  {
-    id: 'unab',
-    name: 'Universidad Autónoma de Bucaramanga (UNAB)',
-    shortName: 'UNAB',
-    avatarText: 'UNAB',
-    avatarBg: 'bg-[#B91C1C] text-white',
-  },
-  {
-    id: 'udes',
-    name: 'Universidad de Santander (UDES)',
-    shortName: 'UDES',
-    avatarText: 'UDES',
-    avatarBg: 'bg-[#1E3A8A] text-white',
-  },
-  {
-    id: 'unipaz',
-    name: 'Instituto Universitario de la Paz (UNIPAZ)',
-    shortName: 'UNIPAZ',
-    avatarText: 'UNIPAZ',
-    avatarBg: 'bg-[#047857] text-white',
-  },
-  {
-    id: 'upb',
-    name: 'Universidad Pontificia Bolivariana (UPB)',
-    shortName: 'UPB',
-    avatarText: 'UPB',
-    avatarBg: 'bg-[#991B1B] text-white',
-  },
-  {
-    id: 'usta',
-    name: 'Universidad Santo Tomás (USTA)',
-    shortName: 'USTA',
-    avatarText: 'USTA',
-    avatarBg: 'bg-[#1D4ED8] text-white',
-  },
-  {
-    id: 'fitec',
-    name: 'Fundación Tecnológica Fitec (FITEC)',
-    shortName: 'FITEC',
-    avatarText: 'FITEC',
-    avatarBg: 'bg-[#0284C7] text-white',
-  },
-  {
-    id: 'unad',
-    name: 'Universidad Nacional Abierta y a Distancia (UNAD)',
-    shortName: 'UNAD',
-    avatarText: 'UNAD',
-    avatarBg: 'bg-[#EA580C] text-white',
-  },
-  {
-    id: 'otra',
-    name: 'Otra Institución de Educación Superior',
-    shortName: 'Otra IES',
-    icon: 'bx bx-library',
-    avatarBg: 'bg-slate-700 text-white',
-  },
-];
-
-const careerSuggestions = [
-  'Ingeniería de Sistemas',
-  'Ingeniería Electromecánica',
-  'Ingeniería Electrónica',
-  'Ingeniería Industrial',
-  'Ingeniería Ambiental',
-  'Ingeniería Civil',
-  'Ingeniería de Telecomunicaciones',
-  'Administración de Empresas',
-  'Administración Financiera',
-  'Contaduría Pública',
-  'Tecnología en Desarrollo de Software',
-  'Tecnología en Sistemas de Información',
-  'Tecnología en Gestión Empresarial',
-  'Tecnología en Manejo de la Información Contable',
-  'Tecnología en Electricidad Industrial',
-  'Tecnología en Electromecánica',
-  'Tecnología en Topografía',
-  'Tecnología en Recursos Ambientales',
-  'Tecnología en Mercadeo y Gestión Comercial',
-  'Psicología',
-  'Derecho',
-];
-
 const educationLevels = [
   'Técnico Profesional',
   'Tecnológico',
   'Profesional Universitario',
   'Especialización',
   'Maestría',
-];
-
-const graduationYears = [
-  '2026',
-  '2025',
-  '2024',
-  '2023',
-  '2022',
-  '2021',
-  '2020',
-  '2019',
-  '2018',
-  '2017',
-  '2016',
-  '2015',
-  '2014 o anterior',
 ];
 
 const GRADUATE_FIELD_LABELS = {
@@ -179,11 +65,11 @@ const carouselSlides = [
 ];
 
 // Componente Desplegable de Universidades con Logo y solo el Nombre
-function UniversitySelect({ value, onChange, error }) {
+function UniversitySelect({ value, onChange, error, universities }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  const selected = REGISTERED_UNIVERSITIES.find((u) => u.id === value);
+  const selected = universities.find((u) => u.id === value);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -242,7 +128,7 @@ function UniversitySelect({ value, onChange, error }) {
           role="listbox"
           className="absolute left-0 right-0 top-full z-40 mt-1.5 max-h-64 overflow-y-auto rounded-2xl border border-line bg-white p-1.5 shadow-2xl space-y-0.5"
         >
-          {REGISTERED_UNIVERSITIES.map((uni) => {
+          {universities.map((uni) => {
             const isSelected = uni.id === value;
             return (
               <button
@@ -305,9 +191,11 @@ export default function GraduateRegistrationPage() {
 
   // Estados Sección 2: Estudios y Validación (Sin universidad fija por defecto)
   const [selectedUniversityId, setSelectedUniversityId] = useState('');
+  const [universities, setUniversities] = useState([]);
+  const [catalogError, setCatalogError] = useState('');
   const [career, setCareer] = useState(prefilled.career || '');
   const [educationLevel, setEducationLevel] = useState('Profesional Universitario');
-  const [graduationYear, setGraduationYear] = useState('2025');
+  const [graduationYear, setGraduationYear] = useState('');
   const [diplomaFile, setDiplomaFile] = useState(null);
   const [diplomaError, setDiplomaError] = useState('');
   const [habeasData, setHabeasData] = useState(true);
@@ -331,7 +219,17 @@ export default function GraduateRegistrationPage() {
 
   const departments = Object.keys(COLOMBIAN_LOCATIONS);
   const availableCities = dept ? COLOMBIAN_LOCATIONS[dept] || [] : [];
-  const selectedUni = REGISTERED_UNIVERSITIES.find((u) => u.id === selectedUniversityId);
+  const selectedUni = universities.find((u) => u.id === selectedUniversityId);
+
+  useEffect(() => {
+    let active = true;
+    authService.getAcademicCatalog().then((items) => {
+      if (active) setUniversities(items);
+    }).catch((err) => {
+      if (active) setCatalogError(err.message);
+    });
+    return () => { active = false; };
+  }, []);
 
   // Cambio automático del carrusel cada 6 segundos
   useEffect(() => {
@@ -400,8 +298,11 @@ export default function GraduateRegistrationPage() {
     if (!selectedUniversityId) {
       newErrors.university = 'Selecciona la universidad de la cual eres egresado.';
     }
-    if (!career.trim()) {
-      newErrors.career = 'Escribe o selecciona tu carrera o programa académico.';
+    if (!career.trim() || !selectedUni?.programs?.some((name) => name.toLowerCase() === career.trim().toLowerCase())) {
+      newErrors.career = 'Selecciona un programa registrado en la institución elegida.';
+    }
+    if (!/^\d{4}$/.test(graduationYear) || Number(graduationYear) < 1900 || Number(graduationYear) > new Date().getFullYear()) {
+      newErrors.graduationYear = 'Indica el año real de graduación.';
     }
     if (!diplomaFile) {
       newErrors.diploma = 'Adjunta tu diploma o acta de grado en formato PDF para validación.';
@@ -481,38 +382,9 @@ export default function GraduateRegistrationPage() {
       setIsSubmitting(false);
       setShowSuccessModal(true);
     } catch (err) {
-      console.warn('Error en registro de egresado contra backend, aplicando contingencia local:', err);
+      console.error('No se pudo registrar el expediente:', err);
       setIsSubmitting(false);
-
-      if (err.status === 400) {
-        setApiError(err.message || 'Error en los datos de registro.');
-        return;
-      }
-
-      // Fallback local si el backend no responde
-      updateProfile((current) => ({
-        ...current,
-        fullName: fullName.trim(),
-        name: fullName.trim(),
-        documentType: docType,
-        documentNumber: docNumber.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        location: `${city}, ${dept}`,
-        program: career.trim(),
-        headline: `${career.trim()} · Graduado`,
-        institution: selectedUni?.name || 'Institución Universitaria',
-        institutionId: selectedUni?.id || 'otra',
-        graduationYear,
-        educationLevel,
-        diplomaFileName: diplomaFile.name,
-        diplomaVerified: false,
-        verificationStatus: 'pending',
-        registrationCompleted: true,
-        ...(cvName ? { cvFileName: cvName } : {}),
-      }));
-
-      setShowSuccessModal(true);
+      setApiError(err.message || 'No se pudo guardar el registro y sus documentos. Intenta de nuevo.');
     }
   }
 
@@ -880,9 +752,11 @@ export default function GraduateRegistrationPage() {
 
                     <UniversitySelect
                       value={selectedUniversityId}
-                      onChange={(newId) => setSelectedUniversityId(newId)}
+                      onChange={(newId) => { setSelectedUniversityId(newId); setCareer(''); }}
                       error={errors.university}
+                      universities={universities}
                     />
+                    {catalogError && <p className="mt-1 text-xs text-red-600">{catalogError}</p>}
 
                     {errors.university && (
                       <p className="mt-1 text-[0.68rem] font-bold text-red-600">{errors.university}</p>
@@ -906,7 +780,7 @@ export default function GraduateRegistrationPage() {
                       }`}
                     />
                     <datalist id="career-datalist">
-                      {careerSuggestions.map((prog) => (
+                      {(selectedUni?.programs || []).map((prog) => (
                         <option key={prog} value={prog} />
                       ))}
                     </datalist>
@@ -939,18 +813,17 @@ export default function GraduateRegistrationPage() {
                       <label htmlFor="graduationYear" className="mb-1.5 block text-xs font-bold text-ink">
                         Año de graduación / egreso <span className="text-red-600">*</span>
                       </label>
-                      <select
+                      <input
                         id="graduationYear"
+                        type="number"
+                        min="1900"
+                        max={new Date().getFullYear()}
+                        placeholder="Año real de graduación"
                         value={graduationYear}
                         onChange={(e) => setGraduationYear(e.target.value)}
                         className="min-h-11 w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-xs font-semibold text-ink outline-none focus:border-green focus:ring-4 focus:ring-green/10 transition-all cursor-pointer"
-                      >
-                        {graduationYears.map((yr) => (
-                          <option key={yr} value={yr}>
-                            {yr}
-                          </option>
-                        ))}
-                      </select>
+                      />
+                      {errors.graduationYear && <p className="mt-1 text-xs text-red-600">{errors.graduationYear}</p>}
                     </div>
                   </div>
 

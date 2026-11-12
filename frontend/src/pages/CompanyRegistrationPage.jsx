@@ -301,43 +301,9 @@ export default function CompanyRegistrationPage() {
       setIsSubmitting(false);
       setShowSuccessModal(true);
     } catch (err) {
-      console.warn('Error en registro contra backend, aplicando contingencia local:', err);
+      console.error('No se pudo registrar el expediente:', err);
       setIsSubmitting(false);
-
-      // Si fue error de validación o duplicidad (400) desde FastAPI
-      if (err.status === 400) {
-        setApiError(err.message || 'Error en los datos de registro.');
-        return;
-      }
-
-      // Si el servidor backend está fuera de línea, generar radicado de contingencia para no bloquear
-      const fallbackRad = `RAD-EMP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-      setFilingNumber(fallbackRad);
-
-      updateProfile((current) => ({
-        ...current,
-        legalName: legalName.trim(),
-        commercialName: commercialName.trim(),
-        name: commercialName.trim() || legalName.trim(),
-        nit: nit.trim(),
-        sector,
-        size: companySize,
-        address: `${address.trim()}, ${city}, ${dept}`,
-        city: `${city}, ${dept}`,
-        website: website.trim(),
-        phone: companyPhone.trim(),
-        email: recruiterEmail.trim(),
-        legalRepresentative: {
-          name: legalRepName.trim(),
-          document: legalRepDoc.trim(),
-        },
-        verificationStatus: 'pending_72h',
-        verificationSubmittedAt: new Date().toISOString(),
-        filingCode: fallbackRad,
-        documentsCount: 3,
-      }));
-
-      setShowSuccessModal(true);
+      setApiError(err.message || 'No se pudo guardar el registro y sus documentos. Intenta de nuevo.');
     }
   }
 

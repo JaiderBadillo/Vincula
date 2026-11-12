@@ -92,7 +92,7 @@ class SuperAdminService:
                     subido_en=d.subido_en.isoformat() if d.subido_en else None,
                     secure_url=None
                 )
-                for d in docs
+                for d in docs if d.archivo_cargado_por_usuario
             ]
 
             # Última observación de subsanación si aplica
@@ -196,7 +196,7 @@ class SuperAdminService:
                     subido_en=d.subido_en.isoformat() if d.subido_en else None,
                     secure_url=None
                 )
-                for d in docs
+                for d in docs if d.archivo_cargado_por_usuario
             ]
 
             motivo_sub = None
@@ -270,6 +270,8 @@ class SuperAdminService:
         # 1. Buscar en documentos_empresa
         doc_emp = (await session.execute(select(DocumentoEmpresa).where(DocumentoEmpresa.id == doc_uuid))).scalar_one_or_none()
         if doc_emp:
+            if not doc_emp.archivo_cargado_por_usuario:
+                raise ValueError("El documento no tiene una carga del usuario comprobada.")
             bucket = settings.SUPABASE_STORAGE_BUCKET_DOCS
             # Extraer path relativo del bucket
             raw_url = doc_emp.url_archivo
@@ -290,6 +292,8 @@ class SuperAdminService:
         # 2. Buscar en documentos_institucion
         doc_ies = (await session.execute(select(DocumentoInstitucion).where(DocumentoInstitucion.id == doc_uuid))).scalar_one_or_none()
         if doc_ies:
+            if not doc_ies.archivo_cargado_por_usuario:
+                raise ValueError("El documento no tiene una carga del usuario comprobada.")
             bucket = settings.SUPABASE_STORAGE_BUCKET_DOCS
             raw_url = doc_ies.url_archivo
             if not raw_url or f"/{bucket}/" not in raw_url or raw_url.startswith(("/storage/", "/mock/")):
@@ -325,7 +329,7 @@ class SuperAdminService:
             raise ValueError(f"Empresa con ID {company_id} no encontrada.")
 
         docs = (await session.execute(select(DocumentoEmpresa).where(DocumentoEmpresa.id_empresa == comp_uuid))).scalars().all()
-        if not docs or any(not d.url_archivo or d.url_archivo.startswith(("/mock/", "/storage/")) for d in docs):
+        if not docs or any(not d.archivo_cargado_por_usuario or not d.url_archivo or d.url_archivo.startswith(("/mock/", "/storage/")) for d in docs):
             raise ValueError("No se puede aprobar la empresa sin documentos originales disponibles.")
 
         now = datetime.now(timezone.utc)
@@ -493,7 +497,7 @@ class SuperAdminService:
             raise ValueError(f"Institución con ID {ies_id} no encontrada.")
 
         docs = (await session.execute(select(DocumentoInstitucion).where(DocumentoInstitucion.id_institucion == ies_uuid))).scalars().all()
-        if not docs or any(not d.url_archivo or d.url_archivo.startswith(("/mock/", "/storage/")) for d in docs):
+        if not docs or any(not d.archivo_cargado_por_usuario or not d.url_archivo or d.url_archivo.startswith(("/mock/", "/storage/")) for d in docs):
             raise ValueError("No se puede aprobar la IES sin documentos originales disponibles.")
 
         now = datetime.now(timezone.utc)

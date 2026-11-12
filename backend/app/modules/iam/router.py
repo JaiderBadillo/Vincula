@@ -8,6 +8,7 @@ from typing import Dict, Any, Optional
 import uuid
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, status, Request, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -21,6 +22,7 @@ from app.modules.iam.schemas import (
     UserMeResponse,
 )
 from app.modules.iam.services import IAMService, UserNotRegisteredError
+from app.modules.institutions.models import Institucion, ProgramaAcademico
 from app.integrations.email_service import EmailService
 
 router = APIRouter(prefix="/auth", tags=["IAM - Autenticación y Registro"])
@@ -28,6 +30,26 @@ from app.modules.iam.password_reset import router as password_reset_router
 from app.modules.iam.advisor_settings import router as advisor_settings_router, record_advisor_access
 router.include_router(password_reset_router)
 router.include_router(advisor_settings_router)
+
+
+@router.get("/catalogo-academico")
+async def catalogo_academico(db: AsyncSession = Depends(get_db)):
+    """Opciones existentes para asociar un diploma sin crear instituciones ni códigos SNIES."""
+    records = (await db.execute(
+        select(Institucion.id, Institucion.nombre_oficial, Institucion.nombre_corto,
+               ProgramaAcademico.nombre)
+        .join(ProgramaAcademico, ProgramaAcademico.id_institucion == Institucion.id)
+        .where(ProgramaAcademico.estado == "activo")
+        .order_by(Institucion.nombre_oficial, ProgramaAcademico.nombre)
+    )).all()
+    institutions = {}
+    for ies_id, name, short_name, program_name in records:
+        entry = institutions.setdefault(str(ies_id), {
+            "id": str(ies_id), "name": name, "shortName": short_name, "programs": []
+        })
+        if program_name not in entry["programs"]:
+            entry["programs"].append(program_name)
+    return list(institutions.values())
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -104,11 +126,11 @@ async def registro_egresado_form(
     departamento: str = Form("Santander"),
     ciudad: str = Form("Bucaramanga"),
     id_institucion: Optional[str] = Form(None),
-    carrera: str = Form("Profesional Universitario"),
+    carrera: str = Form(...),
     nivel_educativo: Optional[str] = Form("Profesional Universitario"),
-    ano_graduacion: Optional[str] = Form("2025"),
+    ano_graduacion: str = Form(...),
     autoriza_datos: bool = Form(True),
-    diploma_pdf: Optional[UploadFile] = File(None),
+    diploma_pdf: UploadFile = File(...),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -130,11 +152,12 @@ async def registro_egresado_form(
         autoriza_datos=autoriza_datos,
     )
 
-    raw_diploma = None
-    if diploma_pdf and diploma_pdf.filename:
-        file_bytes = await diploma_pdf.read()
-        if len(file_bytes) > 0:
-            raw_diploma = (diploma_pdf.filename, file_bytes)
+    file_bytes = await diploma_pdf.read()
+    if not diploma_pdf.filename or not diploma_pdf.filename.lower().endswith(".pdf") or not file_bytes.startswith(b"%PDF-"):
+        raise HTTPException(status_code=400, detail="Adjunta el PDF original de tu diploma o acta de grado.")
+    if len(file_bytes) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="El PDF excede el límite de 10 MB.")
+    raw_diploma = (diploma_pdf.filename, file_bytes)
 
     try:
         return await IAMService.register_graduate(db, req, raw_diploma=raw_diploma)

@@ -69,17 +69,17 @@ export default function InstitutionGraduateValidationPage() {
               id_academico: it.id_academico,
               id_egresado: it.id_egresado,
               studentName: it.nombre_completo,
-              studentCode: it.codigo_estudiantil || `EST-${it.numero_documento.slice(-5)}`,
+              studentCode: it.codigo_estudiantil || null,
               documentType: it.tipo_documento || 'CC',
               documentId: it.numero_documento,
               email: it.correo_personal || null,
               phone: it.telefono || null,
-              faculty: 'Facultad de Ciencias Naturales e Ingenierías',
-              program: it.carrera || it.nombre_programa || 'Ingeniería',
+              faculty: null,
+              program: it.carrera || it.nombre_programa || null,
               degreeLevel: it.nivel_formacion,
               graduationYear: it.ano_graduacion,
-              graduationPeriod: it.periodo_graduacion || `${it.ano_graduacion}-2`,
-              campus: 'Campus Principal Real de Minas',
+              graduationPeriod: it.periodo_graduacion || null,
+              campus: null,
               status:
                 it.estado_verificacion === 'aprobado'
                   ? 'approved'
@@ -92,7 +92,7 @@ export default function InstitutionGraduateValidationPage() {
                     minute: '2-digit',
                   })
                 : null,
-              priority: 'Alta',
+              priority: null,
               academicMatch: {
                 status:
                   it.validado_por_ies || it.estado_verificacion === 'aprobado'
@@ -100,7 +100,7 @@ export default function InstitutionGraduateValidationPage() {
                     : 'pending',
                 label:
                   it.validado_por_ies || it.estado_verificacion === 'aprobado'
-                    ? '100% Coincidente en SIGA'
+                    ? 'Verificado por la IES'
                     : 'Pendiente de Cotejo Institucional',
                 bookFolio: it.numero_libro_folio || null,
                 diplomaNumber: it.numero_acta_grado || null,
@@ -447,9 +447,11 @@ export default function InstitutionGraduateValidationPage() {
                               <h3 className="m-0 font-display text-base font-bold text-ink truncate">
                                 {student.studentName}
                               </h3>
-                              <span className="rounded-md bg-panel px-2 py-0.5 font-mono text-[0.68rem] text-secondary">
-                                {student.studentCode}
-                              </span>
+                              {student.studentCode && (
+                                <span className="rounded-md bg-panel px-2 py-0.5 font-mono text-[0.68rem] text-secondary">
+                                  {student.studentCode}
+                                </span>
+                              )}
                               {student.status === 'approved' && (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 text-[0.65rem] font-bold">
                                   <i className="bx bxs-shield-check text-xs text-emerald-600" />

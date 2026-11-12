@@ -324,48 +324,9 @@ export default function InstitutionRegistrationPage() {
       setIsSubmitting(false);
       setShowSuccessModal(true);
     } catch (err) {
-      console.warn('Error en registro IES contra backend, aplicando contingencia local:', err);
+      console.error('No se pudo registrar el expediente:', err);
       setIsSubmitting(false);
-
-      if (err.status === 400) {
-        setApiError(err.message || 'Error en los datos de la institución.');
-        return;
-      }
-
-      // Si el backend no responde, aplicar contingencia local para no bloquear la experiencia
-      const fallbackRad = `RAD-IES-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-      setFilingNumber(fallbackRad);
-
-      updateProfile((current) => ({
-        ...current,
-        legalName: legalName.trim(),
-        name: legalName.trim(),
-        acronym: acronym.trim() || legalName.trim().substring(0, 8),
-        sniesCode: sniesCode.trim(),
-        academicCharacter,
-        institutionType: institutionOrigin,
-        nit: nit.trim(),
-        department: dept,
-        city: city,
-        address: `${address.trim()}, ${city}, ${dept}`,
-        website: website.trim(),
-        phone: phone.trim(),
-        contactEmail: advisorEmail.trim(),
-        legalRepresentative: rectorName.trim(),
-        rectorDocument: rectorDoc.trim(),
-        advisorContact: {
-          name: advisorName.trim(),
-          role: advisorRole.trim(),
-          phone: advisorPhone.trim(),
-          email: advisorEmail.trim(),
-        },
-        verificationStatus: 'pending_men_72h',
-        verificationSubmittedAt: new Date().toISOString(),
-        filingCode: fallbackRad,
-        documentsCount: 4,
-      }));
-
-      setShowSuccessModal(true);
+      setApiError(err.message || 'No se pudo guardar el registro y sus documentos. Intenta de nuevo.');
     }
   }
 

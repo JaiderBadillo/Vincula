@@ -316,6 +316,7 @@ class CompanyService:
         # Actualizar documento en PostgreSQL
         existing_doc.nombre_archivo = nombre_guardado
         existing_doc.url_archivo = url_final
+        existing_doc.archivo_cargado_por_usuario = True
         existing_doc.tamano_kb = max(1, round(len(file_bytes) / 1024))
         existing_doc.subido_en = datetime.now(timezone.utc)
         existing_doc.estado = "subsanado"

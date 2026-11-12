@@ -407,6 +407,12 @@ class AuthService {
    * @param {Object} data Datos del egresado
    * @param {File|null} diplomaFile Archivo PDF del diploma o acta de grado seleccionado por el usuario
    */
+  async getAcademicCatalog() {
+    const response = await fetch(`${API_BASE_URL}/auth/catalogo-academico`);
+    if (!response.ok) throw new Error('No se pudo cargar el catálogo académico. Intenta de nuevo.');
+    return response.json();
+  }
+
   async registerGraduate(data, diplomaFile = null) {
     let response;
 
@@ -423,7 +429,7 @@ class AuthService {
       if (data.institutionId) formData.append('id_institucion', data.institutionId);
       formData.append('carrera', data.career?.trim() || 'Profesional Universitario');
       formData.append('nivel_educativo', data.educationLevel || 'Profesional Universitario');
-      formData.append('ano_graduacion', String(data.graduationYear || '2025'));
+        formData.append('ano_graduacion', String(data.graduationYear || ''));
       formData.append('autoriza_datos', String(data.habeasData ?? true));
       formData.append('diploma_pdf', diplomaFile);
 
@@ -444,7 +450,7 @@ class AuthService {
         id_institucion: data.institutionId || null,
         carrera: data.career?.trim() || 'Profesional Universitario',
         nivel_educativo: data.educationLevel || 'Profesional Universitario',
-        ano_graduacion: String(data.graduationYear || '2025'),
+          ano_graduacion: String(data.graduationYear || ''),
         autoriza_datos: data.habeasData ?? true,
       };
 

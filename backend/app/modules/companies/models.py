@@ -134,6 +134,7 @@ class DocumentoEmpresa(Base):
     tipo_documento = Column(String(60), nullable=False)  # 'camara_comercio', 'rut', etc.
     nombre_archivo = Column(String(255), nullable=False)
     url_archivo = Column(Text, nullable=False)
+    archivo_cargado_por_usuario = Column(Boolean, default=False, nullable=False)
     tamano_kb = Column(Integer, nullable=False)
     subido_en = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     estado = Column(String(30), default="adjunto", nullable=False)

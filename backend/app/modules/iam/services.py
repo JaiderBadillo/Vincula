@@ -25,8 +25,6 @@ from app.modules.institutions.models import (
     AsesorIES,
     DocumentoInstitucion,
     ProgramaAcademico,
-    SedeInstitucion,
-    Facultad,
 )
 from app.modules.graduates.models import Egresado, AcademicoEgresado
 from app.modules.iam.schemas import (
@@ -374,20 +372,7 @@ class IAMService:
                     target_ies = row_ies[0]
 
         if not target_ies:
-            res_uts = await session.execute(
-                select(Institucion).where(
-                    (func.lower(Institucion.nombre_corto) == "uts") |
-                    (func.lower(Institucion.nombre_oficial).ilike("%santander%"))
-                )
-            )
-            row_uts = res_uts.first()
-            if row_uts:
-                target_ies = row_uts[0]
-            else:
-                first_ies = await session.execute(select(Institucion))
-                row_first = first_ies.first()
-                if row_first:
-                    target_ies = row_first[0]
+            raise ValueError("La institución seleccionada no está registrada. Contacta soporte para vincularla antes de cargar el diploma.")
 
         if target_ies:
             target_prog: Optional[ProgramaAcademico] = None
@@ -405,54 +390,25 @@ class IAMService:
                     target_prog = row_prog[0]
 
             if not target_prog:
-                res_fac = await session.execute(select(Facultad).where(Facultad.id_institucion == target_ies.id))
-                fac_row = res_fac.first()
-                res_sede = await session.execute(select(SedeInstitucion).where(SedeInstitucion.id_institucion == target_ies.id))
-                sede_row = res_sede.first()
-
-                if fac_row and sede_row:
-                    fac_obj = fac_row[0]
-                    sede_obj = sede_row[0]
-                    new_prog_id = uuid.uuid4()
-                    snies_num = str(abs(hash(data.carrera)) % 900000 + 100000)
-                    target_prog = ProgramaAcademico(
-                        id=new_prog_id,
-                        id_institucion=target_ies.id,
-                        id_facultad=fac_obj.id,
-                        id_sede=sede_obj.id,
-                        codigo_interno=f"{target_ies.nombre_corto[:3].upper()}-{abs(hash(data.carrera)) % 900 + 100}",
-                        codigo_snies=snies_num,
-                        nombre=data.carrera.strip(),
-                        nivel_formacion=data.nivel_educativo or "Profesional Universitario",
-                        modalidad="Presencial",
-                        duracion_semestres=10,
-                        total_creditos=160,
-                        estado="activo"
-                    )
-                    session.add(target_prog)
-                    await session.flush()
-                else:
-                    res_any_prog = await session.execute(select(ProgramaAcademico).where(ProgramaAcademico.id_institucion == target_ies.id))
-                    any_prog_row = res_any_prog.first()
-                    if any_prog_row:
-                        target_prog = any_prog_row[0]
+                raise ValueError("El programa académico no figura en la institución seleccionada. Contacta soporte antes de cargar el diploma.")
 
             if target_prog:
-                ano_grad = 2025
                 try:
-                    ano_grad = int(data.ano_graduacion) if data.ano_graduacion else 2025
+                    ano_grad = int(data.ano_graduacion)
                 except (ValueError, TypeError):
-                    ano_grad = 2025
+                    raise ValueError("Indica el año real de graduación.")
+                if not 1900 <= ano_grad <= datetime.now().year:
+                    raise ValueError("El año de graduación no es válido.")
 
                 # Almacenar el archivo real del diploma en Supabase Storage si fue adjuntado por el egresado
                 url_diploma_cargado = None
                 if raw_diploma and len(raw_diploma) == 2 and raw_diploma[1]:
                     try:
                         nombre_original, bytes_archivo = raw_diploma
-                        clean_slug = "".join(c for c in nombre_original if c.isalnum() or c in (".", "_", "-")).strip() or "diploma_oficial.pdf"
+                        clean_slug = "".join(c for c in nombre_original if c.isalnum() or c in (".", "_", "-")).strip() or "diploma.pdf"
                         if not clean_slug.lower().endswith(".pdf"):
                             clean_slug += ".pdf"
-                        dest_path = f"diplomas/{nuevo_egresado.id}/{clean_slug}"
+                        dest_path = f"diplomas/{nuevo_egresado.id}/{uuid.uuid4()}/{clean_slug}"
                         storage_res = await SupabaseStorageService.upload_document_pdf(
                             bucket_name=settings.SUPABASE_STORAGE_BUCKET_DIPLOMAS,
                             file_bytes=bytes_archivo,
@@ -469,12 +425,13 @@ class IAMService:
                     id_sede=target_prog.id_sede,
                     nivel_formacion=data.nivel_educativo or target_prog.nivel_formacion or "Profesional Universitario",
                     ano_graduacion=ano_grad,
-                    periodo_graduacion=f"{ano_grad}-2",
+                    periodo_graduacion=None,
                     estado_academico="recien-egresado",
                     estado_laboral="buscando",
                     validado_por_ies=False,
                     estado_verificacion="pendiente",
-                    url_diploma_pdf=url_diploma_cargado
+                    url_diploma_pdf=url_diploma_cargado,
+                    diploma_cargado_por_egresado=bool(url_diploma_cargado)
                 )
                 session.add(nuevo_academico)
 
@@ -595,6 +552,7 @@ class IAMService:
                         tipo_documento=doc.tipo_documento,
                         nombre_archivo=doc.nombre_archivo,
                         url_archivo=storage_res["url"],
+                        archivo_cargado_por_usuario=True,
                         tamano_kb=max(len(file_bytes) // 1024, 1),
                         estado="adjunto"
                     )
@@ -627,6 +585,7 @@ class IAMService:
                             tipo_documento=tipo_doc,
                             nombre_archivo=filename,
                             url_archivo=storage_res["url"],
+                            archivo_cargado_por_usuario=True,
                             tamano_kb=max(len(file_bytes) // 1024, 1),
                             estado="adjunto"
                         )
@@ -764,6 +723,7 @@ class IAMService:
                         tipo_documento=doc.tipo_documento,
                         nombre_archivo=doc.nombre_archivo,
                         url_archivo=storage_res["url"],
+                        archivo_cargado_por_usuario=True,
                         tamano_kb=max(len(file_bytes) // 1024, 1),
                         estado="adjunto"
                     )
@@ -795,6 +755,7 @@ class IAMService:
                             tipo_documento=tipo_doc,
                             nombre_archivo=filename,
                             url_archivo=storage_res["url"],
+                            archivo_cargado_por_usuario=True,
                             tamano_kb=max(len(file_bytes) // 1024, 1),
                             estado="adjunto"
                         )
