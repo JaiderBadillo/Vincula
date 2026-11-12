@@ -72,7 +72,7 @@ class Settings(BaseSettings):
 
     # Google Gemini AI (Matching Semántico Vectorial)
     GEMINI_API_KEY: str = ""
-    GEMINI_CHAT_MODEL: str = "gemini-2.5-flash"
+    GEMINI_CHAT_MODEL: str = "gemini-3.5-flash"
 
     # Google OAuth 2.0
     GOOGLE_CLIENT_ID: str = ""

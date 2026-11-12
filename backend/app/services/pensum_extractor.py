@@ -8,6 +8,7 @@ Detecta semestres (I a XII), asignaturas, códigos, créditos (HTD HTI CR) y map
 """
 
 import io
+import os
 import re
 from typing import List, Dict, Any, Optional
 import pypdf
@@ -40,6 +41,7 @@ SKIP_BOILERPLATE = [
     "requisito", "codigo nombre", "fecha", "consultar pensum", "academusoft", "metodologia", "jornada"
 ]
 
+OCR_WIDTH = int(os.getenv("PENSUM_OCR_WIDTH", "2400"))  # px de ancho al rasterizar; menos = menos RAM
 MAX_OCR_PAGES = 4  # OCR en CPU tarda varios segundos por página
 
 
@@ -88,11 +90,11 @@ class PensumPDFExtractor:
         import pypdfium2 as pdfium
         if cls._ocr_engine is None:
             from rapidocr import RapidOCR
-            cls._ocr_engine = RapidOCR(params={"Rec.lang_type": "es"})
+            cls._ocr_engine = RapidOCR(params={"Rec.lang_type": "es", "Global.use_cls": False})
         doc = pdfium.PdfDocument(pdf_bytes)
         for i in range(min(len(doc), MAX_OCR_PAGES)):
             # ~2400 px de ancho: menos pierde los dígitos pequeños de las celdas; más es lento en CPU
-            scale = min(4.0, max(1.0, 2400 / doc[i].get_width()))
+            scale = min(4.0, max(1.0, OCR_WIDTH / doc[i].get_width()))
             res = cls._ocr_engine(np.array(doc[i].render(scale=scale).to_pil().convert("RGB")))
             if res.txts is None:
                 yield []
