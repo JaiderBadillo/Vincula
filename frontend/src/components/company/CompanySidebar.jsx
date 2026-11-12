@@ -3,12 +3,14 @@ import { useCompanyProfile } from '../../hooks/useCompanyProfile.js';
 import CompanyLogo from './CompanyLogo.jsx';
 import { recruiterProfile } from '../../data/companyRecruiterDashboardData.js';
 import { authService } from '../../services/authService.js';
+import { useVerificationStatus } from '../../hooks/useVerificationStatus.js';
 
 export const companyNavSections = [
   {
     title: 'Mi empresa',
     items: [
       { id: 'admin-perfil', label: 'Datos de la empresa', icon: 'bx-buildings', to: '/empresa/admin/perfil', ready: true },
+      { id: 'admin-verificacion', label: 'Verificación de mi cuenta', icon: 'bx-shield-quarter', to: '/empresa/admin/verificacion', ready: true },
       { id: 'admin-sedes', label: 'Sedes y Áreas', icon: 'bx-map-pin', to: '/empresa/admin/sedes', ready: true },
     ],
   },
@@ -107,7 +109,9 @@ export default function CompanySidebar({
   role = 'admin',
 }) {
   const { companyProfile } = useCompanyProfile();
-  const navSections = role === 'recruiter' ? recruiterNavSections : companyNavSections;
+  const verification = useVerificationStatus(role === 'admin');
+  const navSections = (role === 'recruiter' ? recruiterNavSections : companyNavSections)
+    .map((section) => ({ ...section, items: section.items.filter((item) => item.id !== 'admin-verificacion' || verification?.estado !== 'aprobado') }));
 
   return (
     <>

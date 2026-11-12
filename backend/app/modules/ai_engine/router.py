@@ -8,6 +8,7 @@ Endpoints oficiales bajo prefijo /api/v1/ia:
 
 import uuid
 from typing import Optional, List, Dict, Any
+from fastapi.concurrency import run_in_threadpool
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
@@ -162,7 +163,7 @@ async def upload_pensum_pdf(
         if len(pdf_bytes) == 0:
             raise HTTPException(status_code=400, detail="El archivo PDF está vacío.")
 
-        result = PensumPDFExtractor.extract_from_bytes(pdf_bytes, program_hint=program_hint or "")
+        result = await run_in_threadpool(PensumPDFExtractor.extract_from_bytes, pdf_bytes, program_hint=program_hint or "")
         result["filename"] = file.filename
         return result
 

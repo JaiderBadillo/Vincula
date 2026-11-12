@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import InstitutionSidebar from './InstitutionSidebar.jsx';
 import InstitutionTopbar from './InstitutionTopbar.jsx';
 import { InstitutionThemeProvider, useInstitutionTheme } from '../../context/InstitutionThemeContext.jsx';
-import DocumentCorrections from '../documents/DocumentCorrections.jsx';
 
 const SIDEBAR_PREFERENCE_KEY = 'vincula.institution.sidebar-collapsed';
 
@@ -75,7 +74,6 @@ function PortalLayoutContent({ activePage = 'dashboard', role = 'advisor', child
           onSidebarToggle={() => setSidebarCollapsed((collapsed) => !collapsed)}
           role={role}
         />
-        {role === 'admin' && <div className="mx-auto max-w-6xl px-5 pt-5"><DocumentCorrections kind="institution" /></div>}
         {children}
       </div>
     </div>

@@ -4,6 +4,7 @@ import { advisorProfile } from '../../data/institutionData.js';
 import { useInstitutionProfile } from '../../hooks/useInstitutionProfile.js';
 import { authService } from '../../services/authService.js';
 import { institutionService } from '../../services/institutionService.js';
+import { useVerificationStatus } from '../../hooks/useVerificationStatus.js';
 
 function Brand({ collapsed = false, role = 'advisor' }) {
   const isAdmin = role === 'admin';
@@ -128,6 +129,7 @@ const adminNavSections = [
     title: 'Mi institución',
     items: [
       { id: 'admin-perfil', label: 'Datos de la institución', icon: 'bx-buildings', to: '/institucion/admin/perfil' },
+      { id: 'admin-verificacion', label: 'Verificación de mi cuenta', icon: 'bx-shield-quarter', to: '/institucion/admin/verificacion' },
       { id: 'admin-sedes', label: 'Sedes y Campus', icon: 'bx-map-pin', to: '/institucion/admin/asesores?tab=sedes' },
       { id: 'admin-programas', label: 'Programas y Carreras', icon: 'bx-book-bookmark', to: '/institucion/admin/programas' },
       { id: 'admin-trazabilidad', label: 'Trazabilidad y Pensums', icon: 'bx-line-chart', to: '/institucion/admin/trazabilidad' },
@@ -236,7 +238,9 @@ export default function InstitutionSidebar({
     };
   }, []);
 
-  const navSections = role === 'admin' ? adminNavSections : advisorNavSections;
+  const verification = useVerificationStatus(role === 'admin');
+  const navSections = (role === 'admin' ? adminNavSections : advisorNavSections)
+    .map((section) => ({ ...section, items: section.items.filter((item) => item.id !== 'admin-verificacion' || verification?.estado !== 'aprobado') }));
 
   return (
     <>

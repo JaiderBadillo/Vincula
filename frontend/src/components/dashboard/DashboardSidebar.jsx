@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { getInitials, useProfile } from '../../hooks/useProfile.js';
 import { authService } from '../../services/authService.js';
+import { useVerificationStatus } from '../../hooks/useVerificationStatus.js';
 
 /* ─── Brand Logo ─── */
 
@@ -74,12 +75,14 @@ function UserProfile({ collapsed = false }) {
 const navItems = [
   { id: 'home', label: 'Inicio', icon: 'bx-home-alt-2', to: '/dashboard', isLink: true },
   { id: 'profile', label: 'Mi Perfil & CV', icon: 'bx-user', to: '/dashboard/perfil', isLink: true },
+  { id: 'verification', label: 'Verificación de mi cuenta', icon: 'bx-shield-quarter', to: '/dashboard/verificacion', isLink: true },
   { id: 'vacancies', label: 'Explorar Vacantes', icon: 'bx-search-alt', to: '/dashboard/vacantes', isLink: true },
   { id: 'applications', label: 'Mis Postulaciones', icon: 'bx-list-check', to: '/dashboard/postulaciones', isLink: true },
   { id: 'institution', label: 'Portal Institución (IES)', icon: 'bxs-institution', to: '/institucion/dashboard', isLink: true, badge: 'Asesor' },
 ];
 
 function NavigationItems({ activePage, onNavigate, collapsed = false }) {
+  const verification = useVerificationStatus();
   return (
     <nav className={`mt-8 ${collapsed ? 'w-full' : ''}`} aria-label="Navegación del egresado">
       <p
@@ -90,7 +93,7 @@ function NavigationItems({ activePage, onNavigate, collapsed = false }) {
         Menú
       </p>
       <ul className="m-0 grid list-none gap-0.5 p-0">
-        {navItems.map((item) => {
+        {navItems.filter((item) => item.id !== 'verification' || verification?.estado !== 'aprobado').map((item) => {
           const isActive = activePage === item.id;
           const Component = item.isLink ? Link : 'a';
           const linkProps = item.isLink ? { to: item.to } : { href: item.to };

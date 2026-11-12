@@ -8,7 +8,6 @@ import JobBoardPreview from '../components/landing/JobBoardPreview.jsx';
 import { useSavedJobs } from '../hooks/useSavedJobs.js';
 import { useProfile, computeProfileStrength } from '../hooks/useProfile.js';
 import { authService } from '../services/authService.js';
-import DocumentCorrections from '../components/documents/DocumentCorrections.jsx';
 
 export default function GraduateDashboard() {
   const { savedJobs, savedCount, isSaved, toggleSave } = useSavedJobs();
@@ -80,7 +79,6 @@ export default function GraduateDashboard() {
   return (
     <GraduatePortalLayout activePage="home">
       <main className="w-full pb-12 lg:pb-16">
-        <div className="mx-auto max-w-6xl px-5 pt-5"><DocumentCorrections kind="graduate" /></div>
         {/* ─── Hero Welcome Banner ─── */}
         <section
           className="relative isolate overflow-hidden bg-ink"

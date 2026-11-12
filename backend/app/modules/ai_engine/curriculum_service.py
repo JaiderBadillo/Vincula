@@ -13,6 +13,7 @@ import re
 from typing import List, Dict, Any, Optional, Tuple, Set
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
+from fastapi.concurrency import run_in_threadpool
 from fastapi import HTTPException, status
 
 from app.core.skills_taxonomy import (
@@ -57,7 +58,7 @@ class CurriculumTraceabilityService:
                 detail={"codigo": "PDF_VACIO", "mensaje": "El archivo PDF no contiene datos."}
             )
 
-        extraction_result = PensumPDFExtractor.extract_from_bytes(pdf_bytes, program_hint=program_hint)
+        extraction_result = await run_in_threadpool(PensumPDFExtractor.extract_from_bytes, pdf_bytes, program_hint=program_hint)
         if not extraction_result.get("success") or extraction_result.get("total_subjects", 0) == 0:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

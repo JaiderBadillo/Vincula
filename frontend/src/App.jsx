@@ -40,6 +40,7 @@ import VinculaAdminDashboardPage from './pages/VinculaAdminDashboardPage.jsx';
 import VinculaAdminCompaniesPage from './pages/VinculaAdminCompaniesPage.jsx';
 import VinculaAdminInstitutionsPage from './pages/VinculaAdminInstitutionsPage.jsx';
 import OnboardingTour from './components/common/OnboardingTour.jsx';
+import AccountVerificationPage from './pages/AccountVerificationPage.jsx';
 
 export default function App() {
   return (
@@ -61,6 +62,7 @@ export default function App() {
           <Route path="/dashboard/vacantes" element={<VacanciesPage />} />
           <Route path="/dashboard/vacantes-propuesta" element={<VacanciesProposalPage />} />
           <Route path="/dashboard/perfil" element={<ProfilePage />} />
+          <Route path="/dashboard/verificacion" element={<AccountVerificationPage kind="graduate" />} />
         </Route>
 
         {/* ─── Rol Institución de Educación Superior (Asesor IES) - Protegido ─── */}
@@ -98,6 +100,7 @@ export default function App() {
         <Route element={<ProtectedRoute allowedRoles={['admin_ies', 'superadmin_vincula']} />}>
           <Route path="/institucion/admin" element={<Navigate to="/institucion/admin/perfil" replace />} />
           <Route path="/institucion/admin/perfil" element={<InstitutionAdminProfilePage />} />
+          <Route path="/institucion/admin/verificacion" element={<AccountVerificationPage kind="institution" />} />
           <Route path="/institucion/admin/programas" element={<InstitutionAdminProgramsPage />} />
           <Route path="/institucion/admin/trazabilidad" element={<InstitutionAdminTraceabilityPage />} />
           <Route path="/institucion/admin/asesores" element={<InstitutionAdminAdvisorsPage />} />
@@ -111,6 +114,7 @@ export default function App() {
           <Route path="/empresa/dashboard" element={<Navigate to="/empresa/admin/actividad" replace />} />
           <Route path="/empresa/actividad" element={<Navigate to="/empresa/admin/actividad" replace />} />
           <Route path="/empresa/admin/perfil" element={<CompanyAdminProfilePage />} />
+          <Route path="/empresa/admin/verificacion" element={<AccountVerificationPage kind="company" />} />
           <Route path="/empresa/admin/sedes" element={<CompanyAdminSitesPage />} />
           <Route path="/empresa/admin/reclutadores" element={<CompanyAdminRecruitersPage />} />
           <Route path="/empresa/admin/vacantes" element={<CompanyAdminVacanciesPage />} />
