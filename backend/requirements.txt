@@ -29,6 +29,10 @@ requests>=2.32.0
 
 # Procesamiento de PDFs de Pensums y Diplomas ($0 USD tokens)
 pypdf>=5.0.0
+# OCR local para pensums escaneados (sin enviar datos a terceros)
+pypdfium2>=4.30.0
+rapidocr>=3.0.0
+onnxruntime>=1.18.0
 reportlab>=4.2.0
 
 # Inteligencia Artificial y Embeddings (Capa gratuita Google AI Studio)

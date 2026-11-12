@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AccountSettingsModal from './AccountSettingsModal.jsx';
+import UniversalSettingsModal from './UniversalSettingsModal.jsx';
 import AdvisorSettingsModal from '../institution/AdvisorSettingsModal.jsx';
 import { useAuthCredentials } from '../../hooks/useAuthCredentials.js';
 import { authService } from '../../services/authService.js';
@@ -15,6 +15,7 @@ export default function UserAccountDropdown({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const closeSettings = useCallback(() => setIsModalOpen(false), []);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const { getCredentials } = useAuthCredentials();
@@ -165,13 +166,13 @@ export default function UserAccountDropdown({
       {/* Modal rectangular de configuración de credenciales */}
       {role === 'institution_advisor' ? <AdvisorSettingsModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={closeSettings}
         userName={userName}
         userAvatar={userAvatar}
         userInitials={userInitials}
-      /> : <AccountSettingsModal
+      /> : <UniversalSettingsModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={closeSettings}
         role={role}
         userName={userName}
         userAvatar={userAvatar}

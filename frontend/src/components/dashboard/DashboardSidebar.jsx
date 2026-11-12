@@ -93,7 +93,7 @@ function NavigationItems({ activePage, onNavigate, collapsed = false }) {
         Menú
       </p>
       <ul className="m-0 grid list-none gap-0.5 p-0">
-        {navItems.filter((item) => item.id !== 'verification' || verification?.estado !== 'aprobado').map((item) => {
+        {navItems.filter((item) => item.id !== 'verification' || ['pendiente', 'rechazado', 'en_subsanacion'].includes(verification?.estado)).map((item) => {
           const isActive = activePage === item.id;
           const Component = item.isLink ? Link : 'a';
           const linkProps = item.isLink ? { to: item.to } : { href: item.to };

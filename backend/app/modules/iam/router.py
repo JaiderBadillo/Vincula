@@ -32,8 +32,10 @@ from app.integrations.email_service import EmailService
 router = APIRouter(prefix="/auth", tags=["IAM - Autenticación y Registro"])
 from app.modules.iam.password_reset import router as password_reset_router
 from app.modules.iam.advisor_settings import router as advisor_settings_router, record_advisor_access
+from app.modules.iam.account_settings import router as account_settings_router
 router.include_router(password_reset_router)
 router.include_router(advisor_settings_router)
+router.include_router(account_settings_router)
 
 
 @router.get("/estado-documental")

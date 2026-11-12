@@ -240,7 +240,7 @@ export default function InstitutionSidebar({
 
   const verification = useVerificationStatus(role === 'admin');
   const navSections = (role === 'admin' ? adminNavSections : advisorNavSections)
-    .map((section) => ({ ...section, items: section.items.filter((item) => item.id !== 'admin-verificacion' || verification?.estado !== 'aprobado') }));
+    .map((section) => ({ ...section, items: section.items.filter((item) => item.id !== 'admin-verificacion' || ['pendiente', 'rechazado', 'en_subsanacion'].includes(verification?.estado)) }));
 
   return (
     <>
