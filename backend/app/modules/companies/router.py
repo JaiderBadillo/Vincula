@@ -1,9 +1,9 @@
 """
-Router de Gesti�n Empresarial, Cuarentena, Sedes Corporativas y Equipo de Reclutadores.
+Router de Gestión Empresarial, Cuarentena, Sedes Corporativas y Equipo de Reclutadores.
 Endpoints oficiales bajo prefijo /api/v1/empresas:
-- Estado de cuarentena y subsanaci�n documental
-- CRUD de Sedes Corporativas y �reas Departamentales
-- Gesti�n del Equipo de Reclutadores y Asignaci�n de Sedes
+- Estado de cuarentena y subsanación documental
+- CRUD de Sedes Corporativas y Áreas Departamentales
+- Gestión del Equipo de Reclutadores y Asignación de Sedes
 """
 
 from typing import Dict, Any, List, Optional
@@ -38,7 +38,7 @@ from app.modules.companies.schemas import (
 from app.modules.companies.services import CompanyService
 from app.modules.companies.models import Empresa
 
-router = APIRouter(prefix="/empresas", tags=["Empresas - Gesti�n, Sedes y Reclutadores"])
+router = APIRouter(prefix="/empresas", tags=["Empresas - Gestión, Sedes y Reclutadores"])
 
 
 class CompanyProfileUpdate(BaseModel):
@@ -79,10 +79,10 @@ async def _own_company(db: AsyncSession, current_user: Dict[str, Any]) -> Empres
     try:
         company_id = uuid.UUID(str(_resolve_company_id(current_user)))
     except ValueError:
-        raise HTTPException(status_code=400, detail="Identificador de empresa inv�lido.")
+        raise HTTPException(status_code=400, detail="Identificador de empresa inválido.")
     company = (await db.execute(select(Empresa).where(Empresa.id == company_id))).scalar_one_or_none()
     if not company:
-        raise HTTPException(status_code=404, detail="No se encontr� la empresa asociada a tu cuenta.")
+        raise HTTPException(status_code=404, detail="No se encontró la empresa asociada a tu cuenta.")
     return company
 
 
@@ -91,16 +91,16 @@ def _checked_image(value: Optional[str]) -> Optional[str]:
         return None
     match = re.fullmatch(r'data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)', value)
     if not match or len(match.group(2)) > 2_800_000:
-        raise HTTPException(status_code=422, detail="La imagen debe ser PNG, JPG o WebP de m�ximo 2 MB.")
+        raise HTTPException(status_code=422, detail="La imagen debe ser PNG, JPG o WebP de máximo 2 MB.")
     try:
         data = base64.b64decode(match.group(2), validate=True)
     except binascii.Error:
-        raise HTTPException(status_code=422, detail="La imagen est� da�ada.")
+        raise HTTPException(status_code=422, detail="La imagen está dañada.")
     valid = (match.group(1) == 'png' and data.startswith(b'\x89PNG\r\n\x1a\n')
              or match.group(1) == 'jpeg' and data.startswith(b'\xff\xd8\xff')
              or match.group(1) == 'webp' and data.startswith(b'RIFF') and data[8:12] == b'WEBP')
     if not valid or len(data) > 2 * 1024 * 1024:
-        raise HTTPException(status_code=422, detail="La imagen debe ser PNG, JPG o WebP de m�ximo 2 MB.")
+        raise HTTPException(status_code=422, detail="La imagen debe ser PNG, JPG o WebP de máximo 2 MB.")
     return value
 
 
@@ -125,7 +125,7 @@ async def update_company_profile(
         or representative.get('documentId', '').strip() != company.documento_representante_legal
         or representative.get('name', '').strip() != company.nombre_representante_legal
     ):
-        raise HTTPException(status_code=409, detail="La raz�n social, el NIT y la identidad del representante de una empresa verificada requieren nueva revisi�n legal.")
+        raise HTTPException(status_code=409, detail="La razón social, el NIT y la identidad del representante de una empresa verificada requieren nueva revisión legal.")
     if not representative.get('name', '').strip() or not representative.get('documentId', '').strip():
         raise HTTPException(status_code=422, detail="Completa los datos del representante legal.")
     logo = company.url_logo if payload.logo == company.url_logo else _checked_image(payload.logo)
@@ -152,8 +152,8 @@ async def update_company_profile(
 
 def _resolve_company_id(current_user: Dict[str, Any], query_company_id: Optional[str] = None) -> str:
     """
-    Resuelve el ID de la empresa desde el token de autenticaci�n.
-    SuperAdmin puede operar en nombre de una empresa espec�fica indicando query_company_id.
+    Resuelve el ID de la empresa desde el token de autenticación.
+    SuperAdmin puede operar en nombre de una empresa específica indicando query_company_id.
     Para administradores o reclutadores de empresa, se garantiza estricto aislamiento multi-tenant.
     """
     user_role = current_user.get("rol", "")
@@ -164,21 +164,21 @@ def _resolve_company_id(current_user: Dict[str, Any], query_company_id: Optional
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"codigo": "TOKEN_SIN_ENTIDAD", "mensaje": "El token de autenticaci�n no est� vinculado a una empresa registrada."}
+            detail={"codigo": "TOKEN_SIN_ENTIDAD", "mensaje": "El token de autenticación no está vinculado a una empresa registrada."}
         )
 
-    # Si se env�a query_company_id diferente al token para un rol de empresa, bloquear por seguridad multi-tenant
+    # Si se envía query_company_id diferente al token para un rol de empresa, bloquear por seguridad multi-tenant
     if query_company_id and str(query_company_id) != str(company_id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={"codigo": "ACCESO_EMPRESA_DENEGADO", "mensaje": "No tienes autorizaci�n para operar sobre recursos de otra entidad corporativa."}
+            detail={"codigo": "ACCESO_EMPRESA_DENEGADO", "mensaje": "No tienes autorización para operar sobre recursos de otra entidad corporativa."}
         )
 
     return str(company_id)
 
 
 # =========================================================================
-# 1. CUARENTENA Y SUBSANACI�N DOCUMENTAL (Libres de Cuarentena)
+# 1. CUARENTENA Y SUBSANACIÓN DOCUMENTAL (Libres de Cuarentena)
 # =========================================================================
 
 @router.get("/estado-cuarentena", response_model=QuarantineStatusResponse)
@@ -202,13 +202,13 @@ async def subsanar_documento(
 ):
     """
     Ruta libre de cuarentena: Permite a la empresa corregir y re-subir PDFs (formato JSON con base64 o URL)
-    cuando el Super Admin solicita subsanaci�n (Opci�n 2 autoservicio).
+    cuando el Super Admin solicita subsanación (Opción 2 autoservicio).
     """
     company_id = current_user.get("id_entidad")
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"codigo": "TOKEN_SIN_ENTIDAD", "mensaje": "El token de autenticaci�n no est� vinculado a una empresa."}
+            detail={"codigo": "TOKEN_SIN_ENTIDAD", "mensaje": "El token de autenticación no está vinculado a una empresa."}
         )
     return await CompanyService.subsanar_documento(
         session=db,
@@ -236,7 +236,7 @@ async def subsanar_documento_form(
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"codigo": "TOKEN_SIN_ENTIDAD", "mensaje": "El token de autenticaci�n no est� vinculado a una empresa."}
+            detail={"codigo": "TOKEN_SIN_ENTIDAD", "mensaje": "El token de autenticación no está vinculado a una empresa."}
         )
     file_bytes = await archivo_pdf.read()
     return await CompanyService.subsanar_documento(
@@ -303,14 +303,14 @@ async def update_sede(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Actualiza la informaci�n de una sede corporativa.
+    Actualiza la información de una sede corporativa.
     """
     company_id = _resolve_company_id(current_user, id_empresa)
     return await CompanyService.update_sede(db, company_id, sede_id, payload)
 
 
 # =========================================================================
-# 3. �REAS DEPARTAMENTALES DE SEDE
+# 3. ÁREAS DEPARTAMENTALES DE SEDE
 # =========================================================================
 
 @router.get("/sedes/{sede_id}/areas", response_model=List[AreaSedeResponse])
@@ -321,7 +321,7 @@ async def list_areas(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Lista las �reas funcionales de una sede corporativa.
+    Lista las áreas funcionales de una sede corporativa.
     """
     company_id = _resolve_company_id(current_user, id_empresa)
     return await CompanyService.list_areas(db, company_id, sede_id)
@@ -336,7 +336,7 @@ async def create_area(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Crea una nueva �rea funcional dentro de una sede corporativa.
+    Crea una nueva área funcional dentro de una sede corporativa.
     """
     company_id = _resolve_company_id(current_user, id_empresa)
     return await CompanyService.create_area(db, company_id, sede_id, payload)
@@ -367,7 +367,7 @@ async def create_recruiter(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Ruta protegida con GATING: Registra un nuevo reclutador de talento con cuenta IAM y asignaci�n de sedes.
+    Ruta protegida con GATING: Registra un nuevo reclutador de talento con cuenta IAM y asignación de sedes.
     """
     company_id = _resolve_company_id(current_user, id_empresa)
     return await CompanyService.create_reclutador(db, company_id, payload)
@@ -401,4 +401,3 @@ async def update_recruiter_status(
     """
     company_id = _resolve_company_id(current_user, id_empresa)
     return await CompanyService.update_reclutador_status(db, company_id, reclutador_id, payload.estado)
-

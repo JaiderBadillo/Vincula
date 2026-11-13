@@ -24,7 +24,7 @@ class CompanyProfileTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.company = SimpleNamespace(
             id=uuid.uuid4(), nombre_comercial='Empresa real', razon_social='Empresa real SAS',
-            nit='900123456-7', sector_economico='Tecnolog�a', tamano_empresa='Microempresa',
+            nit='900123456-7', sector_economico='Tecnología', tamano_empresa='Microempresa',
             departamento='Santander', ciudad='Bucaramanga', direccion='Calle 1', telefono='3000000000',
             correo_contacto='empresa@example.com', sitio_web=None, descripcion_corporativa=None,
             nombre_representante_legal='Representante', documento_representante_legal='123456',
@@ -67,4 +67,3 @@ class CompanyProfileTests(unittest.IsolatedAsyncioTestCase):
             await company_router.update_company_profile(edited, self.user, self.db)
         self.assertEqual(error.exception.status_code, 422)
         self.assertEqual(self.db.commits, 0)
-

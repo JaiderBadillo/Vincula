@@ -1,10 +1,10 @@
 /**
- * Servicio de Gesti�n Corporativa Multi-Sede y Reclutadores (Fase 4 - Paso 1 y 3).
+ * Servicio de Gestión Corporativa Multi-Sede y Reclutadores (Fase 4 - Paso 1 y 3).
  * Conecta el frontend con los endpoints oficiales bajo /api/v1/empresas:
  * - Consulta de cuarentena y radicado oficial
  * - CRUD de Sedes Corporativas
- * - �reas funcionales por sede
- * - Equipo de Reclutadores de Talento y Asignaci�n de Sedes
+ * - Áreas funcionales por sede
+ * - Equipo de Reclutadores de Talento y Asignación de Sedes
  */
 
 import { authService, extractErrorMessage } from './authService.js';
@@ -38,7 +38,7 @@ class CompanyService {
   }
 
   // =========================================================================
-  // 1. ESTADO DE CUARENTENA Y SUBSANACI�N
+  // 1. ESTADO DE CUARENTENA Y SUBSANACIÓN
   // =========================================================================
 
   async getQuarantineStatus() {
@@ -193,7 +193,7 @@ class CompanyService {
   }
 
   // =========================================================================
-  // 3. �REAS FUNCIONALES DE SEDE
+  // 3. ÁREAS FUNCIONALES DE SEDE
   // =========================================================================
 
   async getAreas(sedeId, idEmpresa = null) {
@@ -204,7 +204,7 @@ class CompanyService {
     const res = await fetch(url, { headers: this.getAuthHeaders() });
 
     if (!res.ok) {
-      let msg = 'Error al consultar �reas de la sede.';
+      let msg = 'Error al consultar áreas de la sede.';
       try {
         const errJson = await res.json();
         msg = extractErrorMessage(errJson, msg);
@@ -230,7 +230,7 @@ class CompanyService {
     });
 
     if (!res.ok) {
-      let msg = 'Error al crear el �rea funcional.';
+      let msg = 'Error al crear el área funcional.';
       try {
         const errJson = await res.json();
         msg = extractErrorMessage(errJson, msg);
@@ -350,5 +350,4 @@ class CompanyService {
 }
 
 export const companyService = new CompanyService();
-
 

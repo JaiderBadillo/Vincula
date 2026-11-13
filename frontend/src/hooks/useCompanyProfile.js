@@ -39,7 +39,7 @@ export function useCompanyProfile() {
 
   const updateProfile = useCallback(async (updater) => {
     const next = typeof updater === 'function' ? updater(sharedProfile) : updater;
-    // Durante el registro a�n no hay sesi�n; al entrar prevalecen los datos del servidor.
+    // Durante el registro aún no hay sesión; al entrar prevalecen los datos del servidor.
     if (!authService.getToken() || !authService.getCurrentUser()?.id_entidad) {
       broadcast(next);
       return next;
@@ -57,5 +57,4 @@ export function useCompanyProfile() {
 
   return { companyProfile: profile, updateCompanyProfile: updateProfile, resetCompanyProfile: resetProfile, loading, loadError };
 }
-
 
