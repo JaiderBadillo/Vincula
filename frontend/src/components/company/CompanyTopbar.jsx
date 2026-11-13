@@ -24,7 +24,7 @@ export default function CompanyTopbar({
   const { companyProfile } = useCompanyProfile();
   const currentUser = authService.getCurrentUser();
 
-  const recruiterName = currentUser?.nombre || recruiterProfile.fullName || 'Equipo de Selección';
+  const recruiterName = currentUser?.nombre || recruiterProfile.fullName || 'Equipo de Selecci�n';
   const recruiterInitials = recruiterName
     .split(' ')
     .filter(Boolean)
@@ -33,7 +33,7 @@ export default function CompanyTopbar({
     .join('')
     .toUpperCase() || 'RC';
 
-  const companyAdminName = currentUser?.nombre || companyProfile.name || 'Empresa';
+  const companyAdminName = companyProfile.name || companyProfile.commercialName || companyProfile.legalName || 'Empresa';
   const companyInitials = companyAdminName
     .split(' ')
     .filter(Boolean)
@@ -60,7 +60,7 @@ export default function CompanyTopbar({
             ref={menuButtonRef}
             className="grid size-10 shrink-0 place-items-center rounded-control border border-line bg-white text-xl text-ink shadow-xs transition-colors hover:bg-panel min-[1200px]:hidden cursor-pointer"
             type="button"
-            aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
+            aria-label={mobileMenuOpen ? 'Cerrar men�' : 'Abrir men�'}
             aria-expanded={mobileMenuOpen}
             aria-controls="company-sidebar"
             onClick={onMenuToggle}
@@ -72,12 +72,12 @@ export default function CompanyTopbar({
           </p>
         </div>
 
-        {/* Menú de cuenta en la esquina superior derecha */}
+        {/* Men� de cuenta en la esquina superior derecha */}
         {role === 'recruiter' ? (
           <UserAccountDropdown
             role="company_recruiter"
             userName={recruiterName}
-            userSubtitle={`Reclutador(a) · ${companyProfile.name}`}
+            userSubtitle={`Reclutador(a) � ${companyProfile.name}`}
             userAvatar={recruiterProfile.avatar}
             userInitials={recruiterInitials}
             borderClass="border-sand-line"
@@ -86,7 +86,7 @@ export default function CompanyTopbar({
           <UserAccountDropdown
             role="company_admin"
             userName={companyAdminName}
-            userSubtitle={`Cuenta Empresarial · NIT ${companyProfile.nit}`}
+            userSubtitle={`Cuenta Empresarial � NIT ${companyProfile.nit}`}
             userAvatar={companyProfile.logo}
             userInitials={companyInitials}
             borderClass="border-sand-line"
@@ -96,3 +96,4 @@ export default function CompanyTopbar({
     </header>
   );
 }
+

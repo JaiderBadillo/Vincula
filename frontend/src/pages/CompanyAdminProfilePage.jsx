@@ -45,9 +45,9 @@ function PublicPreview({ form }) {
   const coverSrc = form.coverImage || companyPhotos.perfilCover.src;
 
   return (
-    <aside className="lg:sticky lg:top-24 self-start" aria-label="Vista previa del perfil público">
+    <aside className="lg:sticky lg:top-24 self-start" aria-label="Vista previa del perfil p�blico">
       <p className="m-0 mb-2 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-terracotta">
-        Así te ven los egresados
+        As� te ven los egresados
       </p>
       <article className="overflow-hidden rounded-card border border-sand-line bg-white shadow-card">
         <div className="showcase-card relative isolate h-32 bg-cocoa">
@@ -71,11 +71,11 @@ function PublicPreview({ form }) {
           </h3>
           <p className="m-0 mt-0.5 text-xs text-secondary">
             {form.sector}
-            <span className="mx-1.5 text-secondary/50">•</span>
+            <span className="mx-1.5 text-secondary/50"></span>
             {form.city || 'Ciudad'}
           </p>
           <p className="m-0 mt-3 line-clamp-4 text-xs leading-relaxed text-body-muted">
-            {form.description || 'Escribe una descripción para que los egresados conozcan a tu empresa.'}
+            {form.description || 'Escribe una descripci�n para que los egresados conozcan a tu empresa.'}
           </p>
           <ul className="m-0 mt-4 grid list-none gap-2 border-t border-sand-line p-0 pt-4 text-xs text-ink/80">
             <li className="flex items-center gap-2">
@@ -98,7 +98,7 @@ function PublicPreview({ form }) {
 }
 
 export default function CompanyAdminProfilePage() {
-  const { companyProfile, updateCompanyProfile } = useCompanyProfile();
+  const { companyProfile, updateCompanyProfile, loading, loadError } = useCompanyProfile();
   const [saved, setSaved] = useState(companyProfile);
   const [form, setForm] = useState(companyProfile);
   const [errors, setErrors] = useState({});
@@ -106,10 +106,18 @@ export default function CompanyAdminProfilePage() {
   const [coverError, setCoverError] = useState('');
   const [confirmNit, setConfirmNit] = useState(false);
   const [toast, setToast] = useState(null);
+  const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
   const coverFileRef = useRef(null);
 
   const isDirty = JSON.stringify(form) !== JSON.stringify(saved);
+
+  useEffect(() => {
+    if (!loading && !isDirty) {
+      setSaved(companyProfile);
+      setForm(companyProfile);
+    }
+  }, [companyProfile, loading]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -118,7 +126,7 @@ export default function CompanyAdminProfilePage() {
   }, [toast]);
 
   function update(field, value) {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => ({ ...prev, [field]: value, ...(['name', 'commercialName'].includes(field) ? { name: value, commercialName: value } : {}) }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   }
 
@@ -136,7 +144,7 @@ export default function CompanyAdminProfilePage() {
       return;
     }
     if (file.size > MAX_LOGO_BYTES) {
-      setLogoError('La imagen pesa más de 2 MB.');
+      setLogoError('La imagen pesa m�s de 2 MB.');
       return;
     }
 
@@ -156,7 +164,7 @@ export default function CompanyAdminProfilePage() {
       return;
     }
     if (file.size > MAX_LOGO_BYTES) {
-      setCoverError('La portada pesa más de 2 MB.');
+      setCoverError('La portada pesa m�s de 2 MB.');
       return;
     }
 
@@ -169,18 +177,27 @@ export default function CompanyAdminProfilePage() {
   function validate() {
     const next = {};
     if (!form.name.trim()) next.name = 'Escribe el nombre de la empresa.';
-    if (!form.legalName.trim()) next.legalName = 'Escribe la razón social.';
-    if (!NIT_PATTERN.test(form.nit.trim())) next.nit = 'El NIT debe verse así: 900.531.210-3';
-    if (!EMAIL_PATTERN.test(form.contactEmail.trim())) next.contactEmail = 'Escribe un correo válido.';
+    if (!form.legalName.trim()) next.legalName = 'Escribe la raz�n social.';
+    if (!NIT_PATTERN.test(form.nit.trim())) next.nit = 'El NIT debe verse as�: 900.531.210-3';
+    if (!EMAIL_PATTERN.test(form.contactEmail.trim())) next.contactEmail = 'Escribe un correo v�lido.';
     setErrors(next);
     return Object.keys(next).length === 0;
   }
 
-  function persist() {
-    updateCompanyProfile(form);
-    setSaved(form);
-    setConfirmNit(false);
-    setToast('Los datos de la empresa se guardaron.');
+  async function persist() {
+    setSaving(true);
+    try {
+      const result = await updateCompanyProfile(form);
+      setSaved(result);
+      setForm(result);
+      setConfirmNit(false);
+      setToast('Los datos de la empresa se guardaron.');
+    } catch (error) {
+      setConfirmNit(false);
+      setToast(error.message || 'No se pudieron guardar los datos.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleSave(event) {
@@ -203,14 +220,17 @@ export default function CompanyAdminProfilePage() {
   return (
     <CompanyPortalLayout activePage="admin-perfil">
       <main className="w-full pb-28">
+        {loading && <p role="status" className="mx-auto max-w-6xl px-5 pt-6 text-sm text-secondary">Cargando los datos de tu empresa.</p>}
+        {loadError && <p role="alert" className="mx-auto max-w-6xl px-5 pt-6 text-sm text-rose-600">{loadError}. Recarga la p�gina para volver a intentarlo.</p>}
+        {!loading && !loadError && (
         <form onSubmit={handleSave} noValidate className="mx-auto max-w-6xl px-5 pt-6 sm:px-8 lg:px-10">
           <CompanyPageHero
             photo={companyPhotos.perfil}
             title="Datos de la empresa"
-            subtitle="Esta información aparece en tus vacantes, en los convenios con instituciones y en el perfil que ven los egresados."
+            subtitle="Esta informaci�n aparece en tus vacantes, en los convenios con instituciones y en el perfil que ven los egresados."
             stats={[
-              { value: form.sector || '—', label: 'Sector' },
-              { value: form.city || '—', label: 'Sede principal' },
+              { value: form.sector || '-', label: 'Sector' },
+              { value: form.city || '-', label: 'Sede principal' },
             ]}
           />
 
@@ -219,7 +239,7 @@ export default function CompanyAdminProfilePage() {
               {/* Imagen, Logo y Portada Corporativa */}
               <Card
                 title="Imagen, Logo y Portada Corporativa"
-                description="Personaliza los elementos visuales oficiales de la empresa. Estos identifican a tu organización ante los egresados en convocatorias y en convenios institucionales."
+                description="Personaliza los elementos visuales oficiales de la empresa. Estos identifican a tu organizaci�n ante los egresados en convocatorias y en convenios institucionales."
               >
                 <div className="space-y-6">
                   {/* 1. Logotipo Corporativo */}
@@ -308,7 +328,7 @@ export default function CompanyAdminProfilePage() {
                       </div>
 
                       <p className="m-0 text-xs text-secondary">
-                        PNG, JPG o WebP. Máx 2 MB. Proporción panorámica sugerida (1200 × 400 px). Se muestra como encabezado del perfil que ven los egresados en convocatorias y búsquedas de talento.
+                        PNG, JPG o WebP. M�x 2 MB. Proporci�n panor�mica sugerida (1200 � 400 px). Se muestra como encabezado del perfil que ven los egresados en convocatorias y b�squedas de talento.
                       </p>
                       {coverError && <p className="m-0 mt-1 text-xs text-rose-600">{coverError}</p>}
                       <input
@@ -324,8 +344,8 @@ export default function CompanyAdminProfilePage() {
                 </div>
               </Card>
 
-              {/* Identificación */}
-              <Card title="Identificación">
+              {/* Identificaci�n */}
+              <Card title="Identificaci�n">
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                   <Field id="co-name" label="Nombre de la empresa" error={errors.name}>
                     <input id="co-name" className={inputClass} value={form.name} onChange={(e) => update('name', e.target.value)} />
@@ -334,8 +354,8 @@ export default function CompanyAdminProfilePage() {
                     <input id="co-commercial" className={inputClass} value={form.commercialName} onChange={(e) => update('commercialName', e.target.value)} />
                   </Field>
                   <div className="sm:col-span-2">
-                    <Field id="co-legal" label="Razón social" error={errors.legalName}>
-                      <input id="co-legal" className={inputClass} value={form.legalName} onChange={(e) => update('legalName', e.target.value)} />
+                    <Field id="co-legal" label="Raz�n social" error={errors.legalName}>
+                      <input id="co-legal" className={inputClass} value={form.legalName} readOnly={form.verificationStatus === 'aprobado'} onChange={(e) => update('legalName', e.target.value)} />
                     </Field>
                   </div>
                   <Field
@@ -344,9 +364,9 @@ export default function CompanyAdminProfilePage() {
                     error={errors.nit}
                     hint={form.nit.trim() !== saved.nit ? 'Vas a cambiar el NIT. Te pediremos confirmarlo al guardar.' : undefined}
                   >
-                    <input id="co-nit" className={inputClass} inputMode="numeric" value={form.nit} onChange={(e) => update('nit', e.target.value)} />
+                    <input id="co-nit" className={inputClass} inputMode="numeric" value={form.nit} readOnly={form.verificationStatus === 'aprobado'} onChange={(e) => update('nit', e.target.value)} />
                   </Field>
-                  <Field id="co-sector" label="Sector económico">
+                  <Field id="co-sector" label="Sector econ�mico">
                     <select id="co-sector" className={`${inputClass} cursor-pointer`} value={form.sector} onChange={(e) => update('sector', e.target.value)}>
                       {COMPANY_SECTORS.map((sector) => (
                         <option key={sector} value={sector}>{sector}</option>
@@ -354,7 +374,7 @@ export default function CompanyAdminProfilePage() {
                     </select>
                   </Field>
                   <div className="sm:col-span-2">
-                    <Field id="co-size" label="Tamaño de la empresa">
+                    <Field id="co-size" label="Tama�o de la empresa">
                       <select id="co-size" className={`${inputClass} cursor-pointer`} value={form.size} onChange={(e) => update('size', e.target.value)}>
                         {COMPANY_SIZES.map((size) => (
                           <option key={size} value={size}>{size}</option>
@@ -375,11 +395,11 @@ export default function CompanyAdminProfilePage() {
                     <input id="co-dept" className={inputClass} value={form.department} onChange={(e) => update('department', e.target.value)} />
                   </Field>
                   <div className="sm:col-span-2">
-                    <Field id="co-address" label="Dirección principal">
+                    <Field id="co-address" label="Direcci�n principal">
                       <input id="co-address" className={inputClass} value={form.address} onChange={(e) => update('address', e.target.value)} />
                     </Field>
                   </div>
-                  <Field id="co-phone" label="Teléfono">
+                  <Field id="co-phone" label="Tel�fono">
                     <input id="co-phone" className={inputClass} value={form.phone} onChange={(e) => update('phone', e.target.value)} />
                   </Field>
                   <Field id="co-email" label="Correo de contacto" error={errors.contactEmail}>
@@ -397,20 +417,17 @@ export default function CompanyAdminProfilePage() {
               <Card title="Representante legal">
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                   <Field id="co-rep-name" label="Nombre completo">
-                    <input id="co-rep-name" className={inputClass} value={form.legalRepresentative.name} onChange={(e) => updateRep('name', e.target.value)} />
-                  </Field>
-                  <Field id="co-rep-role" label="Cargo">
-                    <input id="co-rep-role" className={inputClass} value={form.legalRepresentative.role} onChange={(e) => updateRep('role', e.target.value)} />
+                    <input id="co-rep-name" className={inputClass} value={form.legalRepresentative.name} readOnly={form.verificationStatus === 'aprobado'} onChange={(e) => updateRep('name', e.target.value)} />
                   </Field>
                   <Field id="co-rep-doc" label="Documento de identidad">
-                    <input id="co-rep-doc" className={inputClass} value={form.legalRepresentative.documentId} onChange={(e) => updateRep('documentId', e.target.value)} />
+                    <input id="co-rep-doc" className={inputClass} value={form.legalRepresentative.documentId} readOnly={form.verificationStatus === 'aprobado'} onChange={(e) => updateRep('documentId', e.target.value)} />
                   </Field>
                 </div>
               </Card>
 
-              {/* Presentación */}
-              <Card title="Presentación">
-                <Field id="co-desc" label="Descripción corta" hint="Dos o tres frases para que los egresados conozcan a la empresa.">
+              {/* Presentaci�n */}
+              <Card title="Presentaci�n">
+                <Field id="co-desc" label="Descripci�n corta" hint="Dos o tres frases para que los egresados conozcan a la empresa.">
                   <textarea
                     id="co-desc"
                     rows={3}
@@ -442,15 +459,16 @@ export default function CompanyAdminProfilePage() {
                     type="submit"
                     className="rounded-lg bg-terracotta px-4 py-2 text-sm font-semibold text-white hover:bg-terracotta-dark cursor-pointer transition-colors"
                   >
-                    Guardar cambios
+                    {saving ? 'Guardando.' : 'Guardar cambios'}
                   </button>
                 </div>
               </div>
             </div>
           )}
         </form>
+        )}
 
-        {/* Confirmación al cambiar el NIT */}
+        {/* Confirmaci�n al cambiar el NIT */}
         {confirmNit && (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-cocoa/55 p-4"
@@ -461,7 +479,7 @@ export default function CompanyAdminProfilePage() {
           >
             <div className="w-full max-w-md rounded-card bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
               <h2 id="co-nit-confirm-title" className="m-0 font-display text-lg font-bold text-ink">
-                ¿Cambiar el NIT?
+                �Cambiar el NIT?
               </h2>
               <p className="m-0 mt-2 text-sm text-body-muted">
                 El NIT identifica legalmente a la empresa y aparece en los convenios con las instituciones.
@@ -485,7 +503,7 @@ export default function CompanyAdminProfilePage() {
                   onClick={persist}
                   className="rounded-lg bg-terracotta px-4 py-2 text-sm font-semibold text-white hover:bg-terracotta-dark cursor-pointer transition-colors"
                 >
-                  Sí, cambiar NIT
+                  S�, cambiar NIT
                 </button>
               </div>
             </div>
@@ -501,3 +519,4 @@ export default function CompanyAdminProfilePage() {
     </CompanyPortalLayout>
   );
 }
+

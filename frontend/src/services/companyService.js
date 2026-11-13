@@ -1,10 +1,10 @@
 /**
- * Servicio de Gestión Corporativa Multi-Sede y Reclutadores (Fase 4 - Paso 1 y 3).
+ * Servicio de Gesti�n Corporativa Multi-Sede y Reclutadores (Fase 4 - Paso 1 y 3).
  * Conecta el frontend con los endpoints oficiales bajo /api/v1/empresas:
  * - Consulta de cuarentena y radicado oficial
  * - CRUD de Sedes Corporativas
- * - Áreas funcionales por sede
- * - Equipo de Reclutadores de Talento y Asignación de Sedes
+ * - �reas funcionales por sede
+ * - Equipo de Reclutadores de Talento y Asignaci�n de Sedes
  */
 
 import { authService, extractErrorMessage } from './authService.js';
@@ -12,6 +12,20 @@ import { authService, extractErrorMessage } from './authService.js';
 const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 class CompanyService {
+  async getProfile() {
+    const res = await fetch(`${API_BASE_URL}/empresas/perfil`, { headers: this.getAuthHeaders() });
+    if (!res.ok) throw new Error(extractErrorMessage(await res.json().catch(() => null), 'No se pudo cargar el perfil de la empresa.'));
+    return res.json();
+  }
+
+  async updateProfile(profile) {
+    const res = await fetch(`${API_BASE_URL}/empresas/perfil`, {
+      method: 'PUT', headers: this.getAuthHeaders(), body: JSON.stringify(profile),
+    });
+    if (!res.ok) throw new Error(extractErrorMessage(await res.json().catch(() => null), 'No se pudo guardar el perfil de la empresa.'));
+    return res.json();
+  }
+
   /**
    * Genera los encabezados con Bearer token de la empresa o reclutador
    */
@@ -24,7 +38,7 @@ class CompanyService {
   }
 
   // =========================================================================
-  // 1. ESTADO DE CUARENTENA Y SUBSANACIÓN
+  // 1. ESTADO DE CUARENTENA Y SUBSANACI�N
   // =========================================================================
 
   async getQuarantineStatus() {
@@ -179,7 +193,7 @@ class CompanyService {
   }
 
   // =========================================================================
-  // 3. ÁREAS FUNCIONALES DE SEDE
+  // 3. �REAS FUNCIONALES DE SEDE
   // =========================================================================
 
   async getAreas(sedeId, idEmpresa = null) {
@@ -190,7 +204,7 @@ class CompanyService {
     const res = await fetch(url, { headers: this.getAuthHeaders() });
 
     if (!res.ok) {
-      let msg = 'Error al consultar áreas de la sede.';
+      let msg = 'Error al consultar �reas de la sede.';
       try {
         const errJson = await res.json();
         msg = extractErrorMessage(errJson, msg);
@@ -216,7 +230,7 @@ class CompanyService {
     });
 
     if (!res.ok) {
-      let msg = 'Error al crear el área funcional.';
+      let msg = 'Error al crear el �rea funcional.';
       try {
         const errJson = await res.json();
         msg = extractErrorMessage(errJson, msg);
@@ -336,4 +350,5 @@ class CompanyService {
 }
 
 export const companyService = new CompanyService();
+
 

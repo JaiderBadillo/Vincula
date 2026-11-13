@@ -1,65 +1,61 @@
 import { useCallback, useEffect, useState } from 'react';
 import { initialCompanyProfile } from '../data/companyAdminData.js';
+import { authService } from '../services/authService.js';
+import { companyService } from '../services/companyService.js';
 
-const STORAGE_KEY = 'vincula.company.profile.v1';
 const SYNC_EVENT = 'vincula:company-profile-updated';
+let sharedProfile = initialCompanyProfile;
+let sharedCompanyId = null;
 
-function readProfile() {
-  if (typeof window === 'undefined') return initialCompanyProfile;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return initialCompanyProfile;
-    const stored = JSON.parse(raw);
-    return {
-      ...initialCompanyProfile,
-      ...stored,
-      legalRepresentative: {
-        ...initialCompanyProfile.legalRepresentative,
-        ...(stored.legalRepresentative || {}),
-      },
-    };
-  } catch {
-    return initialCompanyProfile;
-  }
-}
-
-function writeProfile(profile) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
-  } catch {
-    // safe fallback
-  }
-  if (typeof window !== 'undefined') {
-    queueMicrotask(() => {
-      window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: profile }));
-    });
-  }
+function broadcast(profile) {
+  sharedProfile = profile;
+  window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: profile }));
 }
 
 export function useCompanyProfile() {
-  const [profile, setProfile] = useState(readProfile);
+  const currentCompanyId = authService.getCurrentUser()?.id_entidad;
+  const [profile, setProfile] = useState(
+    () => currentCompanyId && sharedCompanyId === currentCompanyId ? sharedProfile : initialCompanyProfile,
+  );
+  const [loading, setLoading] = useState(Boolean(currentCompanyId && sharedCompanyId !== currentCompanyId));
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
-    function handleSync(event) {
-      setProfile(event.detail ?? readProfile());
+    let active = true;
+    const sync = (event) => setProfile(event.detail ?? initialCompanyProfile);
+    window.addEventListener(SYNC_EVENT, sync);
+    if (currentCompanyId) {
+      companyService.getProfile().then((data) => {
+        if (!active) return;
+        sharedCompanyId = currentCompanyId;
+        broadcast(data);
+        setLoadError('');
+      }).catch((error) => {
+        if (active) setLoadError(error.message);
+      }).finally(() => { if (active) setLoading(false); });
     }
-    window.addEventListener(SYNC_EVENT, handleSync);
-    return () => window.removeEventListener(SYNC_EVENT, handleSync);
-  }, []);
+    return () => { active = false; window.removeEventListener(SYNC_EVENT, sync); };
+  }, [currentCompanyId]);
 
-  const updateProfile = useCallback((updater) => {
-    setProfile((current) => {
-      const next = typeof updater === 'function' ? updater(current) : { ...current, ...updater };
-      writeProfile(next);
+  const updateProfile = useCallback(async (updater) => {
+    const next = typeof updater === 'function' ? updater(sharedProfile) : updater;
+    // Durante el registro a�n no hay sesi�n; al entrar prevalecen los datos del servidor.
+    if (!authService.getToken() || !authService.getCurrentUser()?.id_entidad) {
+      broadcast(next);
       return next;
-    });
+    }
+    const saved = await companyService.updateProfile(next);
+    sharedCompanyId = authService.getCurrentUser().id_entidad;
+    broadcast(saved);
+    return saved;
   }, []);
 
   const resetProfile = useCallback(() => {
-    writeProfile(initialCompanyProfile);
-    setProfile(initialCompanyProfile);
+    sharedCompanyId = null;
+    broadcast(initialCompanyProfile);
   }, []);
 
-  return { companyProfile: profile, updateCompanyProfile: updateProfile, resetCompanyProfile: resetProfile };
+  return { companyProfile: profile, updateCompanyProfile: updateProfile, resetCompanyProfile: resetProfile, loading, loadError };
 }
+
 
