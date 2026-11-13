@@ -558,7 +558,24 @@ class VacancyATSService:
         await session.commit()
         await session.refresh(nueva_vacante)
 
+        if estado_final == "abierta":
+            await cls._notify_vacancy_published(session, val_comp, nueva_vacante)
+
         return await cls.get_company_vacancy_detail(session, company_id, str(nueva_vacante.id))
+
+    @classmethod
+    async def _notify_vacancy_published(cls, session: AsyncSession, id_empresa, vacante) -> None:
+        """Avisa por correo a la empresa que su vacante quedó publicada; un fallo nunca bloquea la publicación."""
+        try:
+            emp = (await session.execute(select(Empresa).where(Empresa.id == id_empresa))).scalar_one_or_none()
+            if emp and emp.correo_contacto:
+                await send_vincula_email(
+                    "vacante_publicada", emp.correo_contacto,
+                    nombre=emp.persona_contacto, empresa=emp.razon_social or emp.nombre_comercial,
+                    vacante=vacante.titulo, codigo=vacante.codigo_vacante,
+                )
+        except Exception as exc:
+            print(f"[AVISO CORREO VACANTE] {exc}")
 
     @classmethod
     async def get_company_vacancy_detail(cls, session: AsyncSession, company_id: str, vacancy_id: str) -> VacanteResponse:
@@ -682,12 +699,15 @@ class VacancyATSService:
                 }
             )
 
+        estado_anterior = vacante.estado
         vacante.estado = estado_clean
         if estado_clean == "abierta":
             vacante.publicado_en = datetime.now(timezone.utc)
 
         await session.commit()
         await session.refresh(vacante)
+        if estado_clean == "abierta" and estado_anterior != "abierta":
+            await cls._notify_vacancy_published(session, val_comp, vacante)
         return cls._build_vacante_response(vacante)
 
     # =========================================================================

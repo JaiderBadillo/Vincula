@@ -53,6 +53,10 @@ def build_message(kind, data):
             "Cambió la fase de tu postulación",
             f"Tu postulación a {vacancy} cambió a la fase {escape(stage['label'])}.",
             [("Convocatoria", vacancy), ("Empresa", company), ("Fase actual", escape(stage['label']))]),
+        "vacante_publicada": ("Vacante publicada · Vincula", "Vacante abierta", "PUBLICACIÓN DE VACANTE",
+            "Tu vacante ya está publicada",
+            f"La vacante {vacancy} ya está visible para los egresados en Vincula.",
+            [("Vacante", vacancy), ("Código", _clean(data.get("codigo"), "—")), ("Empresa", company)]),
     }
     if kind not in content:
         raise ValueError(f"Tipo de correo desconocido: {kind}")

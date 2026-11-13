@@ -51,7 +51,7 @@
             {
               "id": "f52d5db9-2031-4025-a172-228bc542617d",
               "leftValue": "={{ $json.body.tipo }}",
-              "rightValue": "^(registro_egresado|registro_empresa|registro_ies|egresado_verificado|empresa_aprobada|ies_aprobada|fase_postulacion)$",
+              "rightValue": "^(registro_egresado|registro_empresa|registro_ies|egresado_verificado|empresa_aprobada|ies_aprobada|fase_postulacion|vacante_publicada)$",
               "operator": {
                 "type": "string",
                 "operation": "regex"
