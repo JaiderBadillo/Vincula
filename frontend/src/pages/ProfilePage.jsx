@@ -13,6 +13,7 @@ import SkillsEditor from '../components/profile/SkillsEditor.jsx';
 import VisibilityCard from '../components/profile/VisibilityCard.jsx';
 import { GhostButton, SectionCard } from '../components/profile/ui.jsx';
 import { computeProfileStrength, useProfile } from '../hooks/useProfile.js';
+import { graduateProfileService } from '../services/graduateProfileService.js';
 
 const TABS = [
   {
@@ -121,7 +122,7 @@ function Toast({ toast }) {
 }
 
 export default function ProfilePage() {
-  const { profile, updateProfile, resetProfile } = useProfile();
+  const { profile, updateProfile, loading, loadError } = useProfile();
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined' && window.location.hash) {
       return normalizeTab(window.location.hash);
@@ -193,10 +194,18 @@ export default function ProfilePage() {
     map[checkId]?.();
   }
 
-  function saveBasics(draft) {
-    updateProfile((p) => ({ ...p, ...draft }));
-    setEditingBasics(false);
-    notify('Datos básicos guardados.');
+  async function saveBasics(draft) {
+    try {
+      const saved = await graduateProfileService.update({
+        nombre_completo: draft.fullName, correo: draft.email, telefono: draft.phone,
+        ciudad: draft.location, titular_profesional: draft.headline, biografia: draft.about,
+      });
+      updateProfile((p) => ({ ...p, ...draft, fullName: saved.nombre_completo, email: saved.correo }));
+      setEditingBasics(false);
+      notify('Datos básicos guardados en tu cuenta.');
+    } catch (error) {
+      notify(error.message, 'error');
+    }
   }
 
   const activeLinks = Object.entries(profile.links ?? {}).filter(([, v]) => v?.trim());
@@ -207,9 +216,20 @@ export default function ProfilePage() {
   const prevTab = currentTabIndex > 0 ? TABS[currentTabIndex - 1] : null;
   const nextTab = currentTabIndex < TABS.length - 1 ? TABS[currentTabIndex + 1] : null;
 
+  if (loading || loadError) return (
+    <GraduatePortalLayout activePage="profile">
+      <main className="m-6 rounded-xl bg-white p-6" role={loadError ? 'alert' : 'status'}>
+        {loadError ? `No se pudo cargar tu perfil: ${loadError}` : 'Cargando tu perfil…'}
+      </main>
+    </GraduatePortalLayout>
+  );
+
   return (
     <GraduatePortalLayout activePage="profile">
       <main className="w-full pb-16">
+        {loading && <p className="m-5 rounded-xl bg-sky-50 p-4 text-sm" role="status">Cargando tu perfil real…</p>}
+        {loadError && <p className="m-5 rounded-xl bg-rose-50 p-4 text-sm text-rose-800" role="alert">No se pudo cargar tu perfil: {loadError}. Comprueba tu conexión antes de editar.</p>}
+        {!loading && !loadError && <p className="mx-5 mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">Habilidades, enlaces, experiencia, fotos y preferencias adicionales se conservan solo en este navegador para esta cuenta. Tus datos básicos y los CV en PDF se guardan en el servidor.</p>}
         {/* Profile Hero Header */}
         <ProfileHero
           profile={profile}
@@ -401,7 +421,7 @@ export default function ProfilePage() {
                     <div className="max-w-xl">
                       <span className="mb-2.5 inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-white">
                         <span className="size-2 rounded-full bg-lime animate-pulse" aria-hidden="true" />
-                        Perfil profesional verificado
+                        Perfil profesional
                       </span>
                       <h3 className="font-display text-xl sm:text-2xl lg:text-[1.7rem] font-bold leading-snug text-white mt-1">
                         Conecta lo que sabes con nuevas oportunidades.
@@ -551,17 +571,6 @@ export default function ProfilePage() {
             {/* Gamified Profile Strength Meter */}
             <ProfileStrength score={score} checks={checks} onAction={handleStrengthAction} />
 
-            {/* Reset mock data */}
-            <button
-              type="button"
-              onClick={() => {
-                resetProfile();
-                notify('Perfil restablecido a los datos de ejemplo.');
-              }}
-              className="justify-self-center text-xs font-semibold text-secondary underline-offset-4 hover:text-ink hover:underline cursor-pointer"
-            >
-              Restablecer datos de ejemplo
-            </button>
           </aside>
         </div>
       </main>

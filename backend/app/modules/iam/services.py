@@ -110,7 +110,7 @@ class IAMService:
             row = asesor_res.first()
             if row:
                 asesor, institucion = row
-                nombre = asesor.nombre_completo or institucion.nombre_corto
+                nombre = (institucion.nombre_oficial or institucion.nombre_corto) if usuario.rol == "admin_ies" else (asesor.nombre_completo or institucion.nombre_corto)
                 id_entidad = str(institucion.id)
                 estado_validacion = institucion.estado
             else:
@@ -239,7 +239,7 @@ class IAMService:
             row = asesor_res.first()
             if row:
                 asesor, institucion = row
-                nombre_final = asesor.nombre_completo or institucion.nombre_corto
+                nombre_final = (institucion.nombre_oficial or institucion.nombre_corto) if usuario.rol == "admin_ies" else (asesor.nombre_completo or institucion.nombre_corto)
                 id_entidad = str(institucion.id)
                 estado_validacion = institucion.estado
             else:

@@ -13,6 +13,20 @@ import { authService, extractErrorMessage } from './authService.js';
 const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 class InstitutionService {
+  async getProfile() {
+    const response = await fetch(`${API_BASE_URL}/instituciones/perfil`, { headers: this.getAuthHeaders() });
+    if (!response.ok) throw new Error(extractErrorMessage(await response.json().catch(() => null), 'No se pudo cargar el perfil institucional.'));
+    return response.json();
+  }
+
+  async updateProfile(profile) {
+    const response = await fetch(`${API_BASE_URL}/instituciones/perfil`, {
+      method: 'PUT', headers: this.getAuthHeaders(), body: JSON.stringify(profile),
+    });
+    if (!response.ok) throw new Error(extractErrorMessage(await response.json().catch(() => null), 'No se pudo guardar el perfil institucional.'));
+    return response.json();
+  }
+
   /**
    * Genera los encabezados con Bearer token institucional
    */

@@ -39,7 +39,7 @@ export default function EditBasicsModal({ profile, onSave, onClose }) {
         </div>
         <Field label="Correo de contacto"><input type="email" className={inputClass} value={draft.email} onChange={set('email')} /></Field>
         <Field label="Teléfono / WhatsApp"><input className={inputClass} value={draft.phone} onChange={set('phone')} /></Field>
-        <Field label="Año de grado"><input className={inputClass} inputMode="numeric" maxLength={4} value={draft.graduationYear} onChange={set('graduationYear')} /></Field>
+        <Field label="Año de grado"><input className={inputClass} value={draft.graduationYear} readOnly title="El año de grado proviene del registro académico validado" /></Field>
         <div className="sm:col-span-2">
           <Field label="Sobre mí" hint={`${draft.about.length}/600 · Cuenta en qué eres bueno y qué tipo de reto buscas.`}>
             <textarea rows={4} maxLength={600} className={`${inputClass} resize-y`} value={draft.about} onChange={set('about')} />

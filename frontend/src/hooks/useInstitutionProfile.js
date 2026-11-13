@@ -1,55 +1,55 @@
 import { useCallback, useEffect, useState } from 'react';
 import { initialInstitutionProfile } from '../data/institutionAdminData.js';
+import { authService } from '../services/authService.js';
+import { institutionService } from '../services/institutionService.js';
 
-const STORAGE_KEY = 'vincula.institution.profile.v1';
 const SYNC_EVENT = 'vincula:institution-profile-updated';
+let sharedProfile = initialInstitutionProfile;
+let sharedId = null;
 
-function readProfile() {
-  if (typeof window === 'undefined') return initialInstitutionProfile;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? { ...initialInstitutionProfile, ...JSON.parse(raw) } : initialInstitutionProfile;
-  } catch {
-    return initialInstitutionProfile;
-  }
-}
-
-function writeProfile(profile) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
-  } catch {
-    // safe fallback
-  }
-  if (typeof window !== 'undefined') {
-    queueMicrotask(() => {
-      window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: profile }));
-    });
-  }
+function broadcast(profile) {
+  sharedProfile = profile;
+  window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: profile }));
 }
 
 export function useInstitutionProfile() {
-  const [profile, setProfile] = useState(readProfile);
+  const currentId = authService.getCurrentUser()?.id_entidad;
+  const [profile, setProfile] = useState(() => currentId && sharedId === currentId ? sharedProfile : initialInstitutionProfile);
+  const [loading, setLoading] = useState(Boolean(currentId && sharedId !== currentId));
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
-    function handleSync(event) {
-      setProfile(event.detail ?? readProfile());
+    let active = true;
+    const sync = (event) => setProfile(event.detail ?? initialInstitutionProfile);
+    window.addEventListener(SYNC_EVENT, sync);
+    if (currentId) {
+      institutionService.getProfile().then((data) => {
+        if (!active) return;
+        sharedId = currentId;
+        broadcast(data);
+        setLoadError('');
+      }).catch((error) => { if (active) setLoadError(error.message); })
+        .finally(() => { if (active) setLoading(false); });
     }
-    window.addEventListener(SYNC_EVENT, handleSync);
-    return () => window.removeEventListener(SYNC_EVENT, handleSync);
-  }, []);
+    return () => { active = false; window.removeEventListener(SYNC_EVENT, sync); };
+  }, [currentId]);
 
-  const updateProfile = useCallback((updater) => {
-    setProfile((current) => {
-      const next = typeof updater === 'function' ? updater(current) : { ...current, ...updater };
-      writeProfile(next);
+  const updateProfile = useCallback(async (updater) => {
+    const next = typeof updater === 'function' ? updater(sharedProfile) : updater;
+    if (!authService.getToken() || !authService.getCurrentUser()?.id_entidad) {
+      broadcast(next);
       return next;
-    });
+    }
+    const result = await institutionService.updateProfile(next);
+    sharedId = authService.getCurrentUser().id_entidad;
+    broadcast(result);
+    return result;
   }, []);
 
   const resetProfile = useCallback(() => {
-    writeProfile(initialInstitutionProfile);
-    setProfile(initialInstitutionProfile);
+    sharedId = null;
+    broadcast(initialInstitutionProfile);
   }, []);
 
-  return { institutionProfile: profile, updateInstitutionProfile: updateProfile, resetInstitutionProfile: resetProfile };
+  return { institutionProfile: profile, updateInstitutionProfile: updateProfile, resetInstitutionProfile: resetProfile, loading, loadError };
 }

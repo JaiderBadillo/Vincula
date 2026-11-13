@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
 from app.modules.graduates.models import Egresado, AcademicoEgresado, ArchivoHojaVida
+from app.integrations.supabase_storage import SupabaseStorageService
 from app.modules.vacancies_ats.models import (
     Postulacion,
     HistorialFasePostulacion,
@@ -27,6 +28,8 @@ from app.modules.graduates.schemas import (
     SubmittedDocument,
     ApplicationHistoryItem,
 )
+
+PRIVATE_CV_BUCKET = "vincula-hojas-de-vida"
 
 
 class GraduateService:
@@ -91,7 +94,7 @@ class GraduateService:
                 email=rec.correo_corporativo,
                 phone=rec.telefono,
                 avatar=rec.url_avatar,
-                status="En línea"
+                status="Estado no disponible"
             )
 
         # Entrevista más reciente
@@ -109,13 +112,9 @@ class GraduateService:
                 isUpcoming=(first_ent.estado == "programada")
             )
 
-        # Documento presentado / Hoja de vida
-        doc_dto = SubmittedDocument(
-            fileName=f"CV_{p.egresado.nombre_completo.replace(' ', '_')}.pdf",
-            fileSize="384 KB",
-            uploadedAt=p.postulado_en.strftime("%Y-%m-%d") if p.postulado_en else "2026-01-01",
-            matchScore=int(float(p.porcentaje_afinidad or 88.0))
-        )
+        # No existe una relación entre la postulación y un archivo concreto.
+        # Mostrar un CV inventado aquí haría pasar un documento inexistente por enviado.
+        doc_dto = None
 
         # Construcción dinámica de la línea de tiempo (Timeline)
         applied_date_str = p.postulado_en.strftime("%d %b %Y, %I:%M %p") if p.postulado_en else "Fecha registro"
@@ -176,7 +175,7 @@ class GraduateService:
             companyLogoBg="bg-[#0f172a] text-white",
             companyCover=emp.url_portada if emp else None,
             companySector=emp.sector_economico if emp else "Tecnología",
-            partnershipType="Convenio Verificado",
+            partnershipType=None,
             location=f"{vac.sede.ciudad}, {vac.sede.departamento}" if (vac and vac.sede) else "Bucaramanga, Santander",
             workMode=vac.modalidad if vac else "Presencial",
             salary=salary_str,
@@ -198,9 +197,9 @@ class GraduateService:
             id_vacante=str(p.id_vacante),
             cargo=vac.titulo if vac else "Vacante",
             empresa_nombre=emp.nombre_comercial or emp.razon_social if emp else "Empresa",
-            fecha_postulacion=p.postulado_en.strftime("%Y-%m-%d") if p.postulado_en else "2026-01-01",
+            fecha_postulacion=p.postulado_en.strftime("%Y-%m-%d") if p.postulado_en else None,
             fase_actual=fase_db,
-            coincidencia_ia_porcentaje=int(float(p.porcentaje_afinidad or 88.0))
+            coincidencia_ia_porcentaje=int(float(p.porcentaje_afinidad)) if p.porcentaje_afinidad is not None else None
         )
 
     @classmethod
@@ -358,10 +357,21 @@ class GraduateService:
             select(AcademicoEgresado).where(AcademicoEgresado.id_egresado == graduate.id)
             .order_by(AcademicoEgresado.creado_en.desc())
         )).scalars().first()
-        cv = (await session.execute(
+        cvs = (await session.execute(
             select(ArchivoHojaVida).where(ArchivoHojaVida.id_egresado == graduate.id)
             .order_by(ArchivoHojaVida.es_predeterminado.desc(), ArchivoHojaVida.subido_en.desc())
-        )).scalars().first()
+        )).scalars().all()
+        cv = cvs[0] if cvs else None
+        cv_urls = {}
+        private_prefix = f"/storage/v1/object/public/{PRIVATE_CV_BUCKET}/"
+        for item in cvs:
+            if private_prefix in item.url_archivo:
+                path = item.url_archivo.split(private_prefix, 1)[1]
+                cv_urls[item.id] = await SupabaseStorageService.create_signed_url(
+                    PRIVATE_CV_BUCKET, path, expires_in=900,
+                )
+            else:
+                cv_urls[item.id] = item.url_archivo
         approved = bool(academic and academic.estado_verificacion == "aprobado" and academic.validado_por_ies)
         return GraduateProfileSchema(
             id=str(graduate.id), nombre_completo=graduate.nombre_completo,
@@ -373,5 +383,21 @@ class GraduateService:
             ano_graduacion=str(academic.ano_graduacion) if academic else None,
             titulo_verificado=approved, sello_digital_activo=bool(approved and academic.sello_digital),
             habilidades_tecnicas=[], experiencias=[],
-            hoja_de_vida_pdf_url=cv.url_archivo if cv else None,
+            hoja_de_vida_pdf_url=cv_urls[cv.id] if cv else None,
+            cvs=[{
+                "id": str(item.id), "fileName": item.nombre_archivo,
+                "size": item.tamano_kb * 1024,
+                "uploadedAt": item.subido_en.date().isoformat() if item.subido_en else "",
+                "primary": item.es_predeterminado,
+                "url": cv_urls[item.id],
+            } for item in cvs],
+            url_avatar=getattr(graduate, "url_avatar", None),
+            url_portada=getattr(graduate, "url_portada", None),
+            titular_profesional=getattr(graduate, "titular_profesional", None),
+            biografia=getattr(graduate, "biografia", None),
+            disponible_para_trabajar=bool(getattr(graduate, "disponible_para_trabajar", False)),
+            visibilidad_disponibilidad=getattr(graduate, "visibilidad_disponibilidad", None),
+            aspiracion_salarial_min=getattr(graduate, "aspiracion_salarial_min", None),
+            aspiracion_salarial_max=getattr(graduate, "aspiracion_salarial_max", None),
+            dispuesto_a_reubicarse=bool(getattr(graduate, "dispuesto_a_reubicarse", False)),
         )

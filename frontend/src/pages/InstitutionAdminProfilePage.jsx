@@ -79,9 +79,6 @@ function PublicPreview({ form }) {
             <span className="mx-1.5 text-secondary/50">•</span>
             {form.city || 'Ciudad'}
           </p>
-          <p className="m-0 mt-3 line-clamp-4 text-xs leading-relaxed text-body-muted">
-            {form.description || 'Descripción institucional sobre la formación y pertinencia académica.'}
-          </p>
           <ul className="m-0 mt-4 grid list-none gap-2 border-t border-sand-line p-0 pt-4 text-xs text-ink/80">
             <li className="flex items-center gap-2">
               <i className="bx bx-id-card text-sm text-terracotta" aria-hidden="true" />
@@ -107,7 +104,7 @@ function PublicPreview({ form }) {
 }
 
 export default function InstitutionAdminProfilePage() {
-  const { institutionProfile, updateInstitutionProfile } = useInstitutionProfile();
+  const { institutionProfile, updateInstitutionProfile, loading, loadError } = useInstitutionProfile();
   const [saved, setSaved] = useState(institutionProfile);
   const [form, setForm] = useState(institutionProfile);
   const [errors, setErrors] = useState({});
@@ -115,10 +112,18 @@ export default function InstitutionAdminProfilePage() {
   const [coverError, setCoverError] = useState('');
   const [confirmNit, setConfirmNit] = useState(false);
   const [toast, setToast] = useState(null);
+  const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
   const coverFileRef = useRef(null);
 
   const isDirty = JSON.stringify(form) !== JSON.stringify(saved);
+
+  useEffect(() => {
+    if (!loading && !isDirty) {
+      setSaved(institutionProfile);
+      setForm(institutionProfile);
+    }
+  }, [institutionProfile, loading]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -127,7 +132,7 @@ export default function InstitutionAdminProfilePage() {
   }, [toast]);
 
   function update(field, value) {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => ({ ...prev, [field]: value, ...(['name', 'legalName'].includes(field) ? { name: value, legalName: value } : {}) }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: undefined }));
   }
 
@@ -181,11 +186,20 @@ export default function InstitutionAdminProfilePage() {
     return Object.keys(next).length === 0;
   }
 
-  function persist() {
-    updateInstitutionProfile(form);
-    setSaved(form);
-    setConfirmNit(false);
-    setToast('Los datos de la institución se guardaron exitosamente.');
+  async function persist() {
+    setSaving(true);
+    try {
+      const result = await updateInstitutionProfile(form);
+      setSaved(result);
+      setForm(result);
+      setConfirmNit(false);
+      setToast('Los datos de la institución se guardaron exitosamente.');
+    } catch (error) {
+      setConfirmNit(false);
+      setToast(error.message || 'No se pudieron guardar los datos.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleSave(event) {
@@ -208,6 +222,9 @@ export default function InstitutionAdminProfilePage() {
   return (
     <InstitutionPortalLayout activePage="admin-perfil" role="admin">
       <main className="w-full pb-28">
+        {loading && <p role="status" className="mx-auto max-w-6xl px-5 pt-6 text-sm text-secondary">Cargando los datos de tu institución…</p>}
+        {loadError && <p role="alert" className="mx-auto max-w-6xl px-5 pt-6 text-sm text-rose-600">{loadError}. Recarga la página para volver a intentarlo.</p>}
+        {!loading && !loadError && (
         <form onSubmit={handleSave} noValidate className="mx-auto max-w-6xl px-5 pt-6 sm:px-8 lg:px-10">
           <InstitutionPageHero
             photo={institutionPhotos.perfil}
@@ -349,14 +366,14 @@ export default function InstitutionAdminProfilePage() {
               <Card title="Identificación Institucional">
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                   <Field id="inst-name" label="Nombre Oficial" error={errors.name}>
-                    <input id="inst-name" className={inputClass} value={form.name} onChange={(e) => update('name', e.target.value)} />
+                    <input id="inst-name" className={inputClass} value={form.name} readOnly={form.verificationStatus === 'aprobado'} onChange={(e) => update('name', e.target.value)} />
                   </Field>
                   <Field id="inst-acronym" label="Siglas" hint="Se muestran si no hay imagen.">
                     <input id="inst-acronym" className={inputClass} maxLength={6} value={form.acronym} onChange={(e) => update('acronym', e.target.value.toUpperCase())} />
                   </Field>
                   <div className="sm:col-span-2">
                     <Field id="inst-legal" label="Razón Social Legal" error={errors.legalName}>
-                      <input id="inst-legal" className={inputClass} value={form.legalName} onChange={(e) => update('legalName', e.target.value)} />
+                      <input id="inst-legal" className={inputClass} value={form.legalName} readOnly={form.verificationStatus === 'aprobado'} onChange={(e) => update('legalName', e.target.value)} />
                     </Field>
                   </div>
                   <Field
@@ -365,14 +382,14 @@ export default function InstitutionAdminProfilePage() {
                     error={errors.nit}
                     hint={form.nit.trim() !== saved.nit ? 'Vas a cambiar el NIT. Te pediremos confirmarlo al guardar.' : undefined}
                   >
-                    <input id="inst-nit" className={inputClass} inputMode="numeric" value={form.nit} onChange={(e) => update('nit', e.target.value)} />
+                    <input id="inst-nit" className={inputClass} inputMode="numeric" value={form.nit} readOnly={form.verificationStatus === 'aprobado'} onChange={(e) => update('nit', e.target.value)} />
                   </Field>
                   <Field id="inst-type" label="Tipo de Institución">
                     <input id="inst-type" className={inputClass} value={form.institutionType} onChange={(e) => update('institutionType', e.target.value)} />
                   </Field>
                   <div className="sm:col-span-2">
                     <Field id="inst-rep" label="Representante Legal o Rector">
-                      <input id="inst-rep" className={inputClass} value={form.legalRepresentative} onChange={(e) => update('legalRepresentative', e.target.value)} />
+                      <input id="inst-rep" className={inputClass} value={form.legalRepresentative} readOnly={form.verificationStatus === 'aprobado'} onChange={(e) => update('legalRepresentative', e.target.value)} />
                     </Field>
                   </div>
                 </div>
@@ -406,18 +423,6 @@ export default function InstitutionAdminProfilePage() {
                 </div>
               </Card>
 
-              {/* Descripción */}
-              <Card title="Presentación Institucional">
-                <Field id="inst-desc" label="Descripción Institucional" hint="Resumen para dar a conocer la institución a empresas y aliados.">
-                  <textarea
-                    id="inst-desc"
-                    rows={3}
-                    className={`${inputClass} resize-none`}
-                    value={form.description}
-                    onChange={(e) => update('description', e.target.value)}
-                  />
-                </Field>
-              </Card>
             </div>
 
             <PublicPreview form={form} />
@@ -440,13 +445,14 @@ export default function InstitutionAdminProfilePage() {
                     type="submit"
                     className="rounded-lg bg-terracotta px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-terracotta-dark cursor-pointer shadow-xs"
                   >
-                    Guardar cambios
+                    {saving ? 'Guardando…' : 'Guardar cambios'}
                   </button>
                 </div>
               </div>
             </div>
           )}
         </form>
+        )}
 
         {/* Modal confirmación NIT */}
         {confirmNit && (

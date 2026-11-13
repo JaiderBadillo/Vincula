@@ -52,6 +52,7 @@ class DocumentProvenanceTests(unittest.IsolatedAsyncioTestCase):
             result = MagicMock()
             result.scalar_one_or_none.return_value = record
             result.scalars.return_value.first.return_value = record
+            result.scalars.return_value.all.return_value = []
             results.append(result)
         session = SimpleNamespace(execute=AsyncMock(side_effect=results))
 

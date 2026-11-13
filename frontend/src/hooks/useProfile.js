@@ -1,26 +1,39 @@
 import { useCallback, useEffect, useState } from 'react';
 import { initialProfile } from '../data/profile.js';
+import { authService } from '../services/authService.js';
+import { graduateProfileService } from '../services/graduateProfileService.js';
 
-const STORAGE_KEY = 'vincula.profile.v1';
+const STORAGE_KEY = 'vincula.profile.draft.v2';
 const SYNC_EVENT = 'vincula:profile-updated';
+const SERVER_FIELDS = ['fullName', 'headline', 'location', 'email', 'phone', 'about', 'openToWork', 'openToWorkVisibility', 'graduationYear', 'program', 'cvs'];
+
+function accountId() {
+  const user = authService.getCurrentUser();
+  return user?.id || user?.id_usuario || null;
+}
+
+function fromServer(data) {
+  return {
+    fullName: data.nombre_completo || '', headline: data.titular_profesional || '',
+    location: data.ciudad || '', email: data.correo || '', phone: data.telefono || '',
+    about: data.biografia || '', program: data.carrera || '',
+    graduationYear: data.ano_graduacion || '',
+    openToWork: Boolean(data.disponible_para_trabajar),
+    openToWorkVisibility: data.visibilidad_disponibilidad || 'recruiters',
+    photo: data.url_avatar || null, cover: data.url_portada || null,
+    cvs: data.cvs || [],
+  };
+}
 
 function readProfile() {
   if (typeof window === 'undefined') return initialProfile;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      const authUserRaw = window.localStorage.getItem('vincula.auth.user');
-      if (authUserRaw) {
-        const authUser = JSON.parse(authUserRaw);
-        return {
-          ...initialProfile,
-          fullName: authUser.nombre || '',
-          email: authUser.correo || '',
-        };
-      }
-      return initialProfile;
-    }
-    return { ...initialProfile, ...JSON.parse(raw) };
+    const id = accountId();
+    if (!id) return initialProfile;
+    const raw = window.localStorage.getItem(`${STORAGE_KEY}.${id}`);
+    const draft = raw ? JSON.parse(raw) : {};
+    SERVER_FIELDS.forEach((key) => { delete draft[key]; });
+    return { ...initialProfile, ...draft };
   } catch {
     return initialProfile;
   }
@@ -28,23 +41,46 @@ function readProfile() {
 
 function writeProfile(profile) {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+    const id = accountId();
+    if (id) {
+      const draft = { ...profile };
+      SERVER_FIELDS.forEach((key) => { delete draft[key]; });
+      window.localStorage.setItem(`${STORAGE_KEY}.${id}`, JSON.stringify(draft));
+    }
   } catch {
     // Si el almacenamiento está lleno o bloqueado, el perfil sigue funcionando en memoria.
   }
   if (typeof window !== 'undefined') {
     queueMicrotask(() => {
-      window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: profile }));
+      window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { profile, accountId: accountId() } }));
     });
   }
 }
 
 export function useProfile() {
   const [profile, setProfile] = useState(readProfile);
+  const [loading, setLoading] = useState(Boolean(accountId()));
+  const [loadError, setLoadError] = useState('');
+  const id = accountId();
+
+  useEffect(() => {
+    let active = true;
+    if (!id) { setLoading(false); return undefined; }
+    setLoading(true);
+    graduateProfileService.get().then((data) => {
+      if (!active) return;
+      const merged = { ...readProfile(), ...fromServer(data) };
+      setProfile(merged);
+      window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { profile: merged, accountId: id } }));
+      setLoadError('');
+    }).catch((error) => { if (active) setLoadError(error.message); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [id]);
 
   useEffect(() => {
     function handleSync(event) {
-      setProfile(event.detail ?? readProfile());
+      if (event.detail?.accountId === accountId()) setProfile(event.detail.profile ?? readProfile());
     }
     window.addEventListener(SYNC_EVENT, handleSync);
     return () => window.removeEventListener(SYNC_EVENT, handleSync);
@@ -59,11 +95,12 @@ export function useProfile() {
   }, []);
 
   const resetProfile = useCallback(() => {
-    writeProfile(initialProfile);
+    const id = accountId();
+    if (id) window.localStorage.removeItem(`${STORAGE_KEY}.${id}`);
     setProfile(initialProfile);
   }, []);
 
-  return { profile, updateProfile, resetProfile };
+  return { profile, updateProfile, resetProfile, loading, loadError };
 }
 
 /** Reduce una imagen a un dataURL JPEG liviano para poder guardarla en localStorage. */

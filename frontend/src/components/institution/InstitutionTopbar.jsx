@@ -44,7 +44,7 @@ export default function InstitutionTopbar({
     .join('')
     .toUpperCase() || 'IES';
 
-  const currentDisplayName = role === 'admin' ? (currentUser?.nombre || institutionProfile.name) : rawAdvisorName;
+  const currentDisplayName = role === 'admin' ? (institutionProfile.name || 'Institución') : rawAdvisorName;
 
   return (
     <header

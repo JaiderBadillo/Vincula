@@ -15,6 +15,15 @@ class ExperienceItem(BaseModel):
     descripcion: Optional[str] = None
 
 
+class GraduateCvSchema(BaseModel):
+    id: str
+    fileName: str
+    size: int
+    uploadedAt: str
+    primary: bool
+    url: str
+
+
 class GraduateProfileSchema(BaseModel):
     id: str
     nombre_completo: str
@@ -30,6 +39,32 @@ class GraduateProfileSchema(BaseModel):
     habilidades_tecnicas: List[str]
     experiencias: List[ExperienceItem]
     hoja_de_vida_pdf_url: Optional[str] = None
+    cvs: List[GraduateCvSchema] = []
+    url_avatar: Optional[str] = None
+    url_portada: Optional[str] = None
+    titular_profesional: Optional[str] = None
+    biografia: Optional[str] = None
+    disponible_para_trabajar: bool = False
+    visibilidad_disponibilidad: Optional[str] = None
+    aspiracion_salarial_min: Optional[float] = None
+    aspiracion_salarial_max: Optional[float] = None
+    dispuesto_a_reubicarse: bool = False
+
+
+class GraduateProfileUpdate(BaseModel):
+    nombre_completo: Optional[str] = None
+    correo: Optional[EmailStr] = None
+    telefono: Optional[str] = None
+    ciudad: Optional[str] = None
+    titular_profesional: Optional[str] = None
+    biografia: Optional[str] = None
+    url_avatar: Optional[str] = None
+    url_portada: Optional[str] = None
+    disponible_para_trabajar: Optional[bool] = None
+    visibilidad_disponibilidad: Optional[str] = None
+    aspiracion_salarial_min: Optional[float] = None
+    aspiracion_salarial_max: Optional[float] = None
+    dispuesto_a_reubicarse: Optional[bool] = None
 
 
 class TimelineStep(BaseModel):
@@ -79,7 +114,7 @@ class GraduateApplicationResponse(BaseModel):
     companyLogoBg: str = "bg-[#0f172a] text-white"
     companyCover: Optional[str] = None
     companySector: Optional[str] = None
-    partnershipType: Optional[str] = "Convenio Verificado"
+    partnershipType: Optional[str] = None
     location: str
     workMode: str
     salary: str

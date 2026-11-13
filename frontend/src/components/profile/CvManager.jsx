@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react';
 import { formatApplicationDate } from '../../utils/formatters.js';
 import DocumentViewerModal from '../common/DocumentViewerModal.jsx';
+import { graduateProfileService } from '../../services/graduateProfileService.js';
 
 const MAX_CV_BYTES = 5 * 1024 * 1024;
 const MAX_CVS = 4;
-const ALLOWED = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+const ALLOWED = ['application/pdf'];
 
 function formatSize(bytes) {
   return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
@@ -19,73 +20,49 @@ function fileIcon(name) {
 export default function CvManager({ profile, updateProfile, notify }) {
   const fileInput = useRef(null);
   const [dragging, setDragging] = useState(false);
-  const [replaceId, setReplaceId] = useState(null);
-  const [editingId, setEditingId] = useState(null);
-  const [labelDraft, setLabelDraft] = useState('');
-  // Archivos subidos en esta sesión para poder previsualizarlos (no se persisten).
-  const [sessionUrls, setSessionUrls] = useState({});
+  const [saving, setSaving] = useState(false);
   const [viewerDoc, setViewerDoc] = useState(null);
 
   const cvs = profile.cvs ?? [];
 
-  function processFile(file) {
+  async function processFile(file) {
     if (!file) return;
-    const okType = ALLOWED.includes(file.type) || /\.(pdf|docx?)$/i.test(file.name);
-    if (!okType) return notify('Formato no permitido. Usa PDF, DOC o DOCX.', 'error');
+    const okType = ALLOWED.includes(file.type) || /\.pdf$/i.test(file.name);
+    if (!okType) return notify('Formato no permitido. Usa un PDF.', 'error');
     if (file.size > MAX_CV_BYTES) return notify('El archivo supera los 5 MB.', 'error');
-
-    const today = new Date().toISOString().slice(0, 10);
-    const url = URL.createObjectURL(file);
-
-    if (replaceId) {
-      updateProfile((p) => ({
-        ...p,
-        cvs: p.cvs.map((cv) => (cv.id === replaceId ? { ...cv, fileName: file.name, size: file.size, uploadedAt: today } : cv)),
-      }));
-      setSessionUrls((u) => ({ ...u, [replaceId]: url }));
-      notify('Hoja de vida reemplazada correctamente.');
-      setReplaceId(null);
-      return;
-    }
-
     if (cvs.length >= MAX_CVS) return notify(`Puedes tener máximo ${MAX_CVS} versiones de CV.`, 'error');
-    const id = `cv-${Date.now()}`;
-    updateProfile((p) => ({
-      ...p,
-      cvs: [...p.cvs, { id, label: `CV ${p.cvs.length + 1}`, fileName: file.name, size: file.size, uploadedAt: today, primary: p.cvs.length === 0 }],
-    }));
-    setSessionUrls((u) => ({ ...u, [id]: url }));
-    notify('Nueva versión de CV cargada.');
+    setSaving(true);
+    try {
+      const saved = await graduateProfileService.uploadCv(file);
+      updateProfile((p) => ({ ...p, cvs: saved.cvs }));
+      notify('Hoja de vida guardada en tu cuenta.');
+    } catch (error) { notify(error.message, 'error'); }
+    finally { setSaving(false); }
   }
 
   function onInputChange(e) {
-    processFile(e.target.files?.[0]);
+    void processFile(e.target.files?.[0]);
     e.target.value = '';
   }
 
-  function openPicker(id = null) {
-    setReplaceId(id);
+  function openPicker() {
     fileInput.current?.click();
   }
 
-  function setPrimary(id) {
-    updateProfile((p) => ({ ...p, cvs: p.cvs.map((cv) => ({ ...cv, primary: cv.id === id })) }));
-    notify('CV principal actualizado. Se usará por defecto al postularte.');
+  async function setPrimary(id) {
+    try {
+      const saved = await graduateProfileService.setPrimaryCv(id);
+      updateProfile((p) => ({ ...p, cvs: saved.cvs }));
+      notify('CV principal actualizado.');
+    } catch (error) { notify(error.message, 'error'); }
   }
 
-  function remove(id) {
-    updateProfile((p) => {
-      const rest = p.cvs.filter((cv) => cv.id !== id);
-      if (rest.length && !rest.some((cv) => cv.primary)) rest[0] = { ...rest[0], primary: true };
-      return { ...p, cvs: rest };
-    });
-    notify('Versión eliminada.');
-  }
-
-  function saveLabel(id) {
-    const label = labelDraft.trim();
-    if (label) updateProfile((p) => ({ ...p, cvs: p.cvs.map((cv) => (cv.id === id ? { ...cv, label } : cv)) }));
-    setEditingId(null);
+  async function remove(id) {
+    try {
+      const saved = await graduateProfileService.deleteCv(id);
+      updateProfile((p) => ({ ...p, cvs: saved.cvs }));
+      notify('Versión eliminada de tu cuenta.');
+    } catch (error) { notify(error.message, 'error'); }
   }
 
   return (
@@ -107,7 +84,7 @@ export default function CvManager({ profile, updateProfile, notify }) {
               Guarda hasta {MAX_CVS} versiones adaptadas a cada tipo de vacante y elige cuál enviar.
             </p>
             <ul className="m-0 mt-4 grid list-none gap-1.5 p-0 text-xs text-white/75">
-              <li className="flex items-center gap-2"><i className="bx bx-check-circle text-lime" aria-hidden="true" />PDF, DOC o DOCX · máximo 5 MB</li>
+              <li className="flex items-center gap-2"><i className="bx bx-check-circle text-lime" aria-hidden="true" />PDF · máximo 5 MB</li>
               <li className="flex items-center gap-2"><i className="bx bx-check-circle text-lime" aria-hidden="true" />El CV principal se adjunta por defecto</li>
             </ul>
           </div>
@@ -122,7 +99,7 @@ export default function CvManager({ profile, updateProfile, notify }) {
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPicker(); } }}
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
             onDragLeave={() => setDragging(false)}
-            onDrop={(e) => { e.preventDefault(); setDragging(false); setReplaceId(null); processFile(e.dataTransfer.files?.[0]); }}
+            onDrop={(e) => { e.preventDefault(); setDragging(false); void processFile(e.dataTransfer.files?.[0]); }}
             className={`group flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-5 py-7 text-center transition-all ${
               dragging ? 'scale-[1.01] border-green bg-green/5' : 'border-line bg-page hover:border-green/50 hover:bg-green/[0.03]'
             }`}
@@ -132,11 +109,11 @@ export default function CvManager({ profile, updateProfile, notify }) {
               <i className="bx bx-cloud-upload" />
             </span>
             <p className="m-0 mt-3 font-display text-sm font-bold text-ink">
-              {dragging ? 'Suelta el archivo aquí' : 'Arrastra tu CV o haz clic para subirlo'}
+              {saving ? 'Guardando en tu cuenta…' : dragging ? 'Suelta el archivo aquí' : 'Arrastra tu CV o haz clic para subirlo'}
             </p>
             <p className="m-0 mt-1 text-xs text-body-muted">{cvs.length}/{MAX_CVS} versiones guardadas</p>
           </div>
-          <input ref={fileInput} type="file" accept=".pdf,.doc,.docx" className="sr-only" onChange={onInputChange} aria-label="Seleccionar archivo de hoja de vida" />
+          <input ref={fileInput} type="file" accept=".pdf,application/pdf" className="sr-only" onChange={onInputChange} aria-label="Seleccionar archivo de hoja de vida" />
 
           <ul className="m-0 mt-5 grid list-none gap-2.5 p-0">
             {cvs.length === 0 && (
@@ -157,27 +134,7 @@ export default function CvManager({ profile, updateProfile, notify }) {
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      {editingId === cv.id ? (
-                        <input
-                          autoFocus
-                          className="w-36 rounded-md border border-green px-2 py-0.5 text-sm font-bold text-ink outline-none"
-                          value={labelDraft}
-                          maxLength={30}
-                          onChange={(e) => setLabelDraft(e.target.value)}
-                          onBlur={() => saveLabel(cv.id)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') saveLabel(cv.id); if (e.key === 'Escape') setEditingId(null); }}
-                          aria-label="Nombre de la versión"
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          className="inline-flex items-center gap-1 font-display text-sm font-bold text-ink hover:text-green-dark"
-                          onClick={() => { setEditingId(cv.id); setLabelDraft(cv.label); }}
-                          title="Renombrar versión"
-                        >
-                          {cv.label}<i className="bx bx-pencil text-xs text-secondary" aria-hidden="true" />
-                        </button>
-                      )}
+                      <strong className="text-sm text-ink">{cv.fileName}</strong>
                       {cv.primary && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-green px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-white">
                           <i className="bx bxs-star text-[0.65rem]" aria-hidden="true" />Principal
@@ -194,7 +151,7 @@ export default function CvManager({ profile, updateProfile, notify }) {
                         Usar como principal
                       </button>
                     )}
-                    {sessionUrls[cv.id] && (
+                    {cv.url && (
                       <button
                         type="button"
                         onClick={() => setViewerDoc(cv)}
@@ -205,10 +162,7 @@ export default function CvManager({ profile, updateProfile, notify }) {
                         <i className="bx bx-show text-lg" aria-hidden="true" />
                       </button>
                     )}
-                    <button type="button" onClick={() => openPicker(cv.id)} className="grid size-8 place-items-center rounded-lg text-secondary hover:bg-panel hover:text-ink" title="Reemplazar archivo" aria-label={`Reemplazar ${cv.label}`}>
-                      <i className="bx bx-refresh text-lg" aria-hidden="true" />
-                    </button>
-                    <button type="button" onClick={() => remove(cv.id)} className="grid size-8 place-items-center rounded-lg text-secondary hover:bg-rose-50 hover:text-rose-600" title="Eliminar" aria-label={`Eliminar ${cv.label}`}>
+                    <button type="button" onClick={() => remove(cv.id)} className="grid size-8 place-items-center rounded-lg text-secondary hover:bg-rose-50 hover:text-rose-600" title="Eliminar" aria-label={`Eliminar ${cv.fileName}`}>
                       <i className="bx bx-trash text-lg" aria-hidden="true" />
                     </button>
                   </div>
@@ -223,19 +177,10 @@ export default function CvManager({ profile, updateProfile, notify }) {
         <DocumentViewerModal
           isOpen={Boolean(viewerDoc)}
           onClose={() => setViewerDoc(null)}
-          documentUrl={sessionUrls[viewerDoc.id]}
-          title={viewerDoc.label || 'Hoja de Vida (CV)'}
+          documentUrl={viewerDoc.url}
+          title={viewerDoc.fileName}
           subtitle={`${profile.fullName || 'Egresado'} · ${viewerDoc.fileName}`}
           documentType="cv"
-          metadata={{
-            studentName: profile.fullName || 'Egresado Vincula',
-            documentId: `${profile.documentType || 'CC'} ${profile.documentNumber || ''}`,
-            institution: profile.institution || 'Universidad Vinculada',
-            program: profile.headline || profile.program || 'Perfil Profesional',
-            degreeLevel: profile.educationLevel || 'Profesional',
-            degreeDate: formatApplicationDate(viewerDoc.uploadedAt),
-            verified: true,
-          }}
         />
       )}
     </section>

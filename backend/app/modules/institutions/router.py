@@ -12,6 +12,8 @@ Endpoints oficiales bajo prefijo /api/v1/instituciones:
 import uuid
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, Form, File, UploadFile, HTTPException, Query, status
+from pydantic import BaseModel, Field, EmailStr
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -43,8 +45,94 @@ from app.modules.institutions.schemas import (
     SubsanarDocumentoIESRequest,
 )
 from app.modules.institutions.services import InstitutionService
+from app.modules.institutions.models import Institucion
 
 router = APIRouter(prefix="/instituciones", tags=["IES - Academia, SNIES y Asesores"])
+
+
+class InstitutionProfileUpdate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    legalName: str = Field(..., min_length=1, max_length=255)
+    acronym: str = Field(..., min_length=1, max_length=60)
+    nit: str = Field(..., min_length=1, max_length=30)
+    institutionType: str = Field(..., min_length=1, max_length=100)
+    city: str = Field(..., min_length=1, max_length=100)
+    department: str = Field(..., min_length=1, max_length=100)
+    address: str = Field(..., min_length=1, max_length=255)
+    phone: str = Field(..., min_length=1, max_length=50)
+    contactEmail: EmailStr
+    website: str = Field('', max_length=255)
+    legalRepresentative: str = Field(..., min_length=1, max_length=150)
+    logo: Optional[str] = None
+    coverImage: Optional[str] = None
+
+
+def _profile(ies: Institucion) -> Dict[str, Any]:
+    return {
+        'id': str(ies.id), 'name': ies.nombre_oficial, 'legalName': ies.nombre_oficial,
+        'acronym': ies.nombre_corto, 'nit': ies.nit, 'institutionType': ies.caracter_academico,
+        'city': ies.ciudad, 'department': ies.departamento, 'address': ies.direccion,
+        'phone': ies.telefono, 'contactEmail': ies.correo_institucional,
+        'website': ies.sitio_web or '', 'legalRepresentative': ies.nombre_rector,
+        'logo': ies.url_logo, 'coverImage': ies.url_portada,
+        'verificationStatus': ies.estado,
+    }
+
+
+async def _own_ies(db: AsyncSession, current_user: Dict[str, Any]) -> Institucion:
+    try:
+        ies_id = uuid.UUID(str(_resolve_ies_id(current_user)))
+    except ValueError:
+        raise HTTPException(status_code=400, detail='Identificador de institución inválido.')
+    ies = (await db.execute(select(Institucion).where(Institucion.id == ies_id))).scalar_one_or_none()
+    if ies is None:
+        raise HTTPException(status_code=404, detail='La institución de tu cuenta no existe.')
+    return ies
+
+
+@router.get('/perfil')
+async def get_institution_profile(
+    current_user: Dict[str, Any] = Depends(require_role(['admin_ies', 'ies_admin', 'asesor_ies', 'ies_asesor'])),
+    db: AsyncSession = Depends(get_db),
+):
+    return _profile(await _own_ies(db, current_user))
+
+
+@router.put('/perfil')
+async def update_institution_profile(
+    payload: InstitutionProfileUpdate,
+    current_user: Dict[str, Any] = Depends(require_role(['admin_ies', 'ies_admin'])),
+    db: AsyncSession = Depends(get_db),
+):
+    ies = await _own_ies(db, current_user)
+    if ies.estado == 'aprobado' and (
+        payload.nit.strip() != ies.nit or payload.name.strip() != ies.nombre_oficial
+        or payload.legalName.strip() != ies.nombre_oficial
+        or payload.legalRepresentative.strip() != ies.nombre_rector
+    ):
+        raise HTTPException(status_code=409, detail='La identidad legal de una IES verificada requiere nueva revisión.')
+    if payload.name.strip() != payload.legalName.strip():
+        raise HTTPException(status_code=422, detail='El nombre oficial y la razón social deben coincidir.')
+    # Se difiere para evitar el ciclo al inicializar los routers de IES y empresa.
+    from app.modules.companies.router import _checked_image
+
+    logo = ies.url_logo if payload.logo == ies.url_logo else _checked_image(payload.logo)
+    cover = ies.url_portada if payload.coverImage == ies.url_portada else _checked_image(payload.coverImage)
+    ies.nombre_oficial = payload.name.strip()
+    ies.nombre_corto = payload.acronym.strip()
+    ies.nit = payload.nit.strip()
+    ies.caracter_academico = payload.institutionType.strip()
+    ies.ciudad = payload.city.strip()
+    ies.departamento = payload.department.strip()
+    ies.direccion = payload.address.strip()
+    ies.telefono = payload.phone.strip()
+    ies.correo_institucional = str(payload.contactEmail).lower()
+    ies.sitio_web = payload.website.strip() or None
+    ies.nombre_rector = payload.legalRepresentative.strip()
+    ies.url_logo = logo
+    ies.url_portada = cover
+    await db.commit()
+    return _profile(ies)
 
 
 def _resolve_ies_id(current_user: Dict[str, Any], query_ies_id: Optional[str] = None) -> str:
