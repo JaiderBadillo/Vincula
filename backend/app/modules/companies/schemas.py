@@ -105,6 +105,7 @@ class ReclutadorUpdateRequest(BaseModel):
     nombre_completo: Optional[str] = Field(None, min_length=3, max_length=150)
     telefono: Optional[str] = Field(None, max_length=50)
     cargo: Optional[str] = Field(None, max_length=100)
+    password: Optional[str] = Field(None, min_length=8, description="Nueva contraseña para el reclutador")
     estado: Optional[str] = Field(None, description="'active', 'suspended' o 'inactive'")
 
 
@@ -134,7 +135,7 @@ class ReclutadorItemResponse(BaseModel):
 
 
 class AsignarSedesRequest(BaseModel):
-    sedes_ids: List[str] = Field(..., min_length=1, description="Lista de UUIDs de sedes a asignar")
+    sedes_ids: List[str] = Field(default_factory=list, description="Lista de UUIDs de sedes a asignar")
 
 
 class AsignacionSedesResponse(BaseModel):

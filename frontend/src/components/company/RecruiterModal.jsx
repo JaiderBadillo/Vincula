@@ -9,6 +9,8 @@ const inputClass =
 const emptyForm = {
   fullName: '',
   email: '',
+  password: '',
+  passwordConfirmation: '',
   phone: '',
   siteIds: [],
 };
@@ -18,6 +20,8 @@ export default function RecruiterModal({ isOpen, onClose, onSave, recruiter, ava
   const sitesList = availableSites || hookSites || [];
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -28,11 +32,15 @@ export default function RecruiterModal({ isOpen, onClose, onSave, recruiter, ava
             fullName: recruiter.fullName || '',
             email: recruiter.email || '',
             phone: recruiter.phone || '',
+            password: '',
+            passwordConfirmation: '',
             siteIds: [...(recruiter.siteIds || [])],
           }
         : { ...emptyForm, siteIds: defaultSiteId }
     );
     setErrors({});
+    setSubmitting(false);
+    setShowPassword(false);
   }, [isOpen, recruiter, sitesList]);
 
   useEffect(() => {
@@ -59,22 +67,31 @@ export default function RecruiterModal({ isOpen, onClose, onSave, recruiter, ava
     if (errors.siteIds) setErrors((prev) => ({ ...prev, siteIds: undefined }));
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     const next = {};
     if (!form.fullName.trim()) next.fullName = 'Escribe el nombre completo.';
     if (!EMAIL_PATTERN.test(form.email.trim())) next.email = 'Escribe un correo válido.';
-    if (form.siteIds.length === 0) next.siteIds = 'Selecciona al menos una sede.';
+    if ((!recruiter || form.password) && form.password.length < 8) next.password = 'La contraseña debe tener al menos 8 caracteres.';
+    if ((!recruiter || form.password) && form.password !== form.passwordConfirmation) next.passwordConfirmation = 'Las contraseñas no coinciden.';
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
-    onSave({
-      fullName: form.fullName.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      siteIds: form.siteIds,
-    });
-    onClose();
+    setSubmitting(true);
+    try {
+      await onSave({
+        fullName: form.fullName.trim(),
+        email: form.email.trim().toLowerCase(),
+        phone: form.phone.trim(),
+        siteIds: form.siteIds,
+        ...((!recruiter || form.password) ? { password: form.password } : {}),
+      });
+      onClose();
+    } catch (error) {
+      setErrors((previous) => ({ ...previous, api: error.message || 'No se pudo guardar el reclutador.' }));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const isEditing = Boolean(recruiter);
@@ -94,13 +111,13 @@ export default function RecruiterModal({ isOpen, onClose, onSave, recruiter, ava
         className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-card bg-white p-6 shadow-2xl sm:p-7"
       >
         <h2 id="recruiter-modal-title" className="m-0 font-display text-xl font-bold text-ink">
-          {isEditing ? 'Editar reclutador' : 'Invitar reclutador'}
+          {isEditing ? 'Editar reclutador' : 'Crear cuenta de reclutador'}
         </h2>
         <span className="mt-2 block h-[3px] w-9 rounded-full bg-terracotta" aria-hidden="true" />
         <p className="m-0 mt-3 text-xs text-secondary">
           {isEditing
-            ? 'Actualiza los datos del reclutador y las sedes que gestiona.'
-            : 'Le enviaremos una invitación al correo para que active su cuenta de reclutador.'}
+            ? 'Actualiza sus datos. Si esta cuenta se creó antes, asigna una nueva contraseña para habilitar su ingreso.'
+            : 'El reclutador ingresará con su correo y la contraseña que establezcas aquí. Comparte la contraseña por un canal seguro.'}
         </p>
 
         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -124,6 +141,7 @@ export default function RecruiterModal({ isOpen, onClose, onSave, recruiter, ava
             <input
               id="rec-email"
               type="email"
+              readOnly={isEditing}
               className={`${inputClass} mt-1.5`}
               value={form.email}
               onChange={(e) => update('email', e.target.value)}
@@ -131,6 +149,23 @@ export default function RecruiterModal({ isOpen, onClose, onSave, recruiter, ava
             />
             {errors.email && <p className="m-0 mt-1 text-xs text-rose-600">{errors.email}</p>}
           </div>
+          <>
+              <div>
+                <label htmlFor="rec-password" className="block text-sm font-semibold text-ink">{isEditing ? 'Nueva contraseña (opcional)' : 'Contraseña inicial'}</label>
+                <input id="rec-password" type={showPassword ? 'text' : 'password'} autoComplete="new-password"
+                  className={`${inputClass} mt-1.5`} value={form.password} onChange={(e) => update('password', e.target.value)} />
+                {errors.password && <p className="m-0 mt-1 text-xs text-rose-600">{errors.password}</p>}
+              </div>
+              <div>
+                <label htmlFor="rec-password-confirm" className="block text-sm font-semibold text-ink">Confirmar contraseña</label>
+                <input id="rec-password-confirm" type={showPassword ? 'text' : 'password'} autoComplete="new-password"
+                  className={`${inputClass} mt-1.5`} value={form.passwordConfirmation} onChange={(e) => update('passwordConfirmation', e.target.value)} />
+                {errors.passwordConfirmation && <p className="m-0 mt-1 text-xs text-rose-600">{errors.passwordConfirmation}</p>}
+              </div>
+              <label className="flex items-center gap-2 text-xs text-secondary sm:col-span-2">
+                <input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} /> Mostrar contraseña
+              </label>
+          </>
           <div>
             <label htmlFor="rec-phone" className="block text-sm font-semibold text-ink">
               Teléfono
@@ -169,7 +204,7 @@ export default function RecruiterModal({ isOpen, onClose, onSave, recruiter, ava
               </li>
             ))}
           </ul>
-          {errors.siteIds && <p className="m-0 mt-2 text-xs text-rose-600">{errors.siteIds}</p>}
+          {sitesList.length === 0 && <p className="m-0 mt-2 text-xs text-secondary">Puedes asignar una sede después.</p>}
         </fieldset>
 
         <div className="mt-7 flex justify-end gap-2">
@@ -180,11 +215,13 @@ export default function RecruiterModal({ isOpen, onClose, onSave, recruiter, ava
           >
             Cancelar
           </button>
+          {errors.api && <p role="alert" className="m-0 mr-auto text-xs text-rose-600">{errors.api}</p>}
           <button
             type="submit"
+            disabled={submitting}
             className="rounded-lg bg-terracotta px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-terracotta-dark cursor-pointer"
           >
-            {isEditing ? 'Guardar cambios' : 'Enviar invitación'}
+            {submitting ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear cuenta'}
           </button>
         </div>
       </form>

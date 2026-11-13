@@ -1,14 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { initialRecruiters } from '../data/companyRecruitersData.js';
 import { companyService } from '../services/companyService.js';
 import { authService } from '../services/authService.js';
 
-const STORAGE_KEY = 'vincula.company.recruiters.v3';
-const LEGACY_KEYS = ['vincula.company.recruiters.v1', 'vincula.company.recruiters.v2'];
 const SYNC_EVENT = 'vincula:company-recruiters-updated';
 
 function sanitizeRecruiter(item) {
-  const { role: _r, permissions: _p, position: _pos, ...clean } = item;
+  const { password: _password, passwordConfirmation: _confirmation, role: _r, permissions: _p, position: _pos, ...clean } = item;
   return clean;
 }
 
@@ -17,10 +14,10 @@ function mapApiRecruiterToLocal(r) {
     id: r.id,
     fullName: r.nombre_completo,
     email: r.correo_corporativo,
-    phone: r.telefono || '(607) 6000000',
+    phone: r.telefono || '',
     title: r.cargo || 'Especialista de Atracción de Talento',
     avatar: r.url_avatar || null,
-    status: r.estado === 'active' ? 'active' : r.estado === 'suspended' ? 'suspended' : 'invited',
+    status: r.estado === 'active' ? 'active' : 'suspended',
     siteIds: (r.sedes_asignadas || []).map((s) => s.id),
     lastAccess: r.ultimo_acceso_en ? r.ultimo_acceso_en.slice(0, 10) : 'Sin accesos registrados',
     vacanciesCount: 0,
@@ -28,56 +25,37 @@ function mapApiRecruiterToLocal(r) {
   };
 }
 
-function readRecruiters() {
-  if (typeof window === 'undefined') return initialRecruiters;
-  try {
-    LEGACY_KEYS.forEach((k) => {
-      if (window.localStorage.getItem(k)) window.localStorage.removeItem(k);
-    });
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed.map(sanitizeRecruiter) : initialRecruiters;
-    }
-    return initialRecruiters;
-  } catch {
-    return initialRecruiters;
-  }
-}
-
 function writeRecruiters(list) {
-  try {
-    const cleanList = list.map(sanitizeRecruiter);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cleanList));
-  } catch {
-    // safe fallback
-  }
   if (typeof window !== 'undefined') {
-    queueMicrotask(() => {
-      window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: list }));
-    });
+    queueMicrotask(() => window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: list })));
   }
 }
 
 export function useCompanyRecruiters() {
-  const [recruiters, setRecruiters] = useState(readRecruiters);
-  const [loading, setLoading] = useState(false);
+  const [recruiters, setRecruiters] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   // Sincronización con backend REST API
   useEffect(() => {
     let isMounted = true;
+    try {
+      ['vincula.company.recruiters.v1', 'vincula.company.recruiters.v2', 'vincula.company.recruiters.v3']
+        .forEach((key) => window.localStorage.removeItem(key));
+    } catch { /* Navegador sin almacenamiento local. */ }
     async function fetchRecruiters() {
-      if (!authService.isAuthenticated()) return;
+      if (!authService.isAuthenticated()) { setLoading(false); return; }
       try {
         setLoading(true);
         const data = await companyService.getRecruiters();
-        if (isMounted && Array.isArray(data) && data.length > 0) {
+        if (isMounted && Array.isArray(data)) {
           const mapped = data.map(mapApiRecruiterToLocal);
           setRecruiters(mapped);
           writeRecruiters(mapped);
+          setError('');
         }
-      } catch {
-        // Fallback a localStorage si offline
+      } catch (failure) {
+        if (isMounted) setError(failure.message || 'No se pudo consultar el equipo.');
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -90,78 +68,46 @@ export function useCompanyRecruiters() {
 
   useEffect(() => {
     function handleSync(event) {
-      setRecruiters(event.detail ?? readRecruiters());
+      setRecruiters(event.detail ?? []);
     }
     window.addEventListener(SYNC_EVENT, handleSync);
     return () => window.removeEventListener(SYNC_EVENT, handleSync);
   }, []);
 
-  const addRecruiter = useCallback((data) => {
-    const cleanData = sanitizeRecruiter(data);
-    const tempId = `rec-${Date.now().toString().slice(-6)}`;
+  const addRecruiter = useCallback(async (data) => {
+    if (!authService.isAuthenticated()) throw new Error('Inicia sesión para crear reclutadores.');
+    if (!data.password) throw new Error('Escribe una contraseña para el reclutador.');
+    const result = await companyService.createRecruiter({
+      nombre_completo: data.fullName,
+      correo_corporativo: data.email,
+      password: data.password,
+      telefono: data.phone || null,
+      sedes_asignadas_ids: data.siteIds || [],
+    });
+    setRecruiters((previous) => {
+      const next = [...previous, mapApiRecruiterToLocal(result)];
+      writeRecruiters(next);
+      return next;
+    });
+    return result;
+  }, []);
 
-    // Llamada al backend
-    if (authService.isAuthenticated()) {
-      const payload = {
-        nombre_completo: cleanData.fullName || cleanData.nombre_completo || 'Nuevo Reclutador',
-        correo_corporativo: cleanData.email || cleanData.correo_corporativo,
-        password: cleanData.password || 'TalentoSeguro2026*!',
-        telefono: cleanData.phone || cleanData.telefono || null,
-        cargo: cleanData.title || cleanData.cargo || 'Especialista de Atracción de Talento',
-        sedes_asignadas_ids: cleanData.siteIds || [],
-      };
-
-      companyService.createRecruiter(payload).then((apiRes) => {
-        if (apiRes && apiRes.id) {
-          setRecruiters((prev) => {
-            const updated = prev.map((r) => r.id === tempId ? { ...r, id: apiRes.id, source: 'api' } : r);
-            writeRecruiters(updated);
-            return updated;
-          });
-        }
-      }).catch((err) => {
-        console.warn('Reclutador creado localmente (backend no disponible):', err);
+  const updateRecruiter = useCallback(async (id, changes) => {
+    const cleanChanges = sanitizeRecruiter(changes);
+    if (!authService.isAuthenticated()) throw new Error('Inicia sesión para editar reclutadores.');
+    if (cleanChanges.status) {
+      await companyService.updateRecruiterStatus(id, cleanChanges.status);
+    }
+    if (cleanChanges.fullName !== undefined || cleanChanges.phone !== undefined || changes.password) {
+      await companyService.updateRecruiter(id, {
+        ...(cleanChanges.fullName !== undefined ? { nombre_completo: cleanChanges.fullName } : {}),
+        ...(cleanChanges.phone !== undefined ? { telefono: cleanChanges.phone } : {}),
+        ...(changes.password ? { password: changes.password } : {}),
       });
     }
-
-    setRecruiters((prev) => {
-      const created = {
-        id: tempId,
-        status: 'invited',
-        lastAccess: 'Sin accesos registrados',
-        vacanciesCount: 0,
-        avatar: null,
-        ...cleanData,
-      };
-      const next = [created, ...prev];
-      writeRecruiters(next);
-      return next;
-    });
-  }, []);
-
-  const updateRecruiter = useCallback((id, changes) => {
-    const cleanChanges = sanitizeRecruiter(changes);
-
-    if (authService.isAuthenticated() && id && !id.startsWith('rec-')) {
-      if (cleanChanges.status) {
-        const estadoApi = cleanChanges.status === 'active' ? 'active' : 'suspended';
-        companyService.updateRecruiterStatus(id, estadoApi).catch(() => {});
-      }
-      if (cleanChanges.siteIds) {
-        companyService.assignSedesToRecruiter(id, cleanChanges.siteIds).catch(() => {});
-      }
-    }
-
+    if (cleanChanges.siteIds) await companyService.assignSedesToRecruiter(id, cleanChanges.siteIds);
     setRecruiters((prev) => {
       const next = prev.map((r) => (r.id === id ? { ...r, ...cleanChanges } : r));
-      writeRecruiters(next);
-      return next;
-    });
-  }, []);
-
-  const deleteRecruiter = useCallback((id) => {
-    setRecruiters((prev) => {
-      const next = prev.filter((r) => r.id !== id);
       writeRecruiters(next);
       return next;
     });
@@ -181,7 +127,7 @@ export function useCompanyRecruiters() {
           newSites = currentSites.filter((id) => id !== siteId);
         }
 
-        if (newSites !== currentSites && authService.isAuthenticated() && !r.id.startsWith('rec-')) {
+        if (newSites !== currentSites && authService.isAuthenticated()) {
           companyService.assignSedesToRecruiter(r.id, newSites).catch(() => {});
         }
 
@@ -196,7 +142,7 @@ export function useCompanyRecruiters() {
     setRecruiters((prev) => {
       const next = prev.map((r) => {
         const filtered = (r.siteIds || []).filter((id) => id !== siteId);
-        if (filtered.length !== (r.siteIds || []).length && authService.isAuthenticated() && !r.id.startsWith('rec-')) {
+        if (filtered.length !== (r.siteIds || []).length && authService.isAuthenticated()) {
           companyService.assignSedesToRecruiter(r.id, filtered).catch(() => {});
         }
         return { ...r, siteIds: filtered };
@@ -207,16 +153,16 @@ export function useCompanyRecruiters() {
   }, []);
 
   const resetRecruiters = useCallback(() => {
-    writeRecruiters(initialRecruiters);
-    setRecruiters(initialRecruiters);
+    writeRecruiters([]);
+    setRecruiters([]);
   }, []);
 
   return {
     recruiters,
     loading,
+    error,
     addRecruiter,
     updateRecruiter,
-    deleteRecruiter,
     syncRecruitersForSite,
     removeSiteFromAllRecruiters,
     resetRecruiters,

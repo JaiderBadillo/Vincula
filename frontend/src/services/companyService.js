@@ -296,6 +296,14 @@ class CompanyService {
     return await res.json();
   }
 
+  async updateRecruiter(recruiterId, payload) {
+    const res = await fetch(`${API_BASE_URL}/empresas/reclutadores/${encodeURIComponent(recruiterId)}`, {
+      method: 'PUT', headers: this.getAuthHeaders(), body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(extractErrorMessage(await res.json().catch(() => null), 'No se pudo editar el reclutador.'));
+    return res.json();
+  }
+
   async assignSedesToRecruiter(recruiterId, sedesIds, idEmpresa = null) {
     const params = new URLSearchParams();
     if (idEmpresa) params.append('id_empresa', idEmpresa);

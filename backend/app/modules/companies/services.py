@@ -672,7 +672,8 @@ class CompanyService:
 
         stmt = (
             select(ReclutadorEmpresa)
-            .where(ReclutadorEmpresa.id_empresa == val_comp)
+            .join(Usuario, Usuario.id == ReclutadorEmpresa.id_usuario)
+            .where(ReclutadorEmpresa.id_empresa == val_comp, Usuario.rol == 'reclutador_empresa')
             .order_by(ReclutadorEmpresa.nombre_completo)
         )
         reclutadores = (await session.execute(stmt)).scalars().all()
@@ -719,6 +720,8 @@ class CompanyService:
         Crea un reclutador corporativo creando su usuario IAM con contraseña cifrada
         y asignando sedes autorizadas de la empresa.
         """
+        if payload.password == 'TalentoSeguro2026*!':
+            raise HTTPException(status_code=422, detail='Elige una contraseña diferente a la antigua contraseña predeterminada.')
         try:
             val_comp = uuid.UUID(str(company_id))
         except ValueError:
@@ -818,6 +821,41 @@ class CompanyService:
             sedes_asignadas=sedes_asignadas_list,
             creado_en=nuevo_reclutador.creado_en.isoformat() if nuevo_reclutador.creado_en else ""
         )
+
+    @classmethod
+    async def update_reclutador(cls, session: AsyncSession, company_id: str, recruiter_id: str,
+                                payload: ReclutadorUpdateRequest) -> ReclutadorItemResponse:
+        try:
+            company_uuid = uuid.UUID(str(company_id))
+            recruiter_uuid = uuid.UUID(str(recruiter_id))
+        except ValueError:
+            raise HTTPException(status_code=400, detail='Identificador de reclutador inválido.')
+        recruiter = (await session.execute(
+            select(ReclutadorEmpresa).join(Usuario, Usuario.id == ReclutadorEmpresa.id_usuario).where(
+                ReclutadorEmpresa.id == recruiter_uuid, ReclutadorEmpresa.id_empresa == company_uuid,
+                Usuario.rol == 'reclutador_empresa'
+            )
+        )).scalar_one_or_none()
+        if not recruiter:
+            raise HTTPException(status_code=404, detail='El reclutador no pertenece a tu empresa.')
+        if payload.nombre_completo is not None:
+            recruiter.nombre_completo = payload.nombre_completo.strip()
+        if payload.telefono is not None:
+            recruiter.telefono = payload.telefono.strip() or None
+        if payload.cargo is not None:
+            recruiter.cargo = payload.cargo.strip()
+        if payload.password is not None:
+            if payload.password == 'TalentoSeguro2026*!':
+                raise HTTPException(status_code=422, detail='Elige una contraseña diferente a la antigua contraseña predeterminada.')
+            user = (await session.execute(select(Usuario).where(Usuario.id == recruiter.id_usuario))).scalar_one_or_none()
+            if not user:
+                raise HTTPException(status_code=404, detail='La cuenta del reclutador no existe.')
+            user.contrasena_hash = get_password_hash(payload.password)
+        await session.commit()
+        for item in await cls.list_reclutadores(session, company_id):
+            if item.id == str(recruiter_uuid):
+                return item
+        raise HTTPException(status_code=404, detail='Reclutador no encontrado.')
 
     @classmethod
     async def assign_sedes_to_reclutador(

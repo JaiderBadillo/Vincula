@@ -68,6 +68,11 @@ class IAMService:
         if not verify_password(login_data.password, usuario.contrasena_hash):
             return None
 
+        # Las cuentas antiguas de reclutador compartian una contrasena predeterminada.
+        # El administrador debe asignarles una nueva desde el panel de reclutadores.
+        if usuario.rol == 'reclutador_empresa' and verify_password('TalentoSeguro2026*!', usuario.contrasena_hash):
+            return None
+
         # Actualizar último acceso en la base de datos
         usuario.ultimo_acceso_en = datetime.now(timezone.utc)
         await session.commit()
@@ -88,7 +93,7 @@ class IAMService:
             row = rec_res.first()
             if row:
                 reclutador, empresa = row
-                nombre = reclutador.nombre_completo or empresa.nombre_comercial
+                nombre = (empresa.nombre_comercial or empresa.razon_social) if usuario.rol == 'admin_empresa' else reclutador.nombre_completo
                 id_entidad = str(empresa.id)
                 estado_validacion = empresa.estado
             else:
@@ -218,7 +223,7 @@ class IAMService:
             row = rec_res.first()
             if row:
                 reclutador, empresa = row
-                nombre_final = reclutador.nombre_completo or empresa.nombre_comercial
+                nombre_final = (empresa.nombre_comercial or empresa.razon_social) if usuario.rol == 'admin_empresa' else reclutador.nombre_completo
                 id_entidad = str(empresa.id)
                 estado_validacion = empresa.estado
             else:

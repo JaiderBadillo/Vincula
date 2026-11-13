@@ -40,8 +40,8 @@ function Avatar({ recruiter }) {
 }
 
 export default function CompanyAdminRecruitersPage() {
-  const { recruiters, addRecruiter, updateRecruiter, deleteRecruiter } = useCompanyRecruiters();
-  const { vacancies, unassignOwner } = useCompanyVacancies();
+  const { recruiters, addRecruiter, updateRecruiter, loading, error } = useCompanyRecruiters();
+  const { vacancies } = useCompanyVacancies();
   const { sites } = useCompanySites();
 
   const [query, setQuery] = useState('');
@@ -49,7 +49,6 @@ export default function CompanyAdminRecruitersPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [deleting, setDeleting] = useState(null);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -98,39 +97,24 @@ export default function CompanyAdminRecruitersPage() {
     setModalOpen(true);
   }
 
-  function handleSave(data) {
+  async function handleSave(data) {
     if (editing) {
-      updateRecruiter(editing.id, data);
+      await updateRecruiter(editing.id, data);
       setToast(`Se actualizó a ${data.fullName}.`);
     } else {
-      addRecruiter(data);
-      setToast(`Invitación enviada a ${data.email}.`);
+      await addRecruiter(data);
+      setToast(`Cuenta creada para ${data.email}. Puede ingresar con la contraseña que estableciste.`);
     }
   }
 
-  function handleToggleSuspend(recruiter) {
-    if (recruiter.status === 'invited') {
-      setToast(`Invitación reenviada a ${recruiter.email}.`);
-      return;
+  async function handleToggleSuspend(recruiter) {
+    try {
+      const status = recruiter.status === 'active' ? 'suspended' : 'active';
+      await updateRecruiter(recruiter.id, { status });
+      setToast(status === 'active' ? `Se reactivó a ${recruiter.fullName}.` : `Se suspendió el acceso de ${recruiter.fullName}.`);
+    } catch (failure) {
+      setToast(failure.message || 'No se pudo cambiar el acceso.');
     }
-    if (recruiter.status === 'active') {
-      updateRecruiter(recruiter.id, { status: 'suspended' });
-      setToast(`Se suspendió el acceso de ${recruiter.fullName}.`);
-      return;
-    }
-    updateRecruiter(recruiter.id, { status: 'active' });
-    setToast(`Se reactivó a ${recruiter.fullName}.`);
-  }
-
-  function handleRequestDelete(recruiter) {
-    setDeleting(recruiter);
-  }
-
-  function handleConfirmDelete() {
-    unassignOwner(deleting.id);
-    deleteRecruiter(deleting.id);
-    setToast(`Se eliminó a ${deleting.fullName} del equipo.`);
-    setDeleting(null);
   }
 
   return (
@@ -149,7 +133,7 @@ export default function CompanyAdminRecruitersPage() {
                 className="inline-flex items-center gap-1.5 rounded-xl bg-terracotta px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-terracotta-dark cursor-pointer"
               >
                 <i className="bx bx-user-plus text-base" aria-hidden="true" />
-                <span>Invitar reclutador</span>
+                <span>Crear reclutador</span>
               </button>
             }
           />
@@ -207,8 +191,9 @@ export default function CompanyAdminRecruitersPage() {
             Mostrando <strong className="font-bold text-ink">{filtered.length}</strong> de {recruiters.length} reclutadores
           </p>
 
+          {error && <p role="alert" className="mt-4 text-sm text-rose-600">{error}</p>}
           {/* Lista */}
-          {filtered.length === 0 ? (
+          {loading ? <p role="status" className="mt-4 text-sm text-secondary">Cargando reclutadores…</p> : filtered.length === 0 ? (
             <div className="mt-4 rounded-card border border-sand-line bg-white p-12 text-center shadow-card">
               <i className="bx bx-user-x text-4xl text-terracotta" aria-hidden="true" />
               <h3 className="m-0 mt-2 font-display text-base font-bold text-ink">
@@ -288,11 +273,7 @@ export default function CompanyAdminRecruitersPage() {
                           onClick={() => handleToggleSuspend(r)}
                           className="rounded-xl border border-sand-line bg-cream px-3 py-2 text-xs font-bold text-ink transition-colors hover:bg-sand cursor-pointer"
                         >
-                          {r.status === 'active'
-                            ? 'Suspender'
-                            : r.status === 'invited'
-                              ? 'Reenviar'
-                              : 'Reactivar'}
+                          {r.status === 'active' ? 'Suspender' : 'Reactivar'}
                         </button>
                         <button
                           type="button"
@@ -301,15 +282,6 @@ export default function CompanyAdminRecruitersPage() {
                         >
                           <i className="bx bx-edit text-sm text-ochre" aria-hidden="true" />
                           Editar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRequestDelete(r)}
-                          className="grid size-8 place-items-center rounded-xl border border-sand-line text-secondary transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
-                          title="Eliminar del equipo"
-                          aria-label={`Eliminar a ${r.fullName}`}
-                        >
-                          <i className="bx bx-trash text-sm" aria-hidden="true" />
                         </button>
                       </div>
                     </article>
@@ -328,49 +300,6 @@ export default function CompanyAdminRecruitersPage() {
           availableSites={sites}
         />
 
-        {/* Confirmar eliminación */}
-        {deleting && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-cocoa/55 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-recruiter-title"
-            onClick={() => setDeleting(null)}
-          >
-            <div
-              className="w-full max-w-md rounded-card bg-white p-6 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h2 id="delete-recruiter-title" className="m-0 font-display text-lg font-bold text-ink">
-                ¿Eliminar a {deleting.fullName}?
-              </h2>
-              <p className="m-0 mt-2 text-sm text-body-muted">
-                Perderá el acceso al portal de la empresa. Esta acción no se puede deshacer.
-              </p>
-              {countActiveVacancies(vacancies, deleting.id) > 0 && (
-                <p className="m-0 mt-3 rounded-lg bg-ochre/15 px-3 py-2 text-xs text-cocoa">
-                  Tiene <strong>{countActiveVacancies(vacancies, deleting.id)}</strong> vacante(s) activa(s). Quedarán sin responsable y podrás reasignarlas desde la sección de Vacantes.
-                </p>
-              )}
-              <div className="mt-6 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDeleting(null)}
-                  className="rounded-lg px-4 py-2 text-sm font-semibold text-secondary hover:text-ink cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmDelete}
-                  className="rounded-lg bg-terracotta px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-terracotta-dark cursor-pointer"
-                >
-                  Sí, eliminar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {toast && (
           <div

@@ -369,8 +369,22 @@ async def create_recruiter(
     """
     Ruta protegida con GATING: Registra un nuevo reclutador de talento con cuenta IAM y asignación de sedes.
     """
+    if current_user.get('rol') not in ('admin_empresa', 'empresa_admin'):
+        raise HTTPException(status_code=403, detail='Solo el administrador de la empresa puede crear reclutadores.')
     company_id = _resolve_company_id(current_user, id_empresa)
     return await CompanyService.create_reclutador(db, company_id, payload)
+
+
+@router.put('/reclutadores/{reclutador_id}', response_model=ReclutadorItemResponse)
+async def update_recruiter(
+    reclutador_id: str,
+    payload: ReclutadorUpdateRequest,
+    current_user: Dict[str, Any] = Depends(require_approved_company),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.get('rol') not in ('admin_empresa', 'empresa_admin'):
+        raise HTTPException(status_code=403, detail='Solo el administrador de la empresa puede editar reclutadores.')
+    return await CompanyService.update_reclutador(db, _resolve_company_id(current_user), reclutador_id, payload)
 
 
 @router.post("/reclutadores/{reclutador_id}/asignar-sedes", response_model=AsignacionSedesResponse)
@@ -384,6 +398,8 @@ async def assign_sedes_to_recruiter(
     """
     Asigna un grupo de sedes corporativas autorizadas al reclutador.
     """
+    if current_user.get('rol') not in ('admin_empresa', 'empresa_admin'):
+        raise HTTPException(status_code=403, detail='Solo el administrador de la empresa puede asignar sedes.')
     company_id = _resolve_company_id(current_user, id_empresa)
     return await CompanyService.assign_sedes_to_reclutador(db, company_id, reclutador_id, payload.sedes_ids)
 
@@ -399,5 +415,7 @@ async def update_recruiter_status(
     """
     Actualiza el estado de un reclutador ('active', 'suspended', 'inactive') y sincroniza sus accesos IAM.
     """
+    if current_user.get('rol') not in ('admin_empresa', 'empresa_admin'):
+        raise HTTPException(status_code=403, detail='Solo el administrador de la empresa puede cambiar accesos.')
     company_id = _resolve_company_id(current_user, id_empresa)
     return await CompanyService.update_reclutador_status(db, company_id, reclutador_id, payload.estado)
