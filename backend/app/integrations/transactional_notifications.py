@@ -1,6 +1,8 @@
 """Correos transaccionales de Vincula entregados a n8n por HTTPS."""
 
 import logging
+
+import httpx
 from html import escape
 
 from app.core.config import settings
@@ -67,15 +69,40 @@ def build_message(kind, data):
     return subject, paragraph, html
 
 
+async def _send_with_brevo(recipient, subject, plain, html):
+    """Envía por la API HTTPS de Brevo (puerto 443; no depende de SMTP)."""
+    sender = settings.SMTP_FROM_EMAIL or settings.SMTP_USER
+    if not sender:
+        logger.error("Brevo: falta SMTP_FROM_EMAIL (remitente verificado en Brevo)")
+        return False
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.post("https://api.brevo.com/v3/smtp/email", json={
+                "sender": {"name": settings.SMTP_FROM_NAME or "Vincula", "email": sender},
+                "to": [{"email": recipient}], "subject": subject,
+                "htmlContent": html, "textContent": plain,
+            }, headers={"api-key": settings.BREVO_API_KEY, "accept": "application/json"})
+        if response.status_code in (200, 201, 202):
+            return True
+        logger.error("Brevo respondió %s: %s", response.status_code, response.text[:300])
+    except Exception as exc:
+        logger.error("Brevo falló: %s", exc)
+    return False
+
+
 async def send_vincula_email(kind, recipient, **data):
-    """Entrega a n8n; nunca interpreta un webhook ausente como correo enviado."""
+    """Entrega por Brevo (HTTPS) y, si no está disponible, por n8n. Nunca simula un envío."""
     if not recipient:
         logger.warning("Correo %s omitido: destinatario vacío", kind)
         return False
-    if not settings.N8N_WEBHOOK_BASE_URL or not settings.N8N_WEBHOOK_SECRET:
-        logger.error("Correo %s no enviado: n8n no configurado", kind)
-        return False
     subject, plain, html = build_message(kind, data)
+    if settings.BREVO_API_KEY:
+        if await _send_with_brevo(recipient, subject, plain, html):
+            return True
+        logger.error("Brevo no aceptó el correo %s", kind)
+    if not settings.N8N_WEBHOOK_BASE_URL or not settings.N8N_WEBHOOK_SECRET:
+        logger.error("Correo %s no enviado: ni Brevo ni n8n están configurados", kind)
+        return False
     accepted = await N8nWebhookDispatcher.dispatch_event("correo-transaccional", {
         "tipo": kind, "correo": recipient, "asunto": subject,
         "texto": plain, "html": html,

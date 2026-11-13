@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = "Vincula - Red de Empleabilidad IES"
     SMTP_FROM_EMAIL: str = ""
 
+    # Correo por API HTTPS (Brevo, plan gratuito: 300 correos/día). Funciona en Render gratis.
+    BREVO_API_KEY: str = ""
+
     # Google Gemini AI (Matching Semántico Vectorial)
     GEMINI_API_KEY: str = ""
     GEMINI_CHAT_MODEL: str = "gemini-3.5-flash"
