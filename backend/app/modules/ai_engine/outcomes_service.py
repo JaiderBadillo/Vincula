@@ -28,6 +28,19 @@ EMBUDO = [
 ]
 ORDEN = {fase: i for i, (fase, _) in enumerate(EMBUDO)}
 
+# Un egresado cuenta solo en su título más alto: si además se graduó de un programa que tiene a este
+# como ciclo previo (Tecnología -> Ingeniería), sus resultados se atribuyen a ese otro programa.
+EGRESADOS_DEL_PROGRAMA = """
+    SELECT DISTINCT a.id_egresado
+    FROM academicos_egresado a
+    WHERE a.id_programa = :pid
+      AND NOT EXISTS (
+          SELECT 1 FROM academicos_egresado sup
+          JOIN programas_academicos p ON p.id = sup.id_programa
+          WHERE sup.id_egresado = a.id_egresado AND p.id_programa_previo = :pid
+      )
+"""
+
 
 def _dias_hasta(post: Dict[str, Any], fase: str) -> Optional[float]:
     """Días desde la postulación hasta la primera vez que alcanzó `fase` (o una posterior)."""
@@ -101,20 +114,20 @@ async def program_outcomes_async(session: AsyncSession, id_programa: str,
     programa = await CurriculumTraceabilityService._get_program(session, id_programa, current_user)
     params = {"pid": programa.id}
     egresados = (await session.execute(
-        text("SELECT COUNT(DISTINCT id_egresado) FROM academicos_egresado WHERE id_programa = :pid"), params
+        text(f"SELECT COUNT(*) FROM ({EGRESADOS_DEL_PROGRAMA}) e"), params
     )).scalar() or 0
 
     # Postulaciones de egresados del programa, a cualquier vacante
-    filas = (await session.execute(text("""
+    filas = (await session.execute(text(f"""
         SELECT po.id, po.id_egresado, po.fase_actual::text, po.porcentaje_afinidad, po.motivo_descarte, po.postulado_en
         FROM postulaciones po
-        WHERE po.id_egresado IN (SELECT id_egresado FROM academicos_egresado WHERE id_programa = :pid)
+        WHERE po.id_egresado IN ({EGRESADOS_DEL_PROGRAMA})
     """), params)).fetchall()
-    historial = (await session.execute(text("""
+    historial = (await session.execute(text(f"""
         SELECT h.id_postulacion, h.fase_nueva::text, MIN(h.registrado_en)
         FROM historial_fases_postulacion h
         JOIN postulaciones po ON po.id = h.id_postulacion
-        WHERE po.id_egresado IN (SELECT id_egresado FROM academicos_egresado WHERE id_programa = :pid)
+        WHERE po.id_egresado IN ({EGRESADOS_DEL_PROGRAMA})
         GROUP BY h.id_postulacion, h.fase_nueva
     """), params)).fetchall()
 
