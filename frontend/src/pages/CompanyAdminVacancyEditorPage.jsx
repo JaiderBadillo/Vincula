@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import CompanyPortalLayout from '../components/company/CompanyPortalLayout.jsx';
 import CompanyLogo from '../components/company/CompanyLogo.jsx';
@@ -6,7 +6,6 @@ import { useCompanyProfile } from '../hooks/useCompanyProfile.js';
 import { useCompanyRecruiters } from '../hooks/useCompanyRecruiters.js';
 import { useCompanyVacancies } from '../hooks/useCompanyVacancies.js';
 import { useCompanySites } from '../hooks/useCompanySites.js';
-import { initialCompanySites } from '../data/companySitesData.js';
 import {
   LANGUAGE_OPTIONS,
   SOFT_SKILL_SUGGESTIONS,
@@ -59,7 +58,7 @@ function buildInitialForm(vacancy, recruiters, isRecruiter = false) {
       title: vacancy.title || '',
       category: vacancy.category || VACANCY_CATEGORIES[0],
       experienceLevel: vacancy.experienceLevel || 'recien-egresado',
-      siteId: vacancy.siteId || initialCompanySites[0].id,
+      siteId: vacancy.siteId || '',
       modality: vacancy.modality || VACANCY_MODALITIES[0],
       contractType: vacancy.contractType || VACANCY_CONTRACTS[0],
       openSpots: vacancy.openSpots || 1,
@@ -81,7 +80,7 @@ function buildInitialForm(vacancy, recruiters, isRecruiter = false) {
     title: '',
     category: VACANCY_CATEGORIES[0],
     experienceLevel: 'recien-egresado',
-    siteId: initialCompanySites[0].id,
+    siteId: '',
     modality: VACANCY_MODALITIES[0],
     contractType: VACANCY_CONTRACTS[0],
     openSpots: 1,
@@ -341,6 +340,17 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
 
   const [form, setForm] = useState(() => buildInitialForm(editing, recruiters, isRecruiter));
   const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    if (!sites.length) return;
+    setForm((prev) => {
+      if (prev.siteId && sites.some((s) => s.id === prev.siteId)) {
+        return prev;
+      }
+      const defaultSite = sites.find((s) => s.isMain) || sites[0];
+      return { ...prev, siteId: defaultSite.id };
+    });
+  }, [sites]);
   const [maxReached, setMaxReached] = useState(isEditing ? STEPS.length - 1 : 0);
   const [errors, setErrors] = useState({});
 
