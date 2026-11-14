@@ -35,6 +35,18 @@ class RecruiterDataProvenanceTests(unittest.TestCase):
 
 
 class RecruiterNoPhantomRecordsTests(unittest.IsolatedAsyncioTestCase):
+    async def test_vacancy_without_recruiter_does_not_create_an_imaginary_one(self):
+        company_id = uuid.uuid4()
+        site = SimpleNamespace(id=uuid.uuid4(), id_empresa=company_id)
+        found = MagicMock()
+        found.scalar_one_or_none.return_value = site
+        session = SimpleNamespace(execute=AsyncMock(return_value=found), add=MagicMock())
+        payload = SimpleNamespace(id_sede=site.id, id_reclutador_responsable=None)
+        with self.assertRaises(HTTPException) as error:
+            await VacancyATSService.create_vacancy(session, str(company_id), 'aprobado', payload)
+        self.assertEqual(error.exception.status_code, 422)
+        session.add.assert_not_called()
+
     async def test_unknown_vacancy_cannot_create_fake_application(self):
         graduate = SimpleNamespace(id=uuid.uuid4())
         found = MagicMock()
