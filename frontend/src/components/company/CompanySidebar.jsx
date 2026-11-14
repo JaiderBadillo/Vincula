@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useCompanyProfile } from '../../hooks/useCompanyProfile.js';
 import CompanyLogo from './CompanyLogo.jsx';
-import { recruiterProfile } from '../../data/companyRecruiterDashboardData.js';
+import { useCompanyRecruiters } from '../../hooks/useCompanyRecruiters.js';
+import { useCompanyVacancies } from '../../hooks/useCompanyVacancies.js';
 import { authService } from '../../services/authService.js';
 import { useVerificationStatus } from '../../hooks/useVerificationStatus.js';
 
@@ -45,7 +46,6 @@ export const recruiterNavSections = [
         label: 'Candidatos y Embudo',
         icon: 'bx-user-check',
         to: '/empresa/reclutador/candidatos',
-        badge: '14',
         badgeColor: 'bg-terracotta text-white font-bold',
         ready: true,
       },
@@ -54,7 +54,6 @@ export const recruiterNavSections = [
         label: 'Mis Vacantes',
         icon: 'bx-briefcase-alt-2',
         to: '/empresa/reclutador/vacantes',
-        badge: '5',
         badgeColor: 'bg-ochre/25 text-cocoa font-bold',
         ready: true,
       },
@@ -63,7 +62,6 @@ export const recruiterNavSections = [
         label: 'Banco de Talento IES',
         icon: 'bx-search-alt',
         to: '/empresa/reclutador/talento',
-        badge: 'Sourcing',
         badgeColor: 'bg-ochre/25 text-cocoa font-bold',
         ready: true,
       },
@@ -109,9 +107,17 @@ export default function CompanySidebar({
   role = 'admin',
 }) {
   const { companyProfile } = useCompanyProfile();
+  const { recruiters } = useCompanyRecruiters();
+  const { vacancies } = useCompanyVacancies();
+  const currentUser = authService.getCurrentUser();
+  const recruiter = recruiters.find((item) => item.userId === currentUser?.id);
+  const assigned = recruiter ? vacancies.filter((v) => v.ownerRecruiterId === recruiter.id) : [];
+  const candidateCount = assigned.reduce((sum, v) => sum + (Number(v.applicantsCount) || 0), 0);
   const verification = useVerificationStatus(role === 'admin');
   const navSections = (role === 'recruiter' ? recruiterNavSections : companyNavSections)
-    .map((section) => ({ ...section, items: section.items.filter((item) => item.id !== 'admin-verificacion' || ['pendiente', 'rechazado', 'en_subsanacion'].includes(verification?.estado)) }));
+    .map((section) => ({ ...section, items: section.items
+      .filter((item) => item.id !== 'admin-verificacion' || ['pendiente', 'rechazado', 'en_subsanacion'].includes(verification?.estado))
+      .map((item) => ({ ...item, badge: item.id === 'recruiter-candidatos' ? (candidateCount > 0 ? String(candidateCount) : null) : item.id === 'recruiter-vacantes' ? (assigned.length > 0 ? String(assigned.length) : null) : item.badge })) }));
 
   return (
     <>
@@ -151,25 +157,22 @@ export default function CompanySidebar({
         {/* Identidad del perfil activo en el sidebar */}
         <div className={`px-5 pt-4 pb-2 ${collapsed ? 'px-2 py-3' : ''}`}>
           {role === 'recruiter' ? (() => {
-            const currentUser = authService.getCurrentUser();
-            const recruiterName = currentUser?.nombre || recruiterProfile.fullName || 'Equipo de Selección';
+            const recruiterName = recruiter?.fullName || currentUser?.nombre || 'Reclutador';
+            const initials = recruiterName.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'R';
             return (
               <div
                 className={`flex items-center min-w-0 ${collapsed ? 'justify-center' : 'gap-3'}`}
                 title={recruiterName}
               >
-                <img
-                  src={recruiterProfile.avatar}
-                  alt=""
-                  className="size-9 rounded-xl object-cover border border-sand-line shadow-2xs shrink-0"
-                />
+                {recruiter?.avatar ? <img src={recruiter.avatar} alt="" className="size-9 rounded-xl object-cover border border-sand-line shadow-2xs shrink-0" />
+                  : <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-sand-line bg-sand font-bold text-cocoa" aria-hidden="true">{initials}</span>}
                 {!collapsed && (
                   <div className="min-w-0">
                     <p className="m-0 truncate text-sm font-semibold text-ink leading-tight">
                       {recruiterName}
                     </p>
                     <span className="text-[0.62rem] text-secondary">
-                      {recruiterProfile.role}
+                      {recruiter?.title || 'Reclutador'}
                     </span>
                   </div>
                 )}

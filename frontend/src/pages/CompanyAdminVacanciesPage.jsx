@@ -144,9 +144,10 @@ export default function CompanyAdminVacanciesPage() {
     navigate(vacancy ? `/empresa/admin/vacantes/${vacancy.id}/editar` : '/empresa/admin/vacantes/nueva');
   }
 
-  function handleReassignOwner(vacancy, newOwnerId) {
+  async function handleReassignOwner(vacancy, newOwnerId) {
     const ownerId = newOwnerId || null;
-    updateVacancy(vacancy.id, { ownerRecruiterId: ownerId });
+    try { await updateVacancy(vacancy.id, { ownerRecruiterId: ownerId }); }
+    catch (error) { setToast(`No se guardó la asignación: ${error.message}`); return; }
     const ownerName = ownerId ? recruiterById[ownerId]?.fullName : null;
     setToast(
       ownerName
@@ -155,28 +156,24 @@ export default function CompanyAdminVacanciesPage() {
     );
   }
 
-  function handleCycleStatus(vacancy) {
-    if (vacancy.status === 'open') {
-      updateVacancy(vacancy.id, { status: 'paused' });
-      setToast(`Se pausó «${vacancy.title}».`);
-      return;
-    }
-    updateVacancy(vacancy.id, { status: 'open' });
-    setToast(
-      vacancy.status === 'draft' ? `Se publicó «${vacancy.title}».` : `Se reactivó «${vacancy.title}».`
-    );
+  async function handleCycleStatus(vacancy) {
+    try {
+      await updateVacancy(vacancy.id, { status: vacancy.status === 'open' ? 'paused' : 'open' });
+      setToast(`Estado de «${vacancy.title}» guardado.`);
+    } catch (error) { setToast(`No se guardó el estado: ${error.message}`); }
   }
 
-  function handleCloseVacancy(vacancy) {
-    updateVacancy(vacancy.id, { status: 'closed' });
-    setToast(`Se cerró la convocatoria «${vacancy.title}».`);
+  async function handleCloseVacancy(vacancy) {
+    try { await updateVacancy(vacancy.id, { status: 'closed' }); setToast(`Se cerró la convocatoria «${vacancy.title}».`); }
+    catch (error) { setToast(`No se cerró la vacante: ${error.message}`); }
   }
 
-  function handleConfirmDelete() {
-    deleteVacancy(deleting.id);
-    setToast(`Se eliminó la vacante «${deleting.title}».`);
-    if (selectedId === deleting.id) setSelectedId(null);
-    setDeleting(null);
+  async function handleConfirmDelete() {
+    try {
+      await deleteVacancy(deleting.id);
+      setToast(`Se cerró la vacante «${deleting.title}». Se conserva en el historial.`);
+      setDeleting(null);
+    } catch (error) { setToast(`No se cerró la vacante: ${error.message}`); }
   }
 
   return (
@@ -445,10 +442,10 @@ export default function CompanyAdminVacanciesPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <h2 id="delete-vacancy-title" className="m-0 font-display text-lg font-bold text-ink">
-                ¿Eliminar «{deleting.title}»?
+                ¿Cerrar «{deleting.title}»?
               </h2>
               <p className="m-0 mt-2 text-sm text-body-muted">
-                Se borrará la vacante ({deleting.code}). Si solo quieres dejar de recibir hojas de vida,
+                La vacante ({deleting.code}) dejará de recibir postulaciones y quedará en el historial. Si solo quieres pausarla,
                 puedes pausarla o cerrar la convocatoria.
               </p>
               {deleting.applicantsCount > 0 && (
@@ -469,7 +466,7 @@ export default function CompanyAdminVacanciesPage() {
                   onClick={handleConfirmDelete}
                   className="rounded-lg bg-terracotta px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-terracotta-dark cursor-pointer"
                 >
-                  Sí, eliminar
+                  Sí, cerrar
                 </button>
               </div>
             </div>

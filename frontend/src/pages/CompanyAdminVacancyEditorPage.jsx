@@ -4,6 +4,7 @@ import CompanyPortalLayout from '../components/company/CompanyPortalLayout.jsx';
 import CompanyLogo from '../components/company/CompanyLogo.jsx';
 import { useCompanyProfile } from '../hooks/useCompanyProfile.js';
 import { useCompanyRecruiters } from '../hooks/useCompanyRecruiters.js';
+import { authService } from '../services/authService.js';
 import { useCompanyVacancies } from '../hooks/useCompanyVacancies.js';
 import { useCompanySites } from '../hooks/useCompanySites.js';
 import {
@@ -72,7 +73,7 @@ function buildInitialForm(vacancy, recruiters, isRecruiter = false) {
       languages: vacancy.languages || LANGUAGE_OPTIONS[0],
       benefits: [...(vacancy.benefits || [])],
       closingDate: vacancy.closingDate || '',
-      ownerRecruiterId: vacancy.ownerRecruiterId || (isRecruiter ? 'rec-01' : ''),
+      ownerRecruiterId: vacancy.ownerRecruiterId || '',
     };
   }
 
@@ -84,17 +85,17 @@ function buildInitialForm(vacancy, recruiters, isRecruiter = false) {
     modality: VACANCY_MODALITIES[0],
     contractType: VACANCY_CONTRACTS[0],
     openSpots: 1,
-    targetPrograms: [ACADEMIC_PROGRAM_SUGGESTIONS[0]],
+    targetPrograms: [],
     description: '',
     responsibilities: [],
-    skillsTech: ['SQL', 'Power BI'],
-    skillsSoft: ['Trabajo en equipo', 'Comunicación asertiva'],
+    skillsTech: [],
+    skillsSoft: [],
     salary: '',
     workSchedule: WORK_SCHEDULE_SUGGESTIONS[0],
     languages: LANGUAGE_OPTIONS[0],
     benefits: [],
     closingDate: '',
-    ownerRecruiterId: isRecruiter ? 'rec-01' : recruiters.find((r) => r.status === 'active')?.id || '',
+    ownerRecruiterId: '',
   };
 }
 
@@ -332,6 +333,10 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
   const navigate = useNavigate();
   const { companyProfile } = useCompanyProfile();
   const { recruiters } = useCompanyRecruiters();
+  const currentUser = authService.getCurrentUser();
+  const currentRecruiter = recruiters.find((recruiter) => recruiter.userId === currentUser?.id) || null;
+  const currentRecruiterId = currentRecruiter?.id;
+  const currentRecruiterName = currentRecruiter?.fullName || currentUser?.nombre || 'Reclutador';
   const { vacancies, addVacancy, updateVacancy } = useCompanyVacancies();
   const { sites } = useCompanySites();
 
@@ -340,6 +345,16 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
 
   const [form, setForm] = useState(() => buildInitialForm(editing, recruiters, isRecruiter));
   const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    if (editing) setForm(buildInitialForm(editing, recruiters, isRecruiter));
+  }, [editing?.id]);
+
+  useEffect(() => {
+    if (isRecruiter && currentRecruiterId && !isEditing) {
+      setForm((previous) => ({ ...previous, ownerRecruiterId: currentRecruiterId }));
+    }
+  }, [isRecruiter, isEditing, currentRecruiterId]);
 
   useEffect(() => {
     if (!sites.length) return;
@@ -353,6 +368,8 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
   }, [sites]);
   const [maxReached, setMaxReached] = useState(isEditing ? STEPS.length - 1 : 0);
   const [errors, setErrors] = useState({});
+  const [saveError, setSaveError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const [techInput, setTechInput] = useState('');
   const [softInput, setSoftInput] = useState('');
@@ -521,36 +538,50 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
     });
   }
 
-  function handleSaveDraft() {
+  async function handleSaveDraft() {
+    if (saving) return;
+    if (isRecruiter && !currentRecruiterId) { setSaveError('No se pudo confirmar tu identidad de reclutador. Recarga la página.'); return; }
     const titleErrors = validateStep(0, form);
     if (Object.keys(titleErrors).length > 0) {
       setErrors(titleErrors);
       setStep(0);
       return;
     }
-    if (isEditing) {
-      updateVacancy(editing.id, payload('draft'));
-    } else {
-      addVacancy(payload('draft'));
-    }
-    finish('draft', `Se guardó «${form.title.trim()}» como borrador.`);
+    setSaving(true);
+    setSaveError('');
+    try {
+      if (isEditing) await updateVacancy(editing.id, payload('draft'));
+      else await addVacancy(payload('draft'));
+      finish('draft', `Se guardó «${form.title.trim()}» como borrador.`);
+    } catch (error) { setSaveError(error.message); }
+    finally { setSaving(false); }
   }
 
-  function handlePublish() {
+  async function handlePublish() {
+    if (saving) return;
+    if (isRecruiter && !currentRecruiterId) { setSaveError('No se pudo confirmar tu identidad de reclutador. Recarga la página.'); return; }
     if (!validateAll()) return;
-    if (isEditing) {
-      updateVacancy(editing.id, payload('open'));
-    } else {
-      addVacancy(payload('open'));
-    }
-    finish('open', `Se publicó «${form.title.trim()}». Ya es visible para los egresados.`);
+    setSaving(true);
+    setSaveError('');
+    try {
+      if (isEditing) await updateVacancy(editing.id, payload('open'));
+      else await addVacancy(payload('open'));
+      finish('open', `Se publicó «${form.title.trim()}». Ya es visible para los egresados.`);
+    } catch (error) { setSaveError(error.message); }
+    finally { setSaving(false); }
   }
 
-  function handleSaveChanges() {
+  async function handleSaveChanges() {
+    if (saving) return;
     const status = editing.status;
     if (status !== 'draft' && !validateAll()) return;
-    updateVacancy(editing.id, payload(status));
-    finish(status, `Se guardaron los cambios de «${form.title.trim()}».`);
+    setSaving(true);
+    setSaveError('');
+    try {
+      await updateVacancy(editing.id, payload(status));
+      finish(status, `Se guardaron los cambios de «${form.title.trim()}».`);
+    } catch (error) { setSaveError(error.message); }
+    finally { setSaving(false); }
   }
 
   const isLastStep = step === STEPS.length - 1;
@@ -559,6 +590,8 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
   return (
     <CompanyPortalLayout activePage={isRecruiter ? 'recruiter-vacantes' : 'admin-vacantes'} role={role}>
       <main className="w-full">
+        {saveError && <p className="mx-auto mt-4 max-w-6xl rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800" role="alert">No se guardó la vacante: {saveError}</p>}
+        {saving && <p className="mx-auto mt-4 max-w-6xl p-2 text-sm text-secondary" role="status">Confirmando el guardado con el servidor…</p>}
         <div className="mx-auto max-w-6xl px-5 pt-6 sm:px-8 lg:px-10">
           {/* Encabezado */}
           <Link
@@ -1156,16 +1189,14 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
                   {isRecruiter ? (
                     <div className="rounded-2xl border border-ochre/40 bg-sand/30 p-4.5">
                       <div className="flex items-center gap-3">
-                        <img
-                          src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=160&q=80"
-                          alt="María Fernanda Henao"
-                          className="size-12 shrink-0 rounded-full border-2 border-white object-cover shadow-2xs"
-                        />
+                        {currentRecruiter?.avatar
+                          ? <img src={currentRecruiter.avatar} alt={currentRecruiterName} className="size-12 shrink-0 rounded-full border-2 border-white object-cover shadow-2xs" />
+                          : <span className="grid size-12 shrink-0 place-items-center rounded-full border-2 border-white bg-sand font-bold text-cocoa" aria-hidden="true">{currentRecruiterName.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'R'}</span>}
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="m-0 text-sm font-bold text-ink">María Fernanda Henao</p>
+                            <p className="m-0 text-sm font-bold text-ink">{currentRecruiterName}</p>
                             <span className="rounded-full bg-ochre/30 px-2 py-0.5 text-[0.65rem] font-bold text-cocoa">
-                              Tú (Reclutadora Líder)
+                              Tu cuenta
                             </span>
                           </div>
                           <p className="m-0 mt-0.5 text-xs text-secondary">
@@ -1238,8 +1269,8 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
                       </dd>
 
                       <dt className="text-secondary">Responsable</dt>
-                      <dd className={`m-0 ${owner ? 'text-ink font-semibold' : 'text-terracotta font-semibold'}`}>
-                        {owner ? owner.fullName : 'Sin responsable asignado'}
+                      <dd className={`m-0 ${owner || isRecruiter ? 'text-ink font-semibold' : 'text-terracotta font-semibold'}`}>
+                        {owner ? owner.fullName : (isRecruiter ? currentRecruiterName : 'Sin responsable asignado')}
                       </dd>
                     </dl>
                   </div>

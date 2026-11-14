@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { AVAILABLE_CITIES } from '../../data/companySitesData.js';
-import { useCompanyRecruiters } from '../../hooks/useCompanyRecruiters.js';
 
 const inputClass =
   'w-full rounded-xl border border-sand-line bg-cream/50 px-3.5 py-2.5 text-xs text-ink placeholder:text-secondary focus:border-terracotta focus:bg-white focus:outline-none transition-colors';
@@ -19,7 +18,6 @@ const SUGGESTED_DEPARTMENTS = [
 ];
 
 export default function SiteModal({ isOpen, onClose, onSave, site }) {
-  const { recruiters, syncRecruitersForSite } = useCompanyRecruiters();
 
   const [form, setForm] = useState({
     name: '',
@@ -36,9 +34,9 @@ export default function SiteModal({ isOpen, onClose, onSave, site }) {
     departments: [],
   });
 
-  const [selectedRecruiterIds, setSelectedRecruiterIds] = useState([]);
   const [departmentInput, setDepartmentInput] = useState('');
   const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -59,10 +57,6 @@ export default function SiteModal({ isOpen, onClose, onSave, site }) {
         departments: Array.isArray(site.departments) ? [...site.departments] : [],
       });
       // Identificar los reclutadores que tienen asignada esta sede
-      const assignedIds = recruiters
-        .filter((r) => (r.siteIds || []).includes(site.id))
-        .map((r) => r.id);
-      setSelectedRecruiterIds(assignedIds);
     } else {
       setForm({
         name: '',
@@ -76,26 +70,19 @@ export default function SiteModal({ isOpen, onClose, onSave, site }) {
         headcount: '',
         isMain: false,
         status: 'active',
-        departments: ['Talento Humano', 'Operaciones & Logística'],
+        departments: [],
       });
       // Por defecto, asociar al primer reclutador líder si existe
-      setSelectedRecruiterIds(recruiters.length > 0 ? [recruiters[0].id] : []);
     }
     setDepartmentInput('');
     setErrors({});
-  }, [isOpen, site, recruiters]);
+  }, [isOpen, site]);
 
   if (!isOpen) return null;
 
   function updateField(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }));
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }));
-  }
-
-  function handleToggleRecruiter(recruiterId) {
-    setSelectedRecruiterIds((prev) =>
-      prev.includes(recruiterId) ? prev.filter((id) => id !== recruiterId) : [...prev, recruiterId]
-    );
   }
 
   function handleAddDepartment(deptName) {
@@ -127,7 +114,7 @@ export default function SiteModal({ isOpen, onClose, onSave, site }) {
     return errs;
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length > 0) {
@@ -150,14 +137,15 @@ export default function SiteModal({ isOpen, onClose, onSave, site }) {
     };
 
     const targetSiteId = site?.id;
-    const savedId = onSave(payload, targetSiteId);
-    const resolvedSiteId = targetSiteId || savedId;
-
-    if (resolvedSiteId && syncRecruitersForSite) {
-      syncRecruitersForSite(resolvedSiteId, selectedRecruiterIds);
+    setSaving(true);
+    try {
+      await onSave(payload, targetSiteId);
+      onClose();
+    } catch (error) {
+      setErrors((previous) => ({ ...previous, submit: error.message }));
+    } finally {
+      setSaving(false);
     }
-
-    onClose();
   }
 
   const isEditing = Boolean(site);
@@ -273,6 +261,8 @@ export default function SiteModal({ isOpen, onClose, onSave, site }) {
               </label>
               <input
                 id="site-headcount"
+                disabled
+                title="El número de colaboradores todavía no se almacena para las sedes"
                 type="number"
                 min="0"
                 placeholder="Ej. 85"
@@ -341,7 +331,7 @@ export default function SiteModal({ isOpen, onClose, onSave, site }) {
               <input
                 id="site-manager"
                 type="text"
-                placeholder="Ej. María Fernanda Henao"
+                placeholder="Ej. Responsable de sede"
                 value={form.manager}
                 onChange={(e) => updateField('manager', e.target.value)}
                 className={inputClass}
@@ -350,7 +340,7 @@ export default function SiteModal({ isOpen, onClose, onSave, site }) {
           </div>
 
           {/* Áreas y Departamentos que operan en esta sede */}
-          <div className="rounded-xl border border-sand-line bg-cream/30 p-4 space-y-3">
+          <fieldset disabled className="rounded-xl border border-sand-line bg-cream/30 p-4 space-y-3 opacity-60">
             <div className="flex items-center justify-between">
               <div>
                 <label className="text-xs font-bold text-ink flex items-center gap-1.5">
@@ -358,7 +348,7 @@ export default function SiteModal({ isOpen, onClose, onSave, site }) {
                   <span>Áreas y Departamentos en esta Sede</span>
                 </label>
                 <p className="m-0 text-[0.7rem] text-secondary">
-                  Indica los departamentos que funcionan físicamente o tienen base operativa aquí.
+                  La gestión de áreas aún no está conectada. Estos datos no se guardan desde este formulario.
                 </p>
               </div>
               <span className="text-[0.7rem] font-bold text-cocoa bg-sand px-2 py-0.5 rounded-md">
@@ -430,56 +420,9 @@ export default function SiteModal({ isOpen, onClose, onSave, site }) {
                   </button>
                 ))}
             </div>
-          </div>
+          </fieldset>
 
-          {/* Reclutadores Asignados a esta Sede */}
-          <div className="rounded-xl border border-sand-line bg-white p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-xs font-bold text-ink flex items-center gap-1.5">
-                  <i className="bx bx-group text-terracotta" />
-                  <span>Reclutadores Asociados a esta Sede</span>
-                </label>
-                <p className="m-0 text-[0.7rem] text-secondary">
-                  Selecciona qué integrantes del equipo de selección pueden gestionar vacantes y candidatos en esta sede.
-                </p>
-              </div>
-              <span className="text-[0.7rem] font-bold text-terracotta-dark bg-terracotta/10 px-2 py-0.5 rounded-md">
-                {selectedRecruiterIds.length} asociados
-              </span>
-            </div>
-
-            {recruiters.length === 0 ? (
-              <p className="text-xs text-secondary italic m-0">No hay reclutadores registrados en la empresa.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                {recruiters.map((r) => {
-                  const isChecked = selectedRecruiterIds.includes(r.id);
-                  return (
-                    <label
-                      key={r.id}
-                      className={`flex items-center gap-2.5 rounded-xl border p-2.5 cursor-pointer transition-all ${
-                        isChecked
-                          ? 'border-ochre bg-sand/30 shadow-2xs'
-                          : 'border-sand-line bg-cream/20 hover:bg-cream/50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => handleToggleRecruiter(r.id)}
-                        className="size-4 rounded accent-terracotta cursor-pointer"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="m-0 text-xs font-bold text-ink truncate">{r.fullName}</p>
-                        <p className="m-0 text-[0.68rem] text-secondary truncate">{r.email}</p>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <p className="text-xs text-secondary">Las asignaciones de reclutadores se gestionan desde el equipo de reclutamiento.</p>
 
           {/* Opciones adicionales: Sede principal y Estado */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-1">

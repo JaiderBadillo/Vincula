@@ -1,5 +1,5 @@
 import { useCompanyProfile } from '../../hooks/useCompanyProfile.js';
-import { recruiterProfile } from '../../data/companyRecruiterDashboardData.js';
+import { useCompanyRecruiters } from '../../hooks/useCompanyRecruiters.js';
 import { authService } from '../../services/authService.js';
 import UserAccountDropdown from '../common/UserAccountDropdown.jsx';
 
@@ -23,8 +23,10 @@ export default function CompanyTopbar({
 }) {
   const { companyProfile } = useCompanyProfile();
   const currentUser = authService.getCurrentUser();
+  const { recruiters } = useCompanyRecruiters();
+  const activeRecruiter = recruiters.find((item) => item.userId === currentUser?.id);
 
-  const recruiterName = currentUser?.nombre || recruiterProfile.fullName || 'Equipo de Selección';
+  const recruiterName = activeRecruiter?.fullName || currentUser?.nombre || 'Reclutador';
   const recruiterInitials = recruiterName
     .split(' ')
     .filter(Boolean)
@@ -78,7 +80,7 @@ export default function CompanyTopbar({
             role="company_recruiter"
             userName={recruiterName}
             userSubtitle={`Reclutador(a) · ${companyProfile.name}`}
-            userAvatar={recruiterProfile.avatar}
+            userAvatar={activeRecruiter?.avatar || null}
             userInitials={recruiterInitials}
             borderClass="border-sand-line"
           />

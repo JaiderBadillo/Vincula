@@ -104,7 +104,7 @@ export default function CandidateDetailDrawer({
                   </h2>
                   <span className="inline-flex items-center gap-1 rounded-full bg-ochre/25 border border-ochre/40 px-2.5 py-0.5 text-xs font-bold text-cocoa">
                     <i className="bx bxs-badge-check text-ochre-dark" />
-                    <span>{candidate.matchPercentage}% Match IES</span>
+                    <span>{candidate.matchPercentage == null ? 'Sin puntaje calculado' : `${candidate.matchPercentage}% afinidad`}</span>
                   </span>
                 </div>
 
@@ -225,7 +225,7 @@ export default function CandidateDetailDrawer({
                     <span>Habilidades Técnicas que Coinciden ({candidate.skillsMatch?.length || 0})</span>
                   </h4>
                   <span className="text-[0.7rem] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                    Validado con Pensum UTS
+                    Coincidencias registradas en la vacante
                   </span>
                 </div>
 
@@ -376,16 +376,8 @@ export default function CandidateDetailDrawer({
               {/* Documentos Anexos */}
               <div className="rounded-2xl border border-dashed border-sand-line p-5 text-center bg-cream/20">
                 <i className="bx bx-file-pdf text-3xl text-terracotta" />
-                <p className="m-0 mt-1 text-xs font-bold text-ink">Hoja de Vida Oficial UTS - Vincula</p>
-                <p className="m-0 text-[0.7rem] text-secondary">Expediente curricular verificado con la institución</p>
-                <button
-                  type="button"
-                  onClick={() => alert(`Visualizando hoja de vida oficial de ${candidate.candidateName}`)}
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-sand-line bg-white px-3 py-1.5 text-xs font-bold text-cocoa hover:bg-sand transition-colors cursor-pointer"
-                >
-                  <i className="bx bx-download text-sm" />
-                  <span>Descargar Hoja de Vida (PDF)</span>
-                </button>
+                <p className="m-0 mt-1 text-xs font-bold text-ink">Archivo de hoja de vida</p>
+                <p className="m-0 text-[0.7rem] text-secondary">No hay un documento asociado a esta postulación para abrir desde este panel.</p>
               </div>
             </div>
           )}
@@ -432,7 +424,7 @@ export default function CandidateDetailDrawer({
                     <span className="absolute -left-[27px] top-0.5 size-3.5 rounded-full bg-terracotta border-2 border-white ring-2 ring-terracotta/30" />
                     <p className="m-0 text-xs font-bold text-ink">Entrevista de Selección</p>
                     <p className="m-0 text-[0.7rem] text-secondary">
-                      Entrevista con María Fernanda Henao y líderes técnicos.
+                      {candidate.interviewDate ? `Fecha registrada: ${candidate.interviewDate}` : 'Los datos de la entrevista aún no están disponibles.'}
                     </p>
                   </div>
                 )}

@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { initialVacancies } from '../data/companyVacanciesData.js';
 import { vacancyService } from '../services/vacancyService.js';
 import { authService } from '../services/authService.js';
 
-const STORAGE_KEY = 'vincula.company.vacancies.v4';
-const LEGACY_KEYS = ['vincula.company.vacancies.v1', 'vincula.company.vacancies.v2', 'vincula.company.vacancies.v3'];
 const SYNC_EVENT = 'vincula:company-vacancies-updated';
 
 /** Completa y normaliza campos para garantizar compatibilidad técnica y blanda. */
@@ -34,11 +31,11 @@ function normalizeVacancy(v) {
     skills: combinedSkills,
     targetPrograms: [],
     openSpots: 1,
-    workSchedule: 'Lunes a Viernes (8:00 AM - 5:00 PM)',
+    workSchedule: '',
     languages: 'No requerido',
     benefits: [],
     closingDate: '',
-    experienceLevel: 'recien-egresado',
+    experienceLevel: '',
     ...v,
   };
 }
@@ -54,11 +51,12 @@ function mapApiVacancyToLocal(v) {
     status: v.estado === 'abierta' ? 'open' : v.estado === 'borrador' ? 'draft' : v.estado === 'pausada' ? 'paused' : 'closed',
     modality: (v.modalidad || 'presencial').toLowerCase(),
     contractType: v.tipo_contrato,
-    experienceLevel: (v.nivel_experiencia || '').toLowerCase().includes('senior') ? 'senior' : (v.nivel_experiencia || '').toLowerCase().includes('semi') ? 'intermedio' : 'recien-egresado',
+    experienceLevel: v.nivel_experiencia || '',
     salaryMin: v.salario_minimo,
     salaryMax: v.salario_maximo,
     salary: v.salario_es_confidencial ? 'Confidencial' : v.salario_minimo && v.salario_maximo ? `$${v.salario_minimo.toLocaleString('es-CO')} - $${v.salario_maximo.toLocaleString('es-CO')}` : '',
     openSpots: v.cupos_disponibles,
+    workSchedule: v.jornada_laboral || '',
     description: v.descripcion,
     responsibilities: v.responsabilidades || [],
     requirements: v.requisitos || [],
@@ -75,27 +73,13 @@ function mapApiVacancyToLocal(v) {
 }
 
 function readVacancies() {
-  if (typeof window === 'undefined') return initialVacancies;
-  try {
-    LEGACY_KEYS.forEach((k) => {
-      if (window.localStorage.getItem(k)) window.localStorage.removeItem(k);
-    });
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw).map(normalizeVacancy) : initialVacancies;
-  } catch {
-    return initialVacancies;
-  }
+  return [];
 }
 
 function writeVacancies(list) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-  } catch {
-    // safe fallback
-  }
   if (typeof window !== 'undefined') {
     queueMicrotask(() => {
-      window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: list }));
+      window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { owner: authService.getCurrentUser()?.id_entidad, list } }));
     });
   }
 }
@@ -106,24 +90,39 @@ export function countActiveVacancies(vacancies, recruiterId) {
 }
 
 export function useCompanyVacancies() {
+  const companyId = authService.getCurrentUser()?.id_entidad;
   const [vacancies, setVacancies] = useState(readVacancies);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   // Sincronización con backend REST API
   useEffect(() => {
     let isMounted = true;
+    setVacancies([]);
     async function fetchVacancies() {
-      if (!authService.isAuthenticated()) return;
+      if (!authService.isAuthenticated() || !companyId) { setLoading(false); return; }
       try {
         setLoading(true);
         const res = await vacancyService.getCompanyVacancies({ page: 1, limit: 50 });
-        if (isMounted && res && Array.isArray(res.items) && res.items.length > 0) {
-          const mapped = res.items.map(mapApiVacancyToLocal);
+        if (!res || !Array.isArray(res.items)) throw new Error('La respuesta de vacantes no es válida.');
+        const all = [...res.items];
+        for (let page = 2; page <= (res.total_pages || 1); page += 1) {
+          const next = await vacancyService.getCompanyVacancies({ page, limit: 50 });
+          if (!Array.isArray(next?.items)) throw new Error('No se pudo cargar la lista completa de vacantes.');
+          all.push(...next.items);
+        }
+        if (isMounted) {
+          const mapped = all.map(mapApiVacancyToLocal);
           setVacancies(mapped);
           writeVacancies(mapped);
+          setError('');
         }
-      } catch {
-        // Fallback a localStorage
+      } catch (error) {
+        if (isMounted) {
+          setVacancies([]);
+          writeVacancies([]);
+          setError(error.message);
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -132,24 +131,23 @@ export function useCompanyVacancies() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
     function handleSync(event) {
-      setVacancies(event.detail ?? readVacancies());
+      if (event.detail?.owner === companyId) setVacancies(event.detail.list ?? []);
     }
     window.addEventListener(SYNC_EVENT, handleSync);
     return () => window.removeEventListener(SYNC_EVENT, handleSync);
-  }, []);
+  }, [companyId]);
 
   /** Crea la vacante y devuelve su id para poder navegar a ella. */
-  const addVacancy = useCallback((data) => {
-    const tempId = `vac-${Date.now().toString().slice(-6)}`;
-
-    // Sincronización asíncrona con el Backend FastAPI
-    if (authService.isAuthenticated()) {
+  const addVacancy = useCallback(async (data) => {
+    if (!authService.isAuthenticated()) throw new Error('Debes iniciar sesión para crear una vacante.');
+    if (!data.siteId) throw new Error('Selecciona una sede registrada antes de guardar la vacante.');
+    if (!data.description?.trim() || data.description.trim().length < 15) throw new Error('Escribe una descripción de al menos 15 caracteres.');
+    if (!data.closingDate) throw new Error('Selecciona la fecha de cierre de la vacante.');
       const modalityApi = data.modality === 'remoto' ? 'Remoto' : data.modality === 'hibrido' ? 'Híbrido' : 'Presencial';
-      const defaultClosing = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
 
       const apiPayload = {
         titulo: data.title || 'Nueva Vacante',
@@ -165,16 +163,12 @@ export function useCompanyVacancies() {
         periodo_salario: 'Mensual',
         jornada_laboral: data.workSchedule || 'Tiempo Completo',
         cupos_disponibles: data.openSpots ? Number(data.openSpots) : 1,
-        descripcion: data.description || 'Convocatoria laboral formal para egresados universitarios.',
-        responsabilidades: Array.isArray(data.responsibilities) && data.responsibilities.length > 0
-          ? data.responsibilities
-          : ['Cumplir con las metas y objetivos del cargo'],
-        requisitos: Array.isArray(data.requirements) && data.requirements.length > 0
-          ? data.requirements
-          : ['Título universitario en áreas afines'],
+        descripcion: data.description.trim(),
+        responsabilidades: data.responsibilities || [],
+        requisitos: data.requirements || [],
         beneficios: data.benefits || [],
         idiomas_requeridos: data.languages && data.languages !== 'No requerido' ? [data.languages] : [],
-        fecha_cierre: data.closingDate || defaultClosing,
+        fecha_cierre: data.closingDate,
         estado: data.status === 'open' ? 'abierta' : 'borrador',
         competencias: (data.skills || []).map((s) => ({
           nombre: s,
@@ -183,122 +177,71 @@ export function useCompanyVacancies() {
         })),
       };
 
-      vacancyService.createVacancy(apiPayload).then((resApi) => {
-        if (resApi && resApi.id) {
-          setVacancies((prev) => {
-            const updated = prev.map((v) => v.id === tempId ? { ...v, id: resApi.id, code: resApi.codigo_vacante, source: 'api' } : v);
-            writeVacancies(updated);
-            return updated;
-          });
-        }
-      }).catch((err) => {
-        console.warn('Vacante guardada en modo local (backend no disponible):', err);
-      });
+    const saved = await vacancyService.createVacancy(apiPayload);
+    if (!saved?.id) throw new Error('El servidor no confirmó la creación de la vacante.');
+    setVacancies((previous) => {
+      const next = [mapApiVacancyToLocal(saved), ...previous];
+      writeVacancies(next);
+      return next;
+    });
+    return saved.id;
+  }, []);
+
+  const updateVacancy = useCallback(async (id, changes) => {
+    if (!authService.isAuthenticated() || !id) throw new Error('Inicia sesión para actualizar la vacante.');
+    const patch = {};
+    const fields = {
+      title: 'titulo', siteId: 'id_sede', ownerRecruiterId: 'id_reclutador_responsable',
+      category: 'categoria', modality: 'modalidad', contractType: 'tipo_contrato',
+      experienceLevel: 'nivel_experiencia', salaryMin: 'salario_minimo', salaryMax: 'salario_maximo',
+      workSchedule: 'jornada_laboral', openSpots: 'cupos_disponibles', description: 'descripcion',
+      responsibilities: 'responsabilidades', requirements: 'requisitos', benefits: 'beneficios',
+      closingDate: 'fecha_cierre',
+    };
+    Object.entries(fields).forEach(([source, target]) => {
+      if (Object.prototype.hasOwnProperty.call(changes, source)) patch[target] = changes[source];
+    });
+    if (changes.skills) patch.competencias = changes.skills.map((nombre) => ({ nombre, categoria: 'tecnica', es_obligatoria: true }));
+    if (changes.languages) patch.idiomas_requeridos = Array.isArray(changes.languages) ? changes.languages : [changes.languages];
+    if (changes.salary === 'Confidencial') patch.salario_es_confidencial = true;
+    let saved = null;
+    if (Object.keys(patch).length) saved = await vacancyService.updateVacancy(id, patch);
+    if (changes.status) {
+      const estadoApi = { open: 'abierta', paused: 'pausada', closed: 'cerrada', draft: 'borrador' }[changes.status];
+      saved = await vacancyService.updateVacancyStatus(id, estadoApi);
     }
-
+    if (!saved?.id) throw new Error('El servidor no confirmó la actualización de la vacante.');
     setVacancies((prev) => {
-      const nextNumber = prev.length + 19;
-      const created = normalizeVacancy({
-        id: tempId,
-        code: `CEN-2026-0${nextNumber}`,
-        applicantsCount: 0,
-        publishedAt: data.status === 'draft' ? null : new Date().toISOString().slice(0, 10),
-        ...data,
-      });
-      const next = [created, ...prev];
+      const next = prev.map((v) => v.id === id ? mapApiVacancyToLocal(saved) : v);
       writeVacancies(next);
       return next;
     });
-
-    return tempId;
+    return saved;
   }, []);
 
-  const updateVacancy = useCallback((id, changes) => {
-    // Sincronización asíncrona con el Backend FastAPI
-    if (authService.isAuthenticated() && id && !id.startsWith('vac-')) {
-      const patch = {};
-      if (changes.title) patch.titulo = changes.title;
-      if (changes.category) patch.categoria = changes.category;
-      if (changes.description) patch.descripcion = changes.description;
-      if (changes.openSpots) patch.cupos_disponibles = Number(changes.openSpots);
-      if (changes.closingDate) patch.fecha_cierre = changes.closingDate;
+  const deleteVacancy = useCallback(async (id) => updateVacancy(id, { status: 'closed' }), [updateVacancy]);
 
-      if (Object.keys(patch).length > 0) {
-        vacancyService.updateVacancy(id, patch).catch(() => {});
-      }
-
-      if (changes.status) {
-        const estadoApi = changes.status === 'open' ? 'abierta' : changes.status === 'paused' ? 'pausada' : changes.status === 'closed' ? 'cerrada' : 'borrador';
-        vacancyService.updateVacancyStatus(id, estadoApi).catch(() => {});
-      }
-    }
-
-    setVacancies((prev) => {
-      const next = prev.map((v) => {
-        if (v.id !== id) return v;
-        const updated = normalizeVacancy({ ...v, ...changes });
-        if (!v.publishedAt && updated.status === 'open') {
-          updated.publishedAt = new Date().toISOString().slice(0, 10);
-        }
-        return updated;
-      });
-      writeVacancies(next);
-      return next;
-    });
-  }, []);
-
-  const deleteVacancy = useCallback((id) => {
-    if (authService.isAuthenticated() && id && !id.startsWith('vac-')) {
-      vacancyService.updateVacancyStatus(id, 'cerrada').catch(() => {});
-    }
-
-    setVacancies((prev) => {
-      const next = prev.filter((v) => v.id !== id);
-      writeVacancies(next);
-      return next;
-    });
-  }, []);
-
-  const duplicateVacancy = useCallback((id) => {
-    let duplicatedId = null;
-    setVacancies((prev) => {
-      const source = prev.find((v) => v.id === id);
-      if (!source) return prev;
-      duplicatedId = `vac-${Date.now().toString().slice(-6)}`;
-      const nextNumber = prev.length + 20;
-      const copy = normalizeVacancy({
-        ...source,
-        id: duplicatedId,
-        code: `CEN-2026-0${nextNumber}`,
-        title: `${source.title} (Copia)`,
-        status: 'draft',
-        applicantsCount: 0,
-        publishedAt: null,
-      });
-      const next = [copy, ...prev];
-      writeVacancies(next);
-      return next;
-    });
-    return duplicatedId;
-  }, []);
+  const duplicateVacancy = useCallback(async (id) => {
+    const source = vacancies.find((vacancy) => vacancy.id === id);
+    if (!source) throw new Error('La vacante ya no aparece en la empresa.');
+    return addVacancy({ ...source, title: `${source.title} (Copia)`, status: 'draft' });
+  }, [vacancies, addVacancy]);
 
   /** Deja sin responsable las vacantes de un reclutador (p. ej. al eliminarlo). */
-  const unassignOwner = useCallback((recruiterId) => {
-    setVacancies((prev) => {
-      const next = prev.map((v) => (v.ownerRecruiterId === recruiterId ? { ...v, ownerRecruiterId: null } : v));
-      writeVacancies(next);
-      return next;
-    });
-  }, []);
+  const unassignOwner = useCallback(async (recruiterId) => {
+    const owned = vacancies.filter((v) => v.ownerRecruiterId === recruiterId);
+    await Promise.all(owned.map((v) => updateVacancy(v.id, { ownerRecruiterId: null })));
+  }, [vacancies, updateVacancy]);
 
   const resetVacancies = useCallback(() => {
-    writeVacancies(initialVacancies);
-    setVacancies(initialVacancies);
+    writeVacancies([]);
+    setVacancies([]);
   }, []);
 
   return {
     vacancies,
     loading,
+    error,
     addVacancy,
     updateVacancy,
     deleteVacancy,

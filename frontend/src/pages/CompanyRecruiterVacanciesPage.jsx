@@ -7,7 +7,7 @@ import { useCompanyVacancies } from '../hooks/useCompanyVacancies.js';
 import { useCompanySites } from '../hooks/useCompanySites.js';
 import { useCompanyRecruiters } from '../hooks/useCompanyRecruiters.js';
 import { companyPhotos } from '../data/companyImages.js';
-import { recruiterProfile } from '../data/companyRecruiterDashboardData.js';
+import { authService } from '../services/authService.js';
 import {
   VACANCY_STATUS,
   VACANCY_TABS,
@@ -49,11 +49,11 @@ export default function CompanyRecruiterVacanciesPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { vacancies, updateVacancy, duplicateVacancy, deleteVacancy } = useCompanyVacancies();
+  const { vacancies, loading: vacanciesLoading, error: vacanciesError, updateVacancy, duplicateVacancy, deleteVacancy } = useCompanyVacancies();
   const { sites } = useCompanySites();
-  const { recruiters } = useCompanyRecruiters();
+  const { recruiters, loading: recruitersLoading, error: recruitersError } = useCompanyRecruiters();
 
-  const currentRecruiterId = recruiterProfile.id; // 'rec-01' María Fernanda Henao
+  const currentRecruiterId = recruiters.find((r) => r.userId === authService.getCurrentUser()?.id)?.id || null;
 
   // Pestaña de estado activa: 'open' | 'paused' | 'draft' | 'closed' | 'all'
   const [activeTab, setActiveTab] = useState(location.state?.tab || 'open');
@@ -141,30 +141,32 @@ export default function CompanyRecruiterVacanciesPage() {
     ? vacancies.find((v) => v.id === selectedDrawerId) || null
     : null;
 
-  function handleTogglePause(vacancy) {
+  async function handleTogglePause(vacancy) {
     const nextStatus = vacancy.status === 'open' ? 'paused' : 'open';
-    updateVacancy(vacancy.id, { status: nextStatus });
-    setToast(
-      nextStatus === 'paused'
-        ? `Vacante «${vacancy.title}» pausada temporalmente.`
-        : `Vacante «${vacancy.title}» reactivada con éxito.`
-    );
+    try {
+      await updateVacancy(vacancy.id, { status: nextStatus });
+      setToast(nextStatus === 'paused' ? `Vacante «${vacancy.title}» pausada.` : `Vacante «${vacancy.title}» reactivada.`);
+    } catch (error) { setToast(`No se guardó el cambio: ${error.message}`); }
   }
 
-  function handleDuplicate(vacancy) {
-    const newId = duplicateVacancy(vacancy.id);
-    setToast(`Vacante duplicada como borrador con ID ${newId}.`);
-    setActiveTab('draft');
+  async function handleDuplicate(vacancy) {
+    try {
+      const newId = await duplicateVacancy(vacancy.id);
+      setToast(`Vacante duplicada como borrador con ID ${newId}.`);
+      setActiveTab('draft');
+    } catch (error) { setToast(`No se pudo duplicar: ${error.message}`); }
   }
 
-  function handleClose(vacancy) {
-    updateVacancy(vacancy.id, { status: 'closed' });
-    setToast(`Vacante «${vacancy.title}» finalizada y cerrada.`);
+  async function handleClose(vacancy) {
+    try { await updateVacancy(vacancy.id, { status: 'closed' }); setToast(`Vacante «${vacancy.title}» cerrada.`); }
+    catch (error) { setToast(`No se cerró la vacante: ${error.message}`); }
   }
 
   return (
     <CompanyPortalLayout activePage="recruiter-vacantes" role="recruiter">
       <main className="w-full pb-20">
+        {(vacanciesLoading || recruitersLoading) && <p className="mx-6 mt-6 rounded-xl bg-white p-4 text-sm" role="status">Cargando vacantes de la empresa…</p>}
+        {(vacanciesError || recruitersError) && <p className="mx-6 mt-6 rounded-xl bg-rose-50 p-4 text-sm text-rose-800" role="alert">No se pudieron cargar las vacantes: {vacanciesError || recruitersError}</p>}
         <div className="mx-auto max-w-7xl px-5 pt-8 sm:px-8 lg:px-10 space-y-8">
           {/* ─── 1. Hero Showcase del Reclutador ─── */}
           <CompanyPageHero

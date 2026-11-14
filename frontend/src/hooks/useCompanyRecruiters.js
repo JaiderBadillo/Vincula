@@ -12,10 +12,11 @@ function sanitizeRecruiter(item) {
 function mapApiRecruiterToLocal(r) {
   return {
     id: r.id,
+    userId: r.id_usuario,
     fullName: r.nombre_completo,
     email: r.correo_corporativo,
     phone: r.telefono || '',
-    title: r.cargo || 'Especialista de Atracción de Talento',
+    title: r.cargo || 'Reclutador',
     avatar: r.url_avatar || null,
     status: r.estado === 'active' ? 'active' : 'suspended',
     siteIds: (r.sedes_asignadas || []).map((s) => s.id),
