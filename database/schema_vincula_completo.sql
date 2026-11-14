@@ -217,7 +217,8 @@ CREATE TABLE programas_academicos (
     total_creditos INTEGER NOT NULL,
     nombre_director VARCHAR(150),
     correo_director VARCHAR(255),
-    estado_acreditacion VARCHAR(100), -- 'Alta Calidad Acreditado', 'Registro Calificado Vigente'
+    estado_acreditacion VARCHAR(100),
+    id_programa_previo UUID REFERENCES programas_academicos(id) ON DELETE SET NULL, -- ciclo propedéutico -- 'Alta Calidad Acreditado', 'Registro Calificado Vigente'
     estado VARCHAR(30) DEFAULT 'activo' NOT NULL,
     creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
 );

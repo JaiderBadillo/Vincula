@@ -112,6 +112,22 @@ class AIService {
   }
 
   /**
+   * Ciclo propedéutico: define o quita (null) el programa previo requerido. Devuelve el informe actualizado.
+   */
+  async setPreviousProgram(programId, previousProgramId) {
+    const res = await fetch(`${API_BASE_URL}/ia/trazabilidad/programas/${programId}/programa-previo`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ id_programa_previo: previousProgramId || null }),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(extractErrorMessage(errorData, 'No se pudo guardar el programa previo.'));
+    }
+    return await res.json();
+  }
+
+  /**
    * Resultados reales de los egresados del programa en los procesos de selección.
    */
   async getProgramOutcomes(programId) {

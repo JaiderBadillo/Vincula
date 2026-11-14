@@ -46,6 +46,7 @@ from app.modules.ai_engine.schemas import (
     CurriculumSubjectRef,
     CurriculumSubjectResponse,
     PensumSaveRequest,
+    PreviousProgramRequest,
 )
 from app.modules.companies.models import Empresa
 from app.modules.institutions.models import ProgramaAcademico
@@ -94,7 +95,8 @@ def _index_pensum(semesters: List[Dict[str, Any]]):
     fams: Dict[str, List[CurriculumSubjectRef]] = {}
     for sem in semesters:
         for sub in sem.get("subjects", []):
-            ref = CurriculumSubjectRef(codigo=sub["code"], nombre=sub["name"], semestre=sem["semester_number"])
+            ref = CurriculumSubjectRef(codigo=sub["code"], nombre=sub["name"], semestre=sem["semester_number"],
+                                       programa=sem.get("program"))
             terms.setdefault(_key(sub["name"]), []).append(ref)
             for fam in families_for_text(sub["name"]):
                 fams.setdefault(fam, []).append(ref)
@@ -172,6 +174,7 @@ class CurriculumTraceabilityService:
         prog_name = pensum_data.get("program_name") or "Programa Académico"
         semesters = pensum_data.get("semesters", [])
         total_subjects = sum(len(s.get("subjects", [])) for s in semesters)
+        propias = sum(len(s.get("subjects", [])) for s in semesters if not s.get("program"))
         terms, declared, fams = _index_pensum(semesters)
 
         relevantes = [v for v in vacantes if _is_for_program(v, id_programa, _key(prog_name))]
@@ -266,6 +269,7 @@ class CurriculumTraceabilityService:
             num = s["semester_number"]
             semestres_resp.append(CurriculumSemesterResponse(
                 numero_semestre=num,
+                programa_origen=s.get("program"),
                 etiqueta=f"Semestre {ROMANOS[num - 1] if 1 <= num <= len(ROMANOS) else num}",
                 asignaturas=asignaturas,
             ))
@@ -273,7 +277,9 @@ class CurriculumTraceabilityService:
         return CurriculumPertinenceReport(
             programa_nombre=prog_name,
             id_programa=id_programa,
-            pensum_registrado=bool(pensum_data.get("registered", total_subjects > 0)),
+            programa_previo_id=(pensum_data.get("previous") or {}).get("id"),
+            programa_previo_nombre=(pensum_data.get("previous") or {}).get("nombre"),
+            pensum_registrado=bool(pensum_data.get("registered", propias > 0)),
             pensum_version=pensum_data.get("version"),
             pensum_actualizado_en=pensum_data.get("updated_at"),
             total_semestres=len(semesters),
@@ -311,8 +317,8 @@ class CurriculumTraceabilityService:
         return programa
 
     @classmethod
-    async def _load_pensum(cls, session: AsyncSession, programa: ProgramaAcademico) -> Dict[str, Any]:
-        rows = (await session.execute(
+    async def _load_subjects(cls, session: AsyncSession, id_programa) -> List[Any]:
+        return (await session.execute(
             text("""
                 SELECT ap.id, ap.codigo_asignatura, ap.nombre, ap.creditos, ap.numero_semestre, ap.herramientas,
                        pp.codigo_version, pp.extraido_en
@@ -321,18 +327,48 @@ class CurriculumTraceabilityService:
                 WHERE pp.id_programa = :pid AND pp.es_activo = true
                 ORDER BY ap.numero_semestre, ap.nombre
             """),
-            {"pid": programa.id},
+            {"pid": id_programa},
         )).fetchall()
+
+    @staticmethod
+    def _to_semesters(rows: List[Any], program: Optional[str] = None) -> List[Dict[str, Any]]:
         by_sem: Dict[int, List[Dict[str, Any]]] = {}
         for s_id, code, name, credits, sem, tools, _, _ in rows:
             by_sem.setdefault(sem, []).append(
                 {"id": str(s_id), "code": code, "name": name, "credits": credits, "tools": list(tools or [])}
             )
+        return [{"semester_number": n, "subjects": subs, "program": program} for n, subs in sorted(by_sem.items())]
+
+    @classmethod
+    async def _previous_program(cls, session: AsyncSession, id_programa) -> Optional[Dict[str, str]]:
+        """Programa previo del ciclo propedéutico (dos niveles como máximo)."""
+        row = (await session.execute(
+            text("""
+                SELECT prev.id, prev.nombre
+                FROM programas_academicos p
+                JOIN programas_academicos prev ON prev.id = p.id_programa_previo
+                WHERE p.id = :pid
+            """),
+            {"pid": id_programa},
+        )).first()
+        return {"id": str(row[0]), "nombre": row[1]} if row else None
+
+    @classmethod
+    async def _load_pensum(cls, session: AsyncSession, programa: ProgramaAcademico) -> Dict[str, Any]:
+        """Malla efectiva: la del programa previo (si es ciclo propedéutico) seguida de la propia."""
+        rows = await cls._load_subjects(session, programa.id)
+        previous = await cls._previous_program(session, programa.id)
+        semesters = cls._to_semesters(rows)
+        if previous:
+            previos = cls._to_semesters(await cls._load_subjects(session, uuid.UUID(previous["id"])), previous["nombre"])
+            semesters = previos + semesters
         return {
             "program_name": programa.nombre,
+            "previous": previous,
+            "registered": bool(rows),
             "version": rows[0][6] if rows else None,
             "updated_at": rows[0][7].isoformat() if rows and rows[0][7] else None,
-            "semesters": [{"semester_number": n, "subjects": subs} for n, subs in sorted(by_sem.items())],
+            "semesters": semesters,
         }
 
     @classmethod
@@ -444,4 +480,37 @@ class CurriculumTraceabilityService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"codigo": "ERROR_GUARDANDO_MALLA", "mensaje": "No se pudo guardar la malla. No se aplicó ningún cambio."},
             ) from None
+        return await cls.analyze_program_by_id_async(session, id_programa, current_user)
+
+    @classmethod
+    async def set_previous_program_async(
+        cls, session: AsyncSession, id_programa: str, payload: PreviousProgramRequest, current_user: Dict[str, Any]
+    ) -> CurriculumPertinenceReport:
+        """Define (o quita) el programa previo requerido. Solo dos niveles: previo -> programa."""
+        programa = await cls._get_program(session, id_programa, current_user)
+        previo_id = None
+        if payload.id_programa_previo:
+            previo = await cls._get_program(session, payload.id_programa_previo, current_user)
+            invalido = None
+            if previo.id == programa.id:
+                invalido = "Un programa no puede ser su propio programa previo."
+            elif previo.id_institucion != programa.id_institucion:
+                invalido = "El programa previo debe ser de la misma institución."
+            elif await cls._previous_program(session, previo.id):
+                invalido = "El programa elegido ya depende de otro; solo se admiten dos niveles."
+            elif (await session.execute(
+                text("SELECT 1 FROM programas_academicos WHERE id_programa_previo = :pid LIMIT 1"), {"pid": programa.id}
+            )).first():
+                invalido = "Este programa ya es el ciclo previo de otro; solo se admiten dos niveles."
+            if invalido:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={"codigo": "PROGRAMA_PREVIO_INVALIDO", "mensaje": invalido},
+                )
+            previo_id = previo.id
+        await session.execute(
+            text("UPDATE programas_academicos SET id_programa_previo = :previo WHERE id = :pid"),
+            {"previo": previo_id, "pid": programa.id},
+        )
+        await session.commit()
         return await cls.analyze_program_by_id_async(session, id_programa, current_user)

@@ -18,7 +18,7 @@ function toEditablePensum(report) {
   return {
     programName: report.programa_nombre,
     version: report.pensum_version || '',
-    semesters: report.semestres.map((sem) => ({
+    semesters: report.semestres.filter((sem) => !sem.programa_origen).map((sem) => ({
       semesterNumber: sem.numero_semestre,
       label: sem.etiqueta,
       subjects: sem.asignaturas.map((sub) => ({
@@ -84,6 +84,15 @@ export default function InstitutionAdminTraceabilityPage() {
   }, [selectedProgram?.id, loadReport]);
 
   const editablePensum = useMemo(() => toEditablePensum(report), [report]);
+
+  async function handlePreviousProgramChange(previousId) {
+    setLoadError('');
+    try {
+      setReport(await aiService.setPreviousProgram(selectedProgram.id, previousId));
+    } catch (err) {
+      setLoadError(err.message || 'No se pudo guardar el programa previo.');
+    }
+  }
   const brechas = (report?.demanda || []).filter((d) => d.categoria !== 'blanda' && d.cobertura === 'brecha').length;
   const actualizado = report?.pensum_actualizado_en
     ? new Date(report.pensum_actualizado_en).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -173,6 +182,28 @@ export default function InstitutionAdminTraceabilityPage() {
               </div>
             </div>
 
+            {report && (
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <label htmlFor="select-previous-program" className="text-xs font-bold text-ink">
+                  Ciclo propedéutico: programa previo requerido
+                </label>
+                <select
+                  id="select-previous-program"
+                  value={report.programa_previo_id || ''}
+                  onChange={(e) => handlePreviousProgramChange(e.target.value)}
+                  className="rounded-xl border border-sand-line bg-white px-3 py-2 text-xs font-semibold text-ink focus:border-terracotta focus:outline-none cursor-pointer"
+                >
+                  <option value="">Ninguno (programa independiente)</option>
+                  {programs.filter((p) => p.id !== selectedProgram.id).map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                {report.programa_previo_nombre && (
+                  <span className="text-xs text-secondary">Su malla también cuenta para medir este programa.</span>
+                )}
+              </div>
+            )}
+
             {isLoading && <p className="m-0 text-sm text-secondary" role="status">Consultando el informe…</p>}
             {loadError && (
               <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900" role="alert">
@@ -230,19 +261,25 @@ export default function InstitutionAdminTraceabilityPage() {
 
             <div className="space-y-3">
               {report.semestres.map((sem) => {
-                const isOpen = openSemester === sem.numero_semestre;
+                const semKey = `${sem.programa_origen || ''}-${sem.numero_semestre}`;
+                const isOpen = openSemester === semKey;
                 return (
-                  <div key={sem.numero_semestre} className="overflow-hidden rounded-2xl border border-sand-line">
+                  <div key={semKey} className="overflow-hidden rounded-2xl border border-sand-line">
                     <button
                       type="button"
                       aria-expanded={isOpen}
-                      onClick={() => setOpenSemester(isOpen ? null : sem.numero_semestre)}
+                      onClick={() => setOpenSemester(isOpen ? null : semKey)}
                       className="flex w-full cursor-pointer items-center justify-between bg-cream/40 p-4 text-left transition-colors hover:bg-cream"
                     >
                       <span className="flex items-center gap-3">
                         <span className="grid size-7 place-items-center rounded-lg bg-cocoa text-xs font-bold text-white">{sem.numero_semestre}</span>
                         <span className="font-display text-sm font-bold text-ink">{sem.etiqueta}</span>
                         <span className="text-xs text-secondary">{sem.asignaturas.length} asignaturas</span>
+                        {sem.programa_origen && (
+                          <span className="rounded-lg border border-sand-line bg-white px-2 py-0.5 text-xs font-semibold text-secondary">
+                            Ciclo previo: {sem.programa_origen}
+                          </span>
+                        )}
                       </span>
                       <i className={`bx bx-chevron-down text-lg text-secondary transition-transform ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                     </button>

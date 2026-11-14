@@ -24,6 +24,7 @@ from app.modules.ai_engine.schemas import (
     RecommendedVacanciesResponse,
     CurriculumPertinenceReport,
     PensumSaveRequest,
+    PreviousProgramRequest,
     ProgramOutcomesReport
 )
 from app.modules.ai_engine.services import TalentMatcherService
@@ -227,6 +228,17 @@ async def get_program_pertinence(
 ):
     """Informe de pertinencia curricular del programa frente a las vacantes dirigidas a él."""
     return await CurriculumTraceabilityService.analyze_program_by_id_async(db, id_programa, current_user)
+
+
+@router.put("/trazabilidad/programas/{id_programa}/programa-previo", response_model=CurriculumPertinenceReport)
+async def set_program_previous_cycle(
+    id_programa: str,
+    payload: PreviousProgramRequest,
+    current_user: Dict[str, Any] = Depends(require_role(IES_ESCRITURA)),
+    db: AsyncSession = Depends(get_db)
+):
+    """Ciclo propedéutico: define el programa que debe haberse cursado antes; su malla también cuenta."""
+    return await CurriculumTraceabilityService.set_previous_program_async(db, id_programa, payload, current_user)
 
 
 @router.get("/trazabilidad/programas/{id_programa}/resultados", response_model=ProgramOutcomesReport)

@@ -101,5 +101,27 @@ class SoftwareSubjectsTests(unittest.TestCase):
         self.assertIn("data_analytics", families_for_text("Inteligencia Artificial"))
 
 
+class PropaedeuticCycleTests(unittest.TestCase):
+    def test_la_malla_del_ciclo_previo_cuenta_y_se_identifica(self):
+        data = {"program_name": "Ingeniería de Sistemas", "registered": True, "previous": {"id": "t", "nombre": "Tecnología"},
+                "semesters": [
+                    {"semester_number": 2, "program": "Tecnología", "subjects": [
+                        {"id": "1", "code": "T201", "name": "Bases de Datos I", "credits": 3, "tools": []}]},
+                    {"semester_number": 7, "program": None, "subjects": [
+                        {"id": "2", "code": "I701", "name": "Ecuaciones Diferenciales", "credits": 3, "tools": []}]},
+                ]}
+        r = Service.calculate_pertinence_report(data, [vacante([("SQL", "tecnica", True)])], PROGRAMA)
+        sql = r.demanda[0]
+        self.assertEqual((sql.cobertura, sql.asignaturas[0].programa, r.indice_pertinencia), ("directa", "Tecnología", 100.0))
+        self.assertEqual((r.programa_previo_nombre, r.total_asignaturas), ("Tecnología", 2))
+        self.assertEqual([s.programa_origen for s in r.semestres], ["Tecnología", None])
+
+    def test_sin_malla_propia_no_esta_registrada_aunque_el_previo_tenga(self):
+        data = {"program_name": "X", "previous": {"id": "t", "nombre": "Tecnología"}, "semesters": [
+            {"semester_number": 1, "program": "Tecnología", "subjects": [
+                {"id": "1", "code": "T1", "name": "Bases de Datos I", "credits": 3, "tools": []}]}]}
+        self.assertFalse(Service.calculate_pertinence_report(data, [], PROGRAMA).pensum_registrado)
+
+
 if __name__ == "__main__":
     unittest.main()

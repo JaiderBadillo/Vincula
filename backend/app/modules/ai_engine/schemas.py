@@ -76,6 +76,7 @@ class CurriculumSubjectRef(BaseModel):
     codigo: str
     nombre: str
     semestre: int
+    programa: Optional[str] = None  # solo si viene del ciclo previo
 
 
 class CurriculumDemandItem(BaseModel):
@@ -112,6 +113,7 @@ class CurriculumSubjectResponse(BaseModel):
 class CurriculumSemesterResponse(BaseModel):
     numero_semestre: int
     etiqueta: str
+    programa_origen: Optional[str] = None  # nombre del programa previo; None = malla propia
     asignaturas: List[CurriculumSubjectResponse] = []
 
 
@@ -120,6 +122,8 @@ class CurriculumPertinenceReport(BaseModel):
     success: bool = True
     programa_nombre: str
     id_programa: Optional[str] = None
+    programa_previo_id: Optional[str] = None  # ciclo propedéutico: su malla también cuenta
+    programa_previo_nombre: Optional[str] = None
     pensum_registrado: bool = False
     pensum_version: Optional[str] = None
     pensum_actualizado_en: Optional[str] = None
@@ -147,6 +151,11 @@ class PensumSubjectIn(BaseModel):
 class PensumSemesterIn(BaseModel):
     numero_semestre: int = Field(..., ge=1, le=12)
     asignaturas: List[PensumSubjectIn] = Field(default_factory=list, max_length=40)
+
+
+class PreviousProgramRequest(BaseModel):
+    """Programa que debe haberse cursado antes (ciclo propedéutico). None lo quita."""
+    id_programa_previo: Optional[str] = None
 
 
 class PensumSaveRequest(BaseModel):

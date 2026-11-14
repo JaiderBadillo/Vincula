@@ -217,7 +217,7 @@ export default function TraceabilityCurriculumViews({ report, onOpenUploadModal 
                           {item.asignaturas.map((a, i) => (
                             <span key={`${a.codigo}-${a.nombre}`}>
                               {i > 0 && ', '}
-                              <strong className="font-semibold text-ink">{a.nombre}</strong> (sem. {a.semestre})
+                              <strong className="font-semibold text-ink">{a.nombre}</strong> ({a.programa ? `${a.programa}, ` : ''}sem. {a.semestre})
                             </span>
                           ))}
                         </>
