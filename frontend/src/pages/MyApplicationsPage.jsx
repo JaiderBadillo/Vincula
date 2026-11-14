@@ -43,6 +43,8 @@ export default function MyApplicationsPage() {
             .filter((d) => d.interview)
             .map((d) => ({
               applicationId: d.id,
+              companyName: d.companyName,
+              vacancyTitle: d.vacancyTitle,
               ...d.interview,
             }));
           if (liveInterviews.length > 0) {
@@ -74,9 +76,9 @@ export default function MyApplicationsPage() {
     return activeApplications.filter((app) => {
       const matchKeyword =
         !q ||
-        app.vacancyTitle.toLowerCase().includes(q) ||
-        app.companyName.toLowerCase().includes(q) ||
-        app.applicationCode.toLowerCase().includes(q);
+        (app.vacancyTitle || '').toLowerCase().includes(q) ||
+        (app.companyName || '').toLowerCase().includes(q) ||
+        (app.applicationCode || '').toLowerCase().includes(q);
 
       const matchPhase = phaseFilter === 'all' || app.phase === Number(phaseFilter);
 
@@ -270,10 +272,10 @@ export default function MyApplicationsPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-purple-950">
-                      Próxima Entrevista: {nextInterview.dateFormatted} ({nextInterview.timeFormatted})
+                      Próxima Entrevista: {nextInterview.dateFormatted || nextInterview.date} ({nextInterview.timeFormatted || nextInterview.timeRange})
                     </span>
                     <span className="rounded-full bg-purple-100 text-purple-800 px-2 py-0.5 text-[0.62rem] font-bold">
-                      {nextInterview.platform}
+                      {nextInterview.platform || nextInterview.modality}
                     </span>
                   </div>
                   <p className="m-0 text-xs text-body-muted mt-0.5">
@@ -290,15 +292,17 @@ export default function MyApplicationsPage() {
                 >
                   Ver postulación
                 </button>
-                <a
-                  href={nextInterview.meetingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white px-3.5 py-1.5 text-xs font-bold shadow-xs transition-colors no-underline"
-                >
-                  <span>Entrar a la sala</span>
-                  <i className="bx bx-link-external text-xs" />
-                </a>
+                {(nextInterview.meetingUrl || nextInterview.meetUrl) && (
+                  <a
+                    href={nextInterview.meetingUrl || nextInterview.meetUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white px-3.5 py-1.5 text-xs font-bold shadow-xs transition-colors no-underline"
+                  >
+                    <span>Entrar a la sala</span>
+                    <i className="bx bx-link-external text-xs" />
+                  </a>
+                )}
               </div>
             </div>
           )}
@@ -430,7 +434,8 @@ export default function MyApplicationsPage() {
                   {filteredApplications.map((app) => {
                     const isSelected = selectedApp?.id === app.id;
                     const phase = getPhaseBadge(app.phase);
-                    const hasInterview = proposalInterviews.some((i) => i.applicationId === app.id && i.isUpcoming);
+                    const hasInterview = interviews.some((i) => i.applicationId === app.id && i.isUpcoming);
+                    const shortCode = (app.companyShort || app.companyName || 'EM').slice(0, 3).toUpperCase();
 
                     return (
                       <div
@@ -445,8 +450,8 @@ export default function MyApplicationsPage() {
                         {/* Company header row */}
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <span className={`grid size-9 shrink-0 place-items-center rounded-xl text-xs font-bold font-display shadow-2xs ${app.companyLogoBg}`}>
-                              {app.companyShort.slice(0, 3)}
+                            <span className={`grid size-9 shrink-0 place-items-center rounded-xl text-xs font-bold font-display shadow-2xs ${app.companyLogoBg || 'bg-ink text-white'}`}>
+                              {shortCode}
                             </span>
                             <div className="min-w-0">
                               <span className="font-display text-xs font-bold text-ink truncate block">
@@ -473,7 +478,7 @@ export default function MyApplicationsPage() {
                         {/* Quick Conditions Strip */}
                         <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[0.7rem] text-body-muted">
                           <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                            {app.salary.split('COP')[0]}
+                            {(app.salary || 'A convenir').split('COP')[0]}
                           </span>
                           <span>•</span>
                           <span>{app.workMode}</span>
@@ -509,17 +514,23 @@ export default function MyApplicationsPage() {
                   <article className="overflow-hidden rounded-2xl border border-line bg-white shadow-card space-y-0">
                     {/* Header Panorámico con Foto de Sede */}
                     <div className="relative h-36 w-full overflow-hidden bg-ink">
-                      <img
-                        src={selectedApp.companyCover}
-                        alt={selectedApp.companyName}
-                        className="size-full object-cover"
-                      />
+                      {selectedApp.companyCover ? (
+                        <img
+                          src={selectedApp.companyCover}
+                          alt={selectedApp.companyName}
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        <div className="size-full bg-gradient-to-br from-ink via-ink-soft to-green-dark" />
+                      )}
                       <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/60 to-transparent" />
 
                       <div className="absolute top-3 left-4 flex items-center gap-2">
-                        <span className="rounded-full bg-ink/80 backdrop-blur-md px-2.5 py-0.5 text-[0.65rem] font-bold text-lime border border-white/20">
-                          {selectedApp.partnershipType}
-                        </span>
+                        {selectedApp.partnershipType && (
+                          <span className="rounded-full bg-ink/80 backdrop-blur-md px-2.5 py-0.5 text-[0.65rem] font-bold text-lime border border-white/20">
+                            {selectedApp.partnershipType}
+                          </span>
+                        )}
                         <span className="rounded-full bg-white/20 backdrop-blur-md px-2.5 py-0.5 text-[0.65rem] font-medium text-white">
                           Cód: {selectedApp.applicationCode}
                         </span>
@@ -527,8 +538,8 @@ export default function MyApplicationsPage() {
 
                       <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between text-white">
                         <div className="flex items-center gap-3">
-                          <span className={`grid size-12 place-items-center rounded-xl text-xs font-bold font-display shadow-lg border border-white/30 ${selectedApp.companyLogoBg}`}>
-                            {selectedApp.companyShort.slice(0, 3)}
+                          <span className={`grid size-12 place-items-center rounded-xl text-xs font-bold font-display shadow-lg border border-white/30 ${selectedApp.companyLogoBg || 'bg-ink text-white'}`}>
+                            {(selectedApp.companyShort || selectedApp.companyName || 'EM').slice(0, 3).toUpperCase()}
                           </span>
                           <div>
                             <div className="flex items-center gap-1">
@@ -658,12 +669,18 @@ export default function MyApplicationsPage() {
                           <i className="bx bxs-message-square-dots text-green text-base" />
                           Última actualización: {selectedApp.phaseStatusLabel}
                         </span>
-                        <p className="m-0 text-xs text-ink/85 leading-relaxed bg-white/80 p-3 rounded-xl border border-emerald-200/50">
-                          "{selectedApp.phaseFeedback}"
-                        </p>
+                        {selectedApp.phaseFeedback ? (
+                          <p className="m-0 text-xs text-ink/85 leading-relaxed bg-white/80 p-3 rounded-xl border border-emerald-200/50">
+                            "{selectedApp.phaseFeedback}"
+                          </p>
+                        ) : (
+                          <p className="m-0 text-xs text-ink/85 leading-relaxed bg-white/80 p-3 rounded-xl border border-emerald-200/50">
+                            Aún no hay comentarios del reclutador para esta etapa.
+                          </p>
+                        )}
                         {selectedApp.estimatedStartDate && (
                           <span className="text-[0.72rem] text-emerald-800 font-semibold block pt-1">
-                            📅 Fecha estimada de ingreso: <strong>{selectedApp.estimatedStartDate}</strong>
+                            Fecha estimada de ingreso: <strong>{selectedApp.estimatedStartDate}</strong>
                           </span>
                         )}
                       </div>
@@ -676,18 +693,20 @@ export default function MyApplicationsPage() {
                               <i className="bx bx-video text-purple-700 text-base" />
                               Entrevista Programada
                             </span>
-                            <span className="rounded-full bg-purple-100 text-purple-800 px-2 py-0.5 text-[0.62rem] font-bold">
-                              {selectedInterview.platform}
-                            </span>
+                            {(selectedInterview.platform || selectedInterview.modality) && (
+                              <span className="rounded-full bg-purple-100 text-purple-800 px-2 py-0.5 text-[0.62rem] font-bold">
+                                {selectedInterview.platform || selectedInterview.modality}
+                              </span>
+                            )}
                           </div>
 
                           <div className="rounded-xl border border-line-soft bg-page p-3 text-xs flex items-center justify-between">
                             <span className="font-semibold text-ink">
-                              {selectedInterview.dateFormatted} ({selectedInterview.timeFormatted})
+                              {selectedInterview.dateFormatted || selectedInterview.date} ({selectedInterview.timeFormatted || selectedInterview.timeRange})
                             </span>
-                            {selectedInterview.meetingUrl && (
+                            {(selectedInterview.meetingUrl || selectedInterview.meetUrl) && (
                               <a
-                                href={selectedInterview.meetingUrl}
+                                href={selectedInterview.meetingUrl || selectedInterview.meetUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 rounded-lg bg-purple-700 hover:bg-purple-800 text-white px-3 py-1 font-bold no-underline"
@@ -697,63 +716,88 @@ export default function MyApplicationsPage() {
                               </a>
                             )}
                           </div>
-                          <p className="m-0 text-[0.72rem] text-body-muted">
-                            <strong>Enfoque:</strong> {selectedInterview.objective}
-                          </p>
+                          {selectedInterview.objective && (
+                            <p className="m-0 text-[0.72rem] text-body-muted">
+                              <strong>Enfoque:</strong> {selectedInterview.objective}
+                            </p>
+                          )}
                         </div>
                       )}
 
                       {/* Contacto Directo del Reclutador */}
-                      <div className="rounded-2xl border border-line bg-page p-4">
-                        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-secondary block mb-2.5">
-                          Reclutador asignado por {selectedApp.companyName}
-                        </span>
-                        <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-xl border border-line-soft">
-                          <div className="flex items-center gap-2.5">
-                            <img
-                              src={selectedApp.recruiter.avatar}
-                              alt={selectedApp.recruiter.name}
-                              className="size-9 rounded-full object-cover border border-line"
-                            />
-                            <div>
-                              <span className="font-bold text-xs text-ink block">{selectedApp.recruiter.name}</span>
-                              <span className="text-[0.68rem] text-secondary">{selectedApp.recruiter.role}</span>
+                      {selectedApp.recruiter ? (
+                        <div className="rounded-2xl border border-line bg-page p-4">
+                          <span className="text-[0.65rem] font-bold uppercase tracking-wider text-secondary block mb-2.5">
+                            Reclutador asignado por {selectedApp.companyName}
+                          </span>
+                          <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-xl border border-line-soft">
+                            <div className="flex items-center gap-2.5">
+                              {selectedApp.recruiter.avatar ? (
+                                <img
+                                  src={selectedApp.recruiter.avatar}
+                                  alt={selectedApp.recruiter.name || 'Reclutador'}
+                                  className="size-9 rounded-full object-cover border border-line"
+                                />
+                              ) : (
+                                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-panel text-xs font-bold text-ink border border-line" aria-hidden="true">
+                                  {(selectedApp.recruiter.name || 'R').split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
+                                </span>
+                              )}
+                              <div>
+                                <span className="font-bold text-xs text-ink block">{selectedApp.recruiter.name || 'Equipo de Selección'}</span>
+                                <span className="text-[0.68rem] text-secondary">{selectedApp.recruiter.role || 'Reclutador'}</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              {selectedApp.recruiter.email && (
+                                <a
+                                  href={`mailto:${selectedApp.recruiter.email}?subject=Consulta%20Postulacion%20${selectedApp.applicationCode}`}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-line bg-page px-2.5 py-1 text-xs font-semibold text-ink hover:bg-white no-underline"
+                                  title="Enviar correo"
+                                >
+                                  <i className="bx bx-envelope" /> Email
+                                </a>
+                              )}
+                              {selectedApp.recruiter.phone && (
+                                <a
+                                  href={`https://wa.me/57${selectedApp.recruiter.phone.replace(/\D/g, '').slice(-10)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 text-white px-2.5 py-1 text-xs font-semibold hover:bg-emerald-700 no-underline"
+                                  title="Chat WhatsApp"
+                                >
+                                  <i className="bx bxl-whatsapp" /> WhatsApp
+                                </a>
+                              )}
                             </div>
                           </div>
-
-                          <div className="flex items-center gap-1.5">
-                            <a
-                              href={`mailto:${selectedApp.recruiter.email}?subject=Consulta%20Postulacion%20${selectedApp.applicationCode}`}
-                              className="inline-flex items-center gap-1 rounded-lg border border-line bg-page px-2.5 py-1 text-xs font-semibold text-ink hover:bg-white no-underline"
-                              title="Enviar correo"
-                            >
-                              <i className="bx bx-envelope" /> Email
-                            </a>
-                            <a
-                              href={`https://wa.me/57${selectedApp.recruiter.phone.replace(/\D/g, '').slice(-10)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 text-white px-2.5 py-1 text-xs font-semibold hover:bg-emerald-700 no-underline"
-                              title="Chat WhatsApp"
-                            >
-                              <i className="bx bxl-whatsapp" /> WhatsApp
-                            </a>
-                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="rounded-2xl border border-line bg-page p-4 text-xs text-secondary">
+                          <span className="text-[0.65rem] font-bold uppercase tracking-wider text-secondary block mb-1">
+                            Responsable del proceso en {selectedApp.companyName}
+                          </span>
+                          Tu postulación será atendida por el comité de selección de la empresa.
+                        </div>
+                      )}
 
                       {/* Documento Enviado */}
-                      <div className="rounded-xl border border-line p-3 flex items-center justify-between text-xs bg-page/50">
-                        <div className="flex items-center gap-2">
-                          <i className="bx bxs-file-pdf text-red-600 text-xl" />
-                          <span className="font-semibold text-ink truncate max-w-[14rem]">
-                            {selectedApp.submittedDocument.fileName}
-                          </span>
+                      {selectedApp.submittedDocument && (
+                        <div className="rounded-xl border border-line p-3 flex items-center justify-between text-xs bg-page/50">
+                          <div className="flex items-center gap-2">
+                            <i className="bx bxs-file-pdf text-red-600 text-xl" />
+                            <span className="font-semibold text-ink truncate max-w-[14rem]">
+                              {selectedApp.submittedDocument.fileName}
+                            </span>
+                          </div>
+                          {selectedApp.submittedDocument.matchScore != null && (
+                            <span className="rounded-full bg-lime/20 text-green-dark px-2 py-0.5 text-[0.62rem] font-bold">
+                              {selectedApp.submittedDocument.matchScore}% Match Perfil
+                            </span>
+                          )}
                         </div>
-                        <span className="rounded-full bg-lime/20 text-green-dark px-2 py-0.5 text-[0.62rem] font-bold">
-                          {selectedApp.submittedDocument.matchScore}% Match Perfil
-                        </span>
-                      </div>
+                      )}
 
                       {/* Botón Discreto de Retiro */}
                       <div className="pt-2 text-center">
@@ -792,8 +836,8 @@ export default function MyApplicationsPage() {
           <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-2xl border border-line bg-white shadow-hero animate-rise-in p-5 space-y-5">
             <div className="flex items-center justify-between border-b border-line-soft pb-3">
               <div className="flex items-center gap-2.5">
-                <span className={`grid size-9 place-items-center rounded-xl text-xs font-bold ${selectedApp.companyLogoBg}`}>
-                  {selectedApp.companyShort.slice(0, 3)}
+                <span className={`grid size-9 place-items-center rounded-xl text-xs font-bold ${selectedApp.companyLogoBg || 'bg-ink text-white'}`}>
+                  {(selectedApp.companyShort || selectedApp.companyName || 'EM').slice(0, 3).toUpperCase()}
                 </span>
                 <div>
                   <h3 className="m-0 font-display text-sm font-bold text-ink">{selectedApp.companyName}</h3>
@@ -811,20 +855,22 @@ export default function MyApplicationsPage() {
 
             <div>
               <h4 className="m-0 font-display text-base font-bold text-ink">{selectedApp.vacancyTitle}</h4>
-              <p className="m-0 mt-1 text-xs text-emerald-800 font-bold">{selectedApp.salary}</p>
+              <p className="m-0 mt-1 text-xs text-emerald-800 font-bold">{selectedApp.salary || 'A convenir'}</p>
             </div>
 
             <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-xs space-y-1">
               <strong className="block text-emerald-950">Estado: {selectedApp.phaseStatusLabel}</strong>
-              <p className="m-0 text-ink/80 leading-relaxed">"{selectedApp.phaseFeedback}"</p>
+              <p className="m-0 text-ink/80 leading-relaxed">
+                {selectedApp.phaseFeedback ? `"${selectedApp.phaseFeedback}"` : 'Aún no hay comentarios del reclutador para esta etapa.'}
+              </p>
             </div>
 
             {selectedInterview && (
               <div className="rounded-xl border border-purple-200 bg-purple-50/50 p-3 text-xs flex items-center justify-between">
-                <span>{selectedInterview.dateFormatted}</span>
-                {selectedInterview.meetingUrl && (
+                <span>{selectedInterview.dateFormatted || selectedInterview.date}</span>
+                {(selectedInterview.meetingUrl || selectedInterview.meetUrl) && (
                   <a
-                    href={selectedInterview.meetingUrl}
+                    href={selectedInterview.meetingUrl || selectedInterview.meetUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="rounded-lg bg-purple-700 text-white px-3 py-1 font-bold no-underline"
