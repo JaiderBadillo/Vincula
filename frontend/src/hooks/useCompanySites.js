@@ -17,7 +17,7 @@ function mapSite(s) {
     address: s.direccion || '', phone: s.telefono || '', email: s.correo || '',
     contactName: s.nombre_responsable || '', manager: s.nombre_responsable || '',
     isMain: Boolean(s.es_sede_principal), status: s.estado === 'activa' ? 'active' : 'inactive',
-    departments: [], headcount: s.total_areas || 0, recruitersCount: s.total_reclutadores || 0,
+    departments: [], headcount: null, recruitersCount: s.total_reclutadores || 0,
     source: 'api',
   };
 }

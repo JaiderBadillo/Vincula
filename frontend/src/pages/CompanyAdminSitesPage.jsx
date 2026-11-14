@@ -7,7 +7,7 @@ import { useCompanySites } from '../hooks/useCompanySites.js';
 import { useCompanyRecruiters } from '../hooks/useCompanyRecruiters.js';
 import { useCompanyVacancies } from '../hooks/useCompanyVacancies.js';
 import { companyPhotos } from '../data/companyImages.js';
-import { COMPANY_SITE_STATUS, AVAILABLE_CITIES } from '../data/companySitesData.js';
+import { COMPANY_SITE_STATUS } from '../data/companySitesData.js';
 
 const selectClass =
   'w-full appearance-none rounded-xl border border-sand-line bg-white py-2.5 pl-3.5 pr-9 text-xs font-semibold text-ink outline-none transition-colors focus:border-terracotta cursor-pointer';
@@ -22,8 +22,8 @@ function initialsOf(name) {
 }
 
 export default function CompanyAdminSitesPage() {
-  const { sites, addSite, updateSite, deleteSite, toggleSiteStatus, setMainSite } = useCompanySites();
-  const { recruiters, removeSiteFromAllRecruiters } = useCompanyRecruiters();
+  const { sites, loading, error, addSite, updateSite, toggleSiteStatus, setMainSite } = useCompanySites();
+  const { recruiters } = useCompanyRecruiters();
   const { vacancies } = useCompanyVacancies();
 
   const [query, setQuery] = useState('');
@@ -32,7 +32,6 @@ export default function CompanyAdminSitesPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSite, setEditingSite] = useState(null);
-  const [deletingSite, setDeletingSite] = useState(null);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -63,13 +62,13 @@ export default function CompanyAdminSitesPage() {
   const heroStats = useMemo(() => {
     const activeCount = sites.filter((s) => s.status === 'active').length;
     const totalRecruitersAssigned = recruiters.filter((r) => (r.siteIds || []).length > 0).length;
-    const totalDepartments = new Set(sites.flatMap((s) => s.departments || [])).size;
+    const totalCities = new Set(sites.map((site) => site.city).filter(Boolean)).size;
 
     return [
       { value: String(sites.length), label: 'Sedes Totales' },
       { value: String(activeCount), label: 'Sedes Activas' },
       { value: String(totalRecruitersAssigned), label: 'Reclutadores' },
-      { value: String(totalDepartments), label: 'Áreas Únicas' },
+      { value: String(totalCities), label: 'Ciudades' },
     ];
   }, [sites, recruiters]);
 
@@ -103,40 +102,24 @@ export default function CompanyAdminSitesPage() {
     setModalOpen(true);
   }
 
-  function handleSaveSite(payload, existingId) {
+  async function handleSaveSite(payload, existingId) {
     if (existingId) {
-      updateSite(existingId, payload);
+      await updateSite(existingId, payload);
       setToast(`Sede "${payload.name}" actualizada con éxito.`);
       return existingId;
     }
-    const createdId = addSite(payload);
+    const createdId = await addSite(payload);
     setToast(`Sede "${payload.name}" creada con éxito.`);
     return createdId;
   }
 
-  function handleConfirmDelete() {
-    if (!deletingSite) return;
-
-    // Validación: No permitir borrar la sede principal
-    if (deletingSite.isMain && sites.length > 1) {
-      setToast('No puedes eliminar la sede principal. Asigna otra sede como principal primero.');
-      setDeletingSite(null);
-      return;
+  async function handleSiteAction(action, successMessage) {
+    try {
+      await action();
+      setToast(successMessage);
+    } catch (cause) {
+      setToast(cause.message || 'No se pudo guardar la sede.');
     }
-
-    // Validación: advertir si tiene vacantes abiertas
-    const openVacancies = activeVacanciesBySiteId[deletingSite.id] || 0;
-    if (openVacancies > 0) {
-      setToast(`No se puede eliminar: tiene ${openVacancies} vacante(s) activa(s) asignadas.`);
-      setDeletingSite(null);
-      return;
-    }
-
-    // Remover la sede de todos los reclutadores que la tenían
-    removeSiteFromAllRecruiters(deletingSite.id);
-    deleteSite(deletingSite.id);
-    setToast(`Sede "${deletingSite.name}" eliminada.`);
-    setDeletingSite(null);
   }
 
   return (
@@ -207,7 +190,7 @@ export default function CompanyAdminSitesPage() {
                   aria-label="Filtrar por ciudad"
                 >
                   <option value="all">Todas las ciudades</option>
-                  {AVAILABLE_CITIES.map((c) => (
+                  {[...new Set(sites.map((site) => site.city).filter(Boolean))].sort().map((c) => (
                     <option key={c} value={c}>
                       {c}
                     </option>
@@ -255,7 +238,10 @@ export default function CompanyAdminSitesPage() {
           </div>
 
           {/* ─── 3. Listado Rectangular de Sedes ─── */}
-          {filteredSites.length === 0 ? (
+          {error && <p role="alert" className="rounded-xl bg-rose-50 p-4 text-sm text-rose-700">{error}</p>}
+          {loading ? (
+            <p role="status" className="rounded-xl bg-white p-8 text-sm text-secondary">Cargando sedes registradas...</p>
+          ) : error ? null : filteredSites.length === 0 ? (
             <div className="rounded-2xl border border-sand-line bg-white p-12 text-center shadow-2xs">
               <span className="grid size-12 place-items-center rounded-2xl bg-sand text-2xl text-terracotta mx-auto mb-3">
                 <i className="bx bx-map-pin" />
@@ -406,10 +392,7 @@ export default function CompanyAdminSitesPage() {
                           {!site.isMain && (
                             <button
                               type="button"
-                              onClick={() => {
-                                setMainSite(site.id);
-                                setToast(`"${site.name}" establecida como Sede Principal.`);
-                              }}
+                              onClick={() => handleSiteAction(() => setMainSite(site.id), `"${site.name}" establecida como Sede Principal.`)}
                               className="rounded-lg border border-sand-line bg-white px-2.5 py-1.5 text-xs font-semibold text-secondary hover:text-ink hover:bg-cream transition-colors cursor-pointer"
                               title="Marcar como sede principal"
                             >
@@ -419,7 +402,7 @@ export default function CompanyAdminSitesPage() {
 
                           <button
                             type="button"
-                            onClick={() => toggleSiteStatus(site.id)}
+                            onClick={() => handleSiteAction(() => toggleSiteStatus(site.id), `Sede "${site.name}" actualizada.`)}
                             className="rounded-lg border border-sand-line bg-white px-2.5 py-1.5 text-xs font-semibold text-secondary hover:text-ink hover:bg-cream transition-colors cursor-pointer"
                           >
                             {site.status === 'active' ? 'Pausar' : 'Activar'}
@@ -434,15 +417,6 @@ export default function CompanyAdminSitesPage() {
                             <span>Editar</span>
                           </button>
 
-                          <button
-                            type="button"
-                            onClick={() => setDeletingSite(site)}
-                            className="grid size-8 place-items-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                            title="Eliminar sede"
-                            aria-label={`Eliminar ${site.name}`}
-                          >
-                            <i className="bx bx-trash text-sm" />
-                          </button>
                         </div>
                       </div>
                     </div>
@@ -461,64 +435,6 @@ export default function CompanyAdminSitesPage() {
           site={editingSite}
         />
 
-        {/* Modal de Confirmación de Eliminación */}
-        {deletingSite && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-cocoa/60 backdrop-blur-xs"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-site-dialog-title"
-            onClick={() => setDeletingSite(null)}
-          >
-            <div
-              className="relative w-full max-w-md rounded-2xl border border-sand-line bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center gap-3 text-rose-600 mb-3">
-                <span className="grid size-10 place-items-center rounded-xl bg-rose-50 text-xl">
-                  <i className="bx bx-error-circle" />
-                </span>
-                <h3 id="delete-site-dialog-title" className="m-0 font-display text-base font-bold text-ink">
-                  ¿Eliminar esta sede?
-                </h3>
-              </div>
-
-              <p className="m-0 text-xs text-secondary leading-relaxed">
-                Estás a punto de eliminar la sede <strong>{deletingSite.name}</strong> ({deletingSite.city}).
-                Los reclutadores vinculados a esta sede perderán la asociación a la misma.
-              </p>
-
-              {(activeVacanciesBySiteId[deletingSite.id] || 0) > 0 && (
-                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                  <p className="m-0 font-bold flex items-center gap-1.5">
-                    <i className="bx bx-warning text-base text-amber-600" />
-                    <span>Atención: tiene {activeVacanciesBySiteId[deletingSite.id]} vacante(s) activa(s)</span>
-                  </p>
-                  <p className="m-0 mt-1 text-[0.7rem] text-amber-800">
-                    Se recomienda reasignar las vacantes a otra sede antes de proceder.
-                  </p>
-                </div>
-              )}
-
-              <div className="mt-6 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setDeletingSite(null)}
-                  className="rounded-xl border border-sand-line bg-white px-4 py-2 text-xs font-bold text-secondary hover:bg-cream hover:text-ink transition-colors cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmDelete}
-                  className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700 shadow-xs transition-colors cursor-pointer"
-                >
-                  Sí, eliminar sede
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </main>
     </CompanyPortalLayout>
   );
