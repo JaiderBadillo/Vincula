@@ -144,13 +144,14 @@ export function useCompanyVacancies() {
   /** Crea la vacante y devuelve su id para poder navegar a ella. */
   const addVacancy = useCallback(async (data) => {
     if (!authService.isAuthenticated()) throw new Error('Debes iniciar sesión para crear una vacante.');
+    if (!data.title?.trim()) throw new Error('Escribe el título de la vacante.');
     if (!data.siteId) throw new Error('Selecciona una sede registrada antes de guardar la vacante.');
     if (!data.description?.trim() || data.description.trim().length < 15) throw new Error('Escribe una descripción de al menos 15 caracteres.');
     if (!data.closingDate) throw new Error('Selecciona la fecha de cierre de la vacante.');
       const modalityApi = data.modality === 'remoto' ? 'Remoto' : data.modality === 'hibrido' ? 'Híbrido' : 'Presencial';
 
       const apiPayload = {
-        titulo: data.title || 'Nueva Vacante',
+        titulo: data.title.trim(),
         id_sede: data.siteId,
         id_reclutador_responsable: data.ownerRecruiterId || null,
         categoria: data.category || 'Tecnología',

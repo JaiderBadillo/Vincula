@@ -199,7 +199,7 @@ class GraduateService:
             empresa_nombre=emp.nombre_comercial or emp.razon_social if emp else "Empresa",
             fecha_postulacion=p.postulado_en.strftime("%Y-%m-%d") if p.postulado_en else None,
             fase_actual=fase_db,
-            coincidencia_ia_porcentaje=int(float(p.porcentaje_afinidad)) if p.porcentaje_afinidad is not None else None
+            coincidencia_ia_porcentaje=int(float(p.porcentaje_afinidad)) if p.porcentaje_afinidad else None
         )
 
     @classmethod

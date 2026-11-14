@@ -172,7 +172,7 @@ class PostulacionResponse(BaseModel):
     id_egresado: str
     id_hoja_vida: Optional[str] = None
     fase_actual: str
-    porcentaje_afinidad: float
+    porcentaje_afinidad: Optional[float] = None
     retroalimentacion_reclutador: Optional[str] = None
     motivo_descarte: Optional[str] = None
     descartado_en: Optional[str] = None
@@ -201,7 +201,7 @@ class KanbanCandidateCardResponse(BaseModel):
     vacancyCode: str
     siteId: str
     stage: str  # 'review' | 'preselected' | 'evaluation' | 'interview' | 'offer' | 'discarded'
-    matchPercentage: int
+    matchPercentage: Optional[int] = None
     appliedAt: str
     skillsMatch: List[str] = Field(default_factory=list)
     missingSkills: List[str] = Field(default_factory=list)

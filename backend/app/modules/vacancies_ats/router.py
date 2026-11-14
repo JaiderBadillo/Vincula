@@ -328,7 +328,8 @@ async def add_candidate_note(
         session=db,
         user_id=_get_user_id(current_user),
         id_postulacion=application_id,
-        payload=payload
+        payload=payload,
+        company_id=current_user.get("id_entidad")
     )
 
 
@@ -346,7 +347,8 @@ async def schedule_candidate_interview(
         session=db,
         user_id=_get_user_id(current_user),
         id_postulacion=application_id,
-        payload=payload
+        payload=payload,
+        company_id=current_user.get("id_entidad")
     )
 
 

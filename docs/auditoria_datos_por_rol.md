@@ -7,9 +7,10 @@ Revisión estática del repositorio al 13 de noviembre de 2026. Pasar compilaci�
 | Administrador empresa: perfil | API de empresa | El perfil se obtiene por sesión; verificar visualmente con una empresa nueva y con otra antigua. |
 | Empresa: reclutadores | API de empresa | Alta y lista persistentes en backend; no usar el representante legal como reclutador automático. |
 | Empresa: sedes | **Pendiente** | `useCompanySites` carga datos del navegador y conserva sedes falsas cuando la API devuelve vacío o falla. Altas, ediciones y borrados pueden parecer exitosos sin persistencia. |
-| Empresa: vacantes | **Pendiente** | `useCompanyVacancies` carga datos iniciales, conserva datos locales ante respuesta vacía y confirma cambios aunque la API falle. |
+| Empresa: vacantes | API de empresa | Se eliminó el catálogo inicial y el guardado local que fingía publicar. Una lista vacía se respeta y las escrituras esperan respuesta del servidor. Revisar pantallas de administración en sesión real. |
 | Empresa: convenios, actividad, bolsa de talento | **Pendiente** | Los hooks funcionan con datos locales de ejemplo o memoria del navegador; no existe confirmación de registro oficial. |
-| Reclutador: dashboard y candidatos | **Pendiente** | El dashboard importa métricas y postulantes fijos; el hook de candidatos conserva registros locales y adelanta fases antes de confirmar ATS. |
+| Reclutador: inicio, vacantes y candidatos | API de empresa y ATS | El inicio, los contadores y el embudo usan la cuenta del reclutador y sus vacantes asignadas; sin vacantes muestran vacío. Las fases y notas se actualizan después de la confirmación ATS. Probar con dos reclutadores de la misma empresa. |
+| Reclutador: banco de talento | Sin catálogo verificado | Se retiraron perfiles de demostración; se informa que no existe aún una búsqueda real. |
 | IES administrador: perfil | API por institución | GET/PUT de la institución de la sesión; no se simula la IES UTS. Identidad legal aprobada bloqueada para edición. |
 | IES administrador: facultades, programas y sedes | **Pendiente** | Hooks con muestras locales, respuesta vacía ignorada y edición local que oculta fallos del backend. Sedes no consulta el endpoint que ya existe. |
 | IES administrador: pensum | **Pendiente** | Tiene cambios de trazabilidad paralelos sin finalizar; verificar origen del archivo por programa antes de publicar. |

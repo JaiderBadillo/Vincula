@@ -8,6 +8,8 @@ import { useCompanyVacancies } from '../hooks/useCompanyVacancies.js';
 import { useCompanySites } from '../hooks/useCompanySites.js';
 import { companyPhotos } from '../data/companyImages.js';
 import { ATS_STAGES } from '../data/companyCandidatesData.js';
+import { useCompanyRecruiters } from '../hooks/useCompanyRecruiters.js';
+import { authService } from '../services/authService.js';
 
 const selectClass =
   'w-full appearance-none rounded-xl border border-sand-line bg-white py-2.5 pl-3.5 pr-9 text-xs font-semibold text-ink outline-none transition-colors focus:border-terracotta cursor-pointer';
@@ -24,15 +26,20 @@ function initialsOf(name) {
 export default function CompanyRecruiterCandidatesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const vacancyParam = searchParams.get('vacancy') || '';
+  const { vacancies, loading: vacanciesLoading, error: vacanciesError } = useCompanyVacancies();
+  const { recruiters, loading: recruitersLoading, error: recruitersError } = useCompanyRecruiters();
+  const recruiter = recruiters.find((item) => item.userId === authService.getCurrentUser()?.id);
+  const assignedVacancies = useMemo(() => recruiter ? vacancies.filter((v) => v.ownerRecruiterId === recruiter.id) : [], [vacancies, recruiter]);
+  const vacancyIds = useMemo(() => assignedVacancies.map((v) => v.id), [assignedVacancies]);
 
   const {
     candidates,
     moveCandidateStage,
     discardCandidate,
     addCandidateNote,
-    loadLiveBoard,
-  } = useCompanyCandidates();
-  const { vacancies } = useCompanyVacancies();
+    loading: candidatesLoading,
+    error: candidatesError,
+  } = useCompanyCandidates(vacancyIds);
   const { sites } = useCompanySites();
 
   // Estados locales de filtrado y visualización
@@ -53,13 +60,6 @@ export default function CompanyRecruiterCandidatesPage() {
     }
   }, [vacancyParam]);
 
-  // Cargar tablero en vivo desde el backend si se selecciona una vacante específica
-  useEffect(() => {
-    if (selectedVacancyFilter && selectedVacancyFilter !== 'all') {
-      loadLiveBoard(selectedVacancyFilter);
-    }
-  }, [selectedVacancyFilter, loadLiveBoard]);
-
   useEffect(() => {
     if (!toast) return undefined;
     const timer = setTimeout(() => setToast(null), 3500);
@@ -68,8 +68,8 @@ export default function CompanyRecruiterCandidatesPage() {
 
   // Mapa de vacantes por ID
   const vacancyById = useMemo(
-    () => Object.fromEntries(vacancies.map((v) => [v.id, v])),
-    [vacancies]
+    () => Object.fromEntries(assignedVacancies.map((v) => [v.id, v])),
+    [assignedVacancies]
   );
 
   // Mapa de sedes por ID
@@ -152,24 +152,26 @@ export default function CompanyRecruiterCandidatesPage() {
     ? candidates.find((c) => c.id === selectedCandidateId) || null
     : null;
 
-  function handleMoveStage(candidateId, newStage, notes = null) {
+  async function handleMoveStage(candidateId, newStage, notes = null) {
     const candidate = candidates.find((c) => c.id === candidateId);
     const stageObj = ATS_STAGES.find((s) => s.id === newStage);
-    moveCandidateStage(candidateId, newStage, notes);
-    setToast(
-      `${candidate ? candidate.candidateName : 'Candidato'} movido a etapa «${stageObj?.label || newStage}».`
-    );
+    try {
+      await moveCandidateStage(candidateId, newStage, notes);
+      setToast(`${candidate ? candidate.candidateName : 'Candidato'} movido a etapa «${stageObj?.label || newStage}».`);
+    } catch (error) { setToast(`No se guardó el cambio: ${error.message}`); }
   }
 
-  function handleDiscard(candidateId, reason, notes = null) {
+  async function handleDiscard(candidateId, reason, notes = null) {
     const candidate = candidates.find((c) => c.id === candidateId);
-    discardCandidate(candidateId, reason, notes);
-    setToast(`${candidate ? candidate.candidateName : 'Candidato'} descartado del proceso.`);
+    try {
+      await discardCandidate(candidateId, reason, notes);
+      setToast(`${candidate ? candidate.candidateName : 'Candidato'} descartado del proceso.`);
+    } catch (error) { setToast(`No se guardó el descarte: ${error.message}`); }
   }
 
-  function handleSaveNotes(candidateId, noteText) {
-    addCandidateNote(candidateId, noteText);
-    setToast('Nota del reclutador guardada con éxito.');
+  async function handleSaveNotes(candidateId, noteText) {
+    try { await addCandidateNote(candidateId, noteText); setToast('Nota guardada en la cuenta.'); }
+    catch (error) { setToast(`No se guardó la nota: ${error.message}`); }
   }
 
   function handleFilterVacancyChange(val) {
@@ -185,6 +187,8 @@ export default function CompanyRecruiterCandidatesPage() {
   return (
     <CompanyPortalLayout activePage="recruiter-candidatos" role="recruiter">
       <main className="w-full pb-20">
+        {(vacanciesLoading || recruitersLoading || candidatesLoading) && <p className="mx-6 mt-6 rounded-xl bg-white p-4 text-sm" role="status">Consultando vacantes y postulaciones reales…</p>}
+        {(vacanciesError || recruitersError || candidatesError) && <p className="mx-6 mt-6 rounded-xl bg-rose-50 p-4 text-sm text-rose-800" role="alert">No se pudieron consultar las postulaciones: {vacanciesError || recruitersError || candidatesError}</p>}
         <div className="mx-auto max-w-7xl px-5 pt-8 sm:px-8 lg:px-10 space-y-8">
           {/* ─── 1. Hero Showcase del Embudo ATS ─── */}
           <CompanyPageHero
@@ -261,7 +265,7 @@ export default function CompanyRecruiterCandidatesPage() {
                     aria-label="Selecciona una vacante"
                   >
                     <option value="">Selecciona una vacante...</option>
-                    {vacancies.map((v) => (
+                    {assignedVacancies.map((v) => (
                       <option key={v.id} value={v.id}>
                         {v.title} ({v.code})
                       </option>
@@ -444,7 +448,7 @@ export default function CompanyRecruiterCandidatesPage() {
 
               {/* Cuadrícula de Vacantes Activas */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {vacancies.map((vac) => {
+                {assignedVacancies.map((vac) => {
                   const site = siteById[vac.siteId];
                   const candCount = candidates.filter((c) => c.vacancyId === vac.id).length;
                   const inInterviewCount = candidates.filter(
@@ -617,7 +621,7 @@ export default function CompanyRecruiterCandidatesPage() {
                                 <div className="flex items-center justify-between gap-1 text-[0.68rem]">
                                   <span className="inline-flex items-center gap-1 font-bold text-cocoa bg-ochre/20 border border-ochre/40 px-2 py-0.5 rounded-md">
                                     <i className="bx bxs-badge-check text-ochre-dark" />
-                                    <span>{cand.matchPercentage}% match</span>
+                                    <span>{cand.matchPercentage == null ? 'Sin puntaje calculado' : `${cand.matchPercentage}% afinidad`}</span>
                                   </span>
                                   <span className="font-semibold text-secondary truncate" title={cand.vacancyTitle}>
                                     {cand.vacancyCode}
@@ -701,7 +705,7 @@ export default function CompanyRecruiterCandidatesPage() {
 
                                 <span className="inline-flex items-center gap-1 rounded-full bg-ochre/25 border border-ochre/40 px-2 py-0.2 text-[0.68rem] font-bold text-cocoa">
                                   <i className="bx bxs-badge-check text-ochre-dark" />
-                                  <span>{cand.matchPercentage}% Afinidad</span>
+                                  <span>{cand.matchPercentage == null ? 'Sin puntaje calculado' : `${cand.matchPercentage}% afinidad`}</span>
                                 </span>
 
                                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-secondary">
