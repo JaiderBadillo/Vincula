@@ -28,8 +28,16 @@ export default function CompanyRecruiterCandidatesPage() {
   const vacancyParam = searchParams.get('vacancy') || '';
   const { vacancies, loading: vacanciesLoading, error: vacanciesError } = useCompanyVacancies();
   const { recruiters, loading: recruitersLoading, error: recruitersError } = useCompanyRecruiters();
-  const recruiter = recruiters.find((item) => item.userId === authService.getCurrentUser()?.id);
-  const assignedVacancies = useMemo(() => recruiter ? vacancies.filter((v) => v.ownerRecruiterId === recruiter.id) : [], [vacancies, recruiter]);
+  const currentUser = authService.getCurrentUser();
+  const recruiter = recruiters.find((item) => item.userId === currentUser?.id);
+  const isAdminRole = ['admin_empresa', 'superadmin_vincula'].includes(String(currentUser?.rol || '').toLowerCase());
+  const assignedVacancies = useMemo(() => {
+    if (!vacancies.length) return [];
+    if (!recruiter) return isAdminRole ? vacancies : [];
+    return vacancies.filter(
+      (v) => v.ownerRecruiterId === recruiter.id || !v.ownerRecruiterId || (vacancyParam && v.id === vacancyParam)
+    );
+  }, [vacancies, recruiter, isAdminRole, vacancyParam]);
   const vacancyIds = useMemo(() => assignedVacancies.map((v) => v.id), [assignedVacancies]);
 
   const {
@@ -110,7 +118,7 @@ export default function CompanyRecruiterCandidatesPage() {
       // Filtro por Match mínimo
       if (minMatchFilter !== 'all') {
         const min = Number.parseInt(minMatchFilter, 10);
-        if (c.matchPercentage < min) return false;
+        if (c.matchPercentage == null || c.matchPercentage < min) return false;
       }
 
       // Filtro por Etapa (en vista de lista)
@@ -533,7 +541,11 @@ export default function CompanyRecruiterCandidatesPage() {
                 </div>
               </div>
 
-              {filteredCandidates.length === 0 ? (
+              {(vacanciesLoading || recruitersLoading || candidatesLoading) && filteredCandidates.length === 0 ? (
+                <div className="rounded-2xl border border-sand-line bg-white p-12 text-center shadow-2xs">
+                  <p className="m-0 text-sm font-semibold text-secondary">Cargando postulantes de la vacante…</p>
+                </div>
+              ) : filteredCandidates.length === 0 ? (
                 <div className="rounded-2xl border border-sand-line bg-white p-12 text-center shadow-2xs">
                   <span className="grid size-12 place-items-center rounded-2xl bg-sand text-2xl text-terracotta mx-auto mb-3">
                     <i className="bx bx-user-check" />
