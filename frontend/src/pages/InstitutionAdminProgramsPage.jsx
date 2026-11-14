@@ -139,29 +139,30 @@ export default function InstitutionAdminProgramsPage() {
   }, [faculties, facultyStatusTab, facultySearchQuery]);
 
   // Program Handlers
-  function handleCreateOrUpdateProgram(formData) {
+  async function handleCreateOrUpdateProgram(formData) {
     if (editingProgram) {
       updateProgram(editingProgram.id, formData);
       notify(`Programa "${formData.name}" actualizado exitosamente.`);
     } else {
       const newId = 'prog-' + Date.now();
-      addProgram({
-        ...formData,
-        id: newId,
-        graduatesCount: 0,
-        employedCount: 0,
-        employmentRate: 0,
-        assignedAdvisors: [],
-      });
-      notify(`Programa "${formData.name}" registrado en la oferta institucional.`);
+      try {
+        await addProgram({ ...formData, id: newId });
+        notify(`Programa "${formData.name}" registrado en la oferta institucional.`);
+      } catch (err) {
+        notify(`No se registró "${formData.name}": ${err.message}`);
+      }
     }
     setEditingProgram(null);
   }
 
-  function handleConfirmDeleteProgram() {
+  async function handleConfirmDeleteProgram() {
     if (!deletingProgram) return;
-    deleteProgram(deletingProgram.id);
-    notify(`Se ha eliminado la carrera "${deletingProgram.name}".`);
+    try {
+      await deleteProgram(deletingProgram.id);
+      notify(`Se ha eliminado la carrera "${deletingProgram.name}".`);
+    } catch (err) {
+      notify(`No se eliminó "${deletingProgram.name}": ${err.message}`);
+    }
     setDeletingProgram(null);
   }
 

@@ -275,6 +275,17 @@ async def update_programa(
     return await InstitutionService.update_programa(db, ies_id, program_id, payload)
 
 
+@router.delete("/programas/{program_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_programa(
+    program_id: str,
+    id_institucion: Optional[str] = Query(None, description="UUID de la IES (Superadmin)"),
+    current_user: Dict[str, Any] = Depends(require_role(["admin_ies", "ies_admin", "superadmin_vincula", "superadmin"])),
+    db: AsyncSession = Depends(get_db)
+):
+    """Elimina un programa académico y su malla. No se permite si tiene egresados registrados."""
+    await InstitutionService.delete_programa(db, _resolve_ies_id(current_user, id_institucion), program_id)
+
+
 @router.patch("/programas/{program_id}/estado", response_model=ProgramaItemResponse)
 async def toggle_programa_status(
     program_id: str,

@@ -238,6 +238,17 @@ class InstitutionService {
     return await res.json();
   }
 
+  async deletePrograma(programId) {
+    const res = await fetch(`${API_BASE_URL}/instituciones/programas/${programId}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(extractErrorMessage(errJson, 'No se pudo eliminar el programa.'));
+    }
+  }
+
   async updateProgramaStatus(programId, estado, idInstitucion = null) {
     const params = new URLSearchParams();
     if (idInstitucion) params.append('id_institucion', idInstitucion);

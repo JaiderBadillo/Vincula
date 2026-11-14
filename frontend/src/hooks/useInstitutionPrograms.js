@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { initialInstitutionPrograms } from '../data/institutionProgramsData.js';
 import { institutionService } from '../services/institutionService.js';
 
 const STORAGE_KEY = 'vincula.institution.programs.v1';
 const SYNC_EVENT = 'vincula:institution-programs-updated';
 
 function sanitizePrograms(list) {
-  if (!Array.isArray(list)) return initialInstitutionPrograms;
+  if (!Array.isArray(list)) return [];
   return list.map((p) => {
     if (p.level === 'Especialización Tecnológica') {
       return { ...p, level: 'Posgrado' };
@@ -16,12 +15,12 @@ function sanitizePrograms(list) {
 }
 
 function readPrograms() {
-  if (typeof window === 'undefined') return initialInstitutionPrograms;
+  if (typeof window === 'undefined') return [];
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? sanitizePrograms(JSON.parse(raw)) : initialInstitutionPrograms;
+    return raw ? sanitizePrograms(JSON.parse(raw)).filter((p) => p.source === 'api') : [];
   } catch {
-    return initialInstitutionPrograms;
+    return [];
   }
 }
 
@@ -40,6 +39,7 @@ function writePrograms(programs) {
 
 export function useInstitutionPrograms() {
   const [programs, setPrograms] = useState(readPrograms);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // Sincronización con Backend REST API (Fase 3 Paso 1)
   useEffect(() => {
@@ -47,7 +47,7 @@ export function useInstitutionPrograms() {
     async function fetchFromBackend() {
       try {
         const res = await institutionService.getProgramas({ page: 1, limit: 100 });
-        if (isMounted && res && Array.isArray(res.items) && res.items.length > 0) {
+        if (isMounted && res && Array.isArray(res.items)) {
           const apiPrograms = res.items.map((p) => ({
             id: p.id,
             code: p.codigo_interno || p.codigo_snies,
@@ -68,13 +68,9 @@ export function useInstitutionPrograms() {
           }));
 
           // Mezclar con programas locales si no existieran
-          setPrograms((prev) => {
-            const apiIds = new Set(apiPrograms.map((a) => a.id));
-            const localOnly = prev.filter((l) => !apiIds.has(l.id) && l.source !== 'api');
-            const merged = [...apiPrograms, ...localOnly];
-            writePrograms(merged);
-            return merged;
-          });
+          // El servidor es la única fuente: no se mezclan programas guardados solo en el navegador
+          writePrograms(apiPrograms);
+          setPrograms(apiPrograms);
         }
       } catch (err) {
         // Fallback silencioso a localStorage si no está autenticado aún
@@ -86,7 +82,7 @@ export function useInstitutionPrograms() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   useEffect(() => {
     function handleSync(event) {
@@ -97,32 +93,22 @@ export function useInstitutionPrograms() {
   }, []);
 
   const addProgram = useCallback(async (newProg) => {
-    // Intentar registrar en backend si es posible
-    try {
-      if (newProg.facultyId && newProg.campusId) {
-        await institutionService.createPrograma({
-          id_facultad: newProg.facultyId,
-          id_sede: newProg.campusId,
-          codigo_interno: newProg.code,
-          codigo_snies: newProg.sniesCode || newProg.code,
-          nombre: newProg.name,
-          nivel_formacion: newProg.level,
-          modalidad: newProg.modality || 'Presencial',
-          duracion_semestres: Number(newProg.semesters) || 10,
-          total_creditos: Number(newProg.credits) || 160,
-          nombre_director: newProg.director || undefined,
-          correo_director: newProg.directorEmail || undefined,
-        });
-      }
-    } catch (err) {
-      console.warn('[useInstitutionPrograms] Guardando localmente tras error API:', err.message);
-    }
-
-    setPrograms((prev) => {
-      const next = [newProg, ...prev];
-      writePrograms(next);
-      return next;
+    if (!newProg.facultyId || !newProg.campusId) throw new Error('Selecciona la facultad y la sede del programa.');
+    await institutionService.createPrograma({
+      id_facultad: newProg.facultyId,
+      id_sede: newProg.campusId,
+      codigo_interno: newProg.code,
+      codigo_snies: newProg.sniesCode || newProg.code,
+      nombre: newProg.name,
+      nivel_formacion: newProg.level,
+      modalidad: newProg.modality || 'Presencial',
+      duracion_semestres: Number(newProg.semesters) || 10,
+      total_creditos: Number(newProg.credits) || 160,
+      nombre_director: newProg.director || undefined,
+      correo_director: newProg.directorEmail || undefined,
     });
+
+    setReloadKey((k) => k + 1);
   }, []);
 
   const updateProgram = useCallback(async (id, patch) => {
@@ -150,7 +136,8 @@ export function useInstitutionPrograms() {
     });
   }, []);
 
-  const deleteProgram = useCallback((id) => {
+  const deleteProgram = useCallback(async (id) => {
+    await institutionService.deletePrograma(id);
     setPrograms((prev) => {
       const next = prev.filter((p) => p.id !== id);
       writePrograms(next);
@@ -159,8 +146,8 @@ export function useInstitutionPrograms() {
   }, []);
 
   const resetPrograms = useCallback(() => {
-    writePrograms(initialInstitutionPrograms);
-    setPrograms(initialInstitutionPrograms);
+    writePrograms([]);
+    setPrograms([]);
   }, []);
 
   return {

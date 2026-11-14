@@ -520,6 +520,36 @@ class InstitutionService:
         )
 
     @classmethod
+    async def delete_programa(cls, session: AsyncSession, ies_id: str, program_id: str) -> None:
+        """Elimina un programa de la institución, con su malla. Se rechaza si tiene egresados registrados."""
+        try:
+            val_ies, val_prog = uuid.UUID(str(ies_id)), uuid.UUID(str(program_id))
+        except ValueError:
+            val_ies = val_prog = None
+        prog = (await session.execute(
+            select(ProgramaAcademico).where(ProgramaAcademico.id == val_prog, ProgramaAcademico.id_institucion == val_ies)
+        )).scalar_one_or_none() if val_prog else None
+        if not prog:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"codigo": "PROGRAMA_NO_ENCONTRADO", "mensaje": "El programa no existe en tu institución."}
+            )
+        egresados = (await session.execute(
+            select(func.count()).select_from(AcademicoEgresado).where(AcademicoEgresado.id_programa == val_prog)
+        )).scalar() or 0
+        if egresados:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "codigo": "PROGRAMA_CON_EGRESADOS",
+                    "mensaje": f"No se puede eliminar: {egresados} registro(s) académico(s) de egresados pertenecen "
+                               "a este programa. Puedes inactivarlo en su lugar.",
+                }
+            )
+        await session.delete(prog)
+        await session.commit()
+
+    @classmethod
     async def toggle_programa_status(
         cls,
         session: AsyncSession,
