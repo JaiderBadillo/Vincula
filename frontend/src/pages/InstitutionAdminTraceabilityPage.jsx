@@ -102,7 +102,7 @@ export default function InstitutionAdminTraceabilityPage() {
           title="Trazabilidad de Programas y Demanda del Mercado"
           subtitle="Compara la malla de cada programa con las competencias que exigen las vacantes abiertas dirigidas a él."
           stats={report ? [
-            { label: 'Índice de pertinencia', value: report.indice_pertinencia == null ? 'Sin datos' : `${Math.round(report.indice_pertinencia)}%` },
+            { label: 'Alineación malla–demanda', value: report.indice_pertinencia == null ? 'Sin datos' : `${Math.round(report.indice_pertinencia)}%` },
             { label: 'Vacantes analizadas', value: report.total_vacantes_analizadas },
             { label: 'Competencias exigidas', value: report.demanda.length },
             { label: 'Brechas', value: brechas },

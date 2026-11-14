@@ -15,10 +15,11 @@ from datetime import datetime, date, timezone
 from typing import List, Dict, Any, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, func, desc, or_, and_
+from sqlalchemy import select, update, delete, func, desc, or_, and_, text
 
 from app.modules.companies.models import Empresa, SedeEmpresa, ReclutadorEmpresa
 from app.modules.institutions.models import ProgramaAcademico
+from app.core.skills_taxonomy import normalize_text
 from app.modules.graduates.models import Egresado, AcademicoEgresado
 from app.integrations.n8n_webhooks import N8nWebhookDispatcher
 from app.integrations.transactional_notifications import send_vincula_email
@@ -102,6 +103,7 @@ class VacancyATSService:
                     )
 
         programas_ids = [str(p.id_programa) for p in vacante.programas_afines] if vacante.programas_afines else []
+        programas_nombres = list(dict.fromkeys(p.programa.nombre for p in (vacante.programas_afines or []) if p.programa))
 
         # Ubicación y compatibilidad hacia atrás
         ubicacion = f"{sede.ciudad}, {sede.departamento}" if sede else "Colombia"
@@ -140,6 +142,7 @@ class VacancyATSService:
             sede=sede_response,
             competencias=competencias_resp,
             programas_afines_ids=programas_ids,
+            programas_afines_nombres=programas_nombres,
             empresa_nombre=emp_response.nombre_comercial,
             empresa_logo=emp_response.url_logo,
             empresa_verificada=emp_response.empresa_verificada,
@@ -514,6 +517,7 @@ class VacancyATSService:
             )
 
         # 8. Programas Académicos Afines
+        programas_vinculados: set = set()
         if payload.programas_afines_ids:
             for prog_str in payload.programas_afines_ids:
                 try:
@@ -521,7 +525,8 @@ class VacancyATSService:
                     prog_check = (await session.execute(
                         select(ProgramaAcademico).where(ProgramaAcademico.id == prog_uuid)
                     )).scalar_one_or_none()
-                    if prog_check:
+                    if prog_check and prog_uuid not in programas_vinculados:
+                        programas_vinculados.add(prog_uuid)
                         session.add(
                             ProgramaAfinVacante(
                                 id_vacante=nueva_vacante.id,
@@ -530,6 +535,7 @@ class VacancyATSService:
                         )
                 except ValueError:
                     continue
+        await cls._link_programs_by_name(session, nueva_vacante.id, payload.programas_afines_nombres, programas_vinculados)
 
         await session.commit()
         await session.refresh(nueva_vacante)
@@ -607,6 +613,18 @@ class VacancyATSService:
         return cls._build_vacante_response(vacante)
 
     @classmethod
+    async def _link_programs_by_name(cls, session: AsyncSession, vacante_id, nombres, ya_vinculados: set) -> None:
+        """Vincula la vacante a los programas registrados (de cualquier IES) cuyo nombre coincide."""
+        claves = {normalize_text(n) for n in (nombres or []) if n and n.strip()}
+        if not claves:
+            return
+        # shortcut: recorre todos los programas; filtrar en SQL si el catálogo crece a miles
+        for prog_id, nombre in (await session.execute(select(ProgramaAcademico.id, ProgramaAcademico.nombre))).all():
+            if normalize_text(nombre) in claves and prog_id not in ya_vinculados:
+                ya_vinculados.add(prog_id)
+                session.add(ProgramaAfinVacante(id_vacante=vacante_id, id_programa=prog_id))
+
+    @classmethod
     async def update_vacancy(
         cls,
         session: AsyncSession,
@@ -660,6 +678,9 @@ class VacancyATSService:
             vacante.idiomas_requeridos = payload.idiomas_requeridos
         if payload.fecha_cierre is not None:
             vacante.fecha_cierre = datetime.strptime(payload.fecha_cierre, "%Y-%m-%d").date()
+        if payload.programas_afines_nombres is not None:
+            await session.execute(delete(ProgramaAfinVacante).where(ProgramaAfinVacante.id_vacante == vacante.id))
+            await cls._link_programs_by_name(session, vacante.id, payload.programas_afines_nombres, set())
 
         await session.commit()
         await session.refresh(vacante)
@@ -727,6 +748,7 @@ class VacancyATSService:
         "prueba_tecnica": "evaluation",
         "entrevista": "interview",
         "oferta_finalistas": "offer",
+        "contratado": "hired",
         "descartados": "discarded"
     }
 
@@ -736,6 +758,8 @@ class VacancyATSService:
         "evaluation": "prueba_tecnica",
         "interview": "entrevista",
         "offer": "oferta_finalistas",
+        "hired": "contratado",
+        "contratado": "contratado",
         "discarded": "descartados",
         "en_revision": "en_revision",
         "preseleccionados": "preseleccionados",
@@ -1014,6 +1038,7 @@ class VacancyATSService:
             "evaluation": [],
             "interview": [],
             "offer": [],
+            "hired": [],
             "discarded": []
         }
 
@@ -1031,6 +1056,7 @@ class VacancyATSService:
             {"value": str(len(columnas["review"])), "label": "Por Revisar"},
             {"value": str(len(columnas["interview"])), "label": "En Entrevista"},
             {"value": str(len(columnas["offer"])), "label": "Finalistas"},
+            {"value": str(len(columnas["hired"])), "label": "Contratados"},
         ]
 
         emp_nombre = (vacante.empresa.nombre_comercial or vacante.empresa.razon_social) if vacante.empresa else ""
@@ -1045,6 +1071,34 @@ class VacancyATSService:
             total_candidatos=total_cand,
             hero_stats=hero_stats,
             columnas=columnas
+        )
+
+    @classmethod
+    async def _registrar_vinculacion_laboral(cls, session: AsyncSession, postulacion: Postulacion) -> None:
+        """Crea el registro laboral del egresado contratado (uno por postulación) para el seguimiento de la IES."""
+        vac, egr = postulacion.vacante, postulacion.egresado
+        academicos = list(egr.academicos or []) if egr else []
+        if not vac or not academicos:
+            return  # sin registro académico no hay programa al cual atribuir la contratación
+        afines = {pa.id_programa for pa in (vac.programas_afines or [])}
+        academico = next((a for a in academicos if a.id_programa in afines), academicos[0])
+        empresa = (vac.empresa.nombre_comercial or vac.empresa.razon_social) if vac.empresa else "Empresa"
+        rango = None
+        if not vac.salario_es_confidencial and vac.salario_minimo and vac.salario_maximo:
+            rango = f"{int(vac.salario_minimo):,} - {int(vac.salario_maximo):,}".replace(",", ".")
+        await session.execute(
+            text("""
+                INSERT INTO registros_laborales_egresado
+                    (id_academico, empresa_contratante, cargo_desempenado, tipo_contrato, modalidad_trabajo,
+                     rango_salarial, fecha_vinculacion, id_postulacion)
+                VALUES (:academico, :empresa, :cargo, :contrato, :modalidad, :rango, CURRENT_DATE, :postulacion)
+                ON CONFLICT (id_postulacion) DO NOTHING
+            """),
+            {
+                "academico": academico.id, "empresa": empresa[:150], "cargo": vac.titulo[:150],
+                "contrato": vac.tipo_contrato[:60], "modalidad": str(vac.modalidad)[:50],
+                "rango": rango, "postulacion": postulacion.id,
+            },
         )
 
     @classmethod
@@ -1068,8 +1122,16 @@ class VacancyATSService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "codigo": "FASE_INVALIDA",
-                    "mensaje": f"La fase '{raw_fase}' no es válida. Opciones: review/en_revision, preselected/preseleccionados, evaluation/prueba_tecnica, interview/entrevista, offer/oferta_finalistas, discarded/descartados."
+                    "mensaje": f"La fase '{raw_fase}' no es válida. Opciones: review/en_revision, preselected/preseleccionados, evaluation/prueba_tecnica, interview/entrevista, offer/oferta_finalistas, hired/contratado, discarded/descartados."
                 }
+            )
+
+        motivo_descarte = (payload.motivo_descarte or "").strip()
+        if db_fase == "descartados" and not motivo_descarte:
+            # Sin motivo no se puede analizar por qué no avanzan los egresados de un programa
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"codigo": "MOTIVO_DESCARTE_REQUERIDO", "mensaje": "Indica el motivo del descarte."}
             )
 
         postulacion = None
@@ -1111,7 +1173,7 @@ class VacancyATSService:
 
         # Si se mueve a descartados, registrar motivo y timestamp
         if db_fase == "descartados":
-            postulacion.motivo_descarte = payload.motivo_descarte or "Descartado en el proceso de selección"
+            postulacion.motivo_descarte = motivo_descarte
             postulacion.descartado_en = datetime.now(timezone.utc)
         elif fase_anterior == "descartados":
             # Si se reactiva, limpiar el descarte
@@ -1122,6 +1184,14 @@ class VacancyATSService:
             postulacion.retroalimentacion_reclutador = retro_txt
 
         postulacion.fase_actual = db_fase
+
+        if db_fase == "contratado":
+            await cls._registrar_vinculacion_laboral(session, postulacion)
+        elif fase_anterior == "contratado":
+            # La contratación se revirtió: el registro laboral que generó deja de ser cierto
+            await session.execute(
+                text("DELETE FROM registros_laborales_egresado WHERE id_postulacion = :pid"), {"pid": postulacion.id}
+            )
 
         # Registrar en auditoría
         comentario_log = payload.comentario or payload.notas_fase or f"Transición de '{fase_anterior}' hacia '{db_fase}'"

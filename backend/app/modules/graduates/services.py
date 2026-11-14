@@ -40,6 +40,7 @@ class GraduateService:
         "prueba_tecnica": 3,
         "entrevista": 3,
         "oferta_finalistas": 4,
+        "contratado": 4,
         "descartados": 1,
     }
 
@@ -49,6 +50,7 @@ class GraduateService:
         "prueba_tecnica": "Evaluación técnica y prueba práctica",
         "entrevista": "¡Entrevista agendada con el equipo de selección!",
         "oferta_finalistas": "¡Oferta formal recibida! Lista para revisión y firma",
+        "contratado": "¡Contratación confirmada por la empresa!",
         "descartados": "Proceso de selección finalizado",
     }
 
@@ -58,6 +60,7 @@ class GraduateService:
         "prueba_tecnica": "evaluation",
         "entrevista": "interview",
         "oferta_finalistas": "offer",
+        "contratado": "hired",
         "descartados": "discarded"
     }
 

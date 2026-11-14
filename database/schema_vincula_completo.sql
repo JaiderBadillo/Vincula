@@ -56,6 +56,7 @@ CREATE TYPE fase_postulacion_enum AS ENUM (
     'prueba_tecnica',
     'entrevista',
     'oferta_finalistas',
+    'contratado',
     'descartados'
 );
 
@@ -501,7 +502,8 @@ CREATE TABLE registros_laborales_egresado (
     modalidad_trabajo VARCHAR(50) NOT NULL,
     rango_salarial VARCHAR(60),
     fecha_vinculacion DATE NOT NULL,
-    creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+    creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    id_postulacion UUID UNIQUE REFERENCES postulaciones(id) ON DELETE SET NULL -- contratación que originó el registro
 );
 
 CREATE TABLE competencias_egresado (

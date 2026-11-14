@@ -119,7 +119,7 @@ export default function TraceabilityCurriculumViews({ report, onOpenUploadModal 
       {/* Indicadores */}
       <dl className="m-0 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-sand-line bg-cream/60 p-4">
-          <dt className="text-[0.7rem] font-bold uppercase tracking-wider text-secondary">Índice de pertinencia</dt>
+          <dt className="text-[0.7rem] font-bold uppercase tracking-wider text-secondary">Alineación malla–demanda</dt>
           <dd className="m-0 mt-1 font-display text-4xl font-extrabold leading-none text-ink">{indice}%</dd>
           <p className="m-0 mt-2 text-xs font-semibold text-ink">{report.nivel_pertinencia}</p>
           <p className="m-0 mt-1 inline-flex items-center gap-1 text-xs text-secondary">

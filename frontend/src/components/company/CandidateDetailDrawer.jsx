@@ -399,7 +399,7 @@ export default function CandidateDetailDrawer({
                   </span>
                 </div>
 
-                {['preselected', 'evaluation', 'interview', 'offer'].includes(candidate.stage) && (
+                {['preselected', 'evaluation', 'interview', 'offer', 'hired'].includes(candidate.stage) && (
                   <div className="relative">
                     <span className="absolute -left-[27px] top-0.5 size-3.5 rounded-full bg-ochre border-2 border-white ring-2 ring-ochre/30" />
                     <p className="m-0 text-xs font-bold text-ink">Filtro de Preselección Aprobado</p>
@@ -409,7 +409,7 @@ export default function CandidateDetailDrawer({
                   </div>
                 )}
 
-                {['evaluation', 'interview', 'offer'].includes(candidate.stage) && (
+                {['evaluation', 'interview', 'offer', 'hired'].includes(candidate.stage) && (
                   <div className="relative">
                     <span className="absolute -left-[27px] top-0.5 size-3.5 rounded-full bg-amber-600 border-2 border-white ring-2 ring-amber-200" />
                     <p className="m-0 text-xs font-bold text-ink">Prueba Técnica / Psicotécnica</p>
@@ -419,12 +419,22 @@ export default function CandidateDetailDrawer({
                   </div>
                 )}
 
-                {['interview', 'offer'].includes(candidate.stage) && (
+                {['interview', 'offer', 'hired'].includes(candidate.stage) && (
                   <div className="relative">
                     <span className="absolute -left-[27px] top-0.5 size-3.5 rounded-full bg-terracotta border-2 border-white ring-2 ring-terracotta/30" />
                     <p className="m-0 text-xs font-bold text-ink">Entrevista de Selección</p>
                     <p className="m-0 text-[0.7rem] text-secondary">
                       {candidate.interviewDate ? `Fecha registrada: ${candidate.interviewDate}` : 'Los datos de la entrevista aún no están disponibles.'}
+                    </p>
+                  </div>
+                )}
+
+                {candidate.stage === 'hired' && (
+                  <div className="relative">
+                    <span className="absolute -left-[27px] top-0.5 size-3.5 rounded-full bg-emerald-700 border-2 border-white ring-2 ring-emerald-200" />
+                    <p className="m-0 text-xs font-bold text-emerald-800">Contratación Confirmada</p>
+                    <p className="m-0 text-[0.7rem] text-secondary">
+                      La vinculación quedó registrada para el seguimiento de la institución.
                     </p>
                   </div>
                 )}
@@ -459,7 +469,7 @@ export default function CandidateDetailDrawer({
               <span className="text-xs font-semibold text-secondary whitespace-nowrap">Mover a:</span>
               <select
                 value={candidate.stage}
-                onChange={(e) => onMoveStage(candidate.id, e.target.value)}
+                onChange={(e) => (e.target.value === 'discarded' ? setDiscardModalOpen(true) : onMoveStage(candidate.id, e.target.value))}
                 className="rounded-xl border border-sand-line bg-white px-3 py-2 text-xs font-bold text-ink cursor-pointer focus:border-terracotta focus:outline-none"
               >
                 {ATS_STAGES.map((st) => (
@@ -525,7 +535,7 @@ export default function CandidateDetailDrawer({
               {candidate.stage === 'offer' && (
                 <button
                   type="button"
-                  onClick={() => alert(`¡Felicitaciones! Se ha registrado la contratación de ${candidate.candidateName}.`)}
+                  onClick={() => onMoveStage(candidate.id, 'hired')}
                   className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 transition-all cursor-pointer shadow-xs"
                 >
                   Confirmar Contratación

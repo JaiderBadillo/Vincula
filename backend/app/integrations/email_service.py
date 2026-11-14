@@ -53,6 +53,12 @@ ATS_PIPELINE_STAGES: List[Dict[str, str]] = [
         "label": "Selección Final y Oferta",
         "description": "Has sido seleccionado como finalista para el proceso de vinculación.",
     },
+    {
+        "key": "contratado",
+        "step": "6",
+        "label": "Contratación Confirmada",
+        "description": "La empresa confirmó tu contratación. ¡Felicitaciones!",
+    },
 ]
 
 STAGE_ALIASES: Dict[str, str] = {
@@ -70,8 +76,8 @@ STAGE_ALIASES: Dict[str, str] = {
     "entrevista": "entrevista",
     "offer": "oferta_finalistas",
     "oferta_finalistas": "oferta_finalistas",
-    "hired": "oferta_finalistas",
-    "contratado": "oferta_finalistas",
+    "hired": "contratado",
+    "contratado": "contratado",
     "discarded": "descartados",
     "descartados": "descartados",
     "rejected": "descartados",
@@ -98,11 +104,11 @@ def get_stage_display_info(raw_stage: Optional[str]) -> Dict[str, str]:
         if stage["key"] == norm:
             return {
                 **stage,
-                "badge": f"Fase {stage['step']} de 5 · {stage['label']}",
+                "badge": f"Fase {stage['step']} de {len(ATS_PIPELINE_STAGES)} · {stage['label']}",
             }
     return {
         **ATS_PIPELINE_STAGES[0],
-        "badge": "Fase 1 de 5 · En Revisión Inicial",
+        "badge": f"Fase 1 de {len(ATS_PIPELINE_STAGES)} · En Revisión Inicial",
     }
 
 

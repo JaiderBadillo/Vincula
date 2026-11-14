@@ -92,5 +92,14 @@ class ProgramAccessTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(ok, programa)
 
 
+
+class SoftwareSubjectsTests(unittest.TestCase):
+    def test_materias_de_software_y_datos_tienen_area(self):
+        self.assertIn("backend_web", families_for_text("INGENIERÍA DEL SOFTWARE"))
+        self.assertIn("backend_web", families_for_text("Arquitectura y Patrones de Software"))
+        self.assertIn("data_analytics", families_for_text("Ciencia de Datos"))
+        self.assertIn("data_analytics", families_for_text("Inteligencia Artificial"))
+
+
 if __name__ == "__main__":
     unittest.main()

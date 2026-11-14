@@ -63,6 +63,7 @@ function mapApiVacancyToLocal(v) {
     skills: (v.competencias || []).map((c) => c.nombre),
     skillsTech: (v.competencias || []).filter((c) => c.categoria === 'tecnica').map((c) => c.nombre),
     skillsSoft: (v.competencias || []).filter((c) => c.categoria === 'blanda').map((c) => c.nombre),
+    targetPrograms: v.programas_afines_nombres || [],
     benefits: v.beneficios || [],
     languages: (v.idiomas_requeridos || []).join(', ') || 'No requerido',
     closingDate: v.fecha_cierre,
@@ -171,9 +172,10 @@ export function useCompanyVacancies() {
         idiomas_requeridos: data.languages && data.languages !== 'No requerido' ? [data.languages] : [],
         fecha_cierre: data.closingDate,
         estado: data.status === 'open' ? 'abierta' : 'borrador',
+        programas_afines_nombres: data.targetPrograms || [],
         competencias: (data.skills || []).map((s) => ({
           nombre: s,
-          categoria: ['Trabajo en equipo', 'Liderazgo', 'Comunicación asertiva'].includes(s) ? 'blanda' : 'tecnica',
+          categoria: (data.skillsSoft || []).includes(s) ? 'blanda' : 'tecnica',
           es_obligatoria: true,
         })),
       };
@@ -203,6 +205,7 @@ export function useCompanyVacancies() {
       if (Object.prototype.hasOwnProperty.call(changes, source)) patch[target] = changes[source];
     });
     if (changes.skills) patch.competencias = changes.skills.map((nombre) => ({ nombre, categoria: 'tecnica', es_obligatoria: true }));
+    if (changes.targetPrograms) patch.programas_afines_nombres = changes.targetPrograms;
     if (changes.languages) patch.idiomas_requeridos = Array.isArray(changes.languages) ? changes.languages : [changes.languages];
     if (changes.salary === 'Confidencial') patch.salario_es_confidencial = true;
     let saved = null;

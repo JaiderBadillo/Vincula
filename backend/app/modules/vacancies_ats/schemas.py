@@ -65,6 +65,7 @@ class VacanteCreateRequest(BaseModel):
     competencias: Optional[List[CompetenciaItem]] = Field(default_factory=list)
     habilidades_requeridas: Optional[List[str]] = Field(default_factory=list)  # compatibilidad
     programas_afines_ids: Optional[List[str]] = Field(default_factory=list)
+    programas_afines_nombres: Optional[List[str]] = Field(default_factory=list)  # se resuelven a programas registrados
     publicar_inmediatamente: Optional[bool] = True  # compatibilidad
 
 
@@ -91,6 +92,7 @@ class VacanteUpdateRequest(BaseModel):
     estado: Optional[str] = None
     competencias: Optional[List[CompetenciaItem]] = None
     programas_afines_ids: Optional[List[str]] = None
+    programas_afines_nombres: Optional[List[str]] = None
 
 
 class VacanteStatusUpdateRequest(BaseModel):
@@ -128,6 +130,7 @@ class VacanteResponse(BaseModel):
     sede: VacanteSedeItemResponse
     competencias: List[CompetenciaResponse] = Field(default_factory=list)
     programas_afines_ids: List[str] = Field(default_factory=list)
+    programas_afines_nombres: List[str] = Field(default_factory=list)
 
     # Campos de compatibilidad directa con Frontend React
     empresa_nombre: str
@@ -226,7 +229,7 @@ class KanbanBoardDetailedResponse(BaseModel):
 class MoverFaseRequest(BaseModel):
     fase_nueva: Optional[str] = Field(
         None,
-        description="'en_revision', 'preseleccionados', 'prueba_tecnica', 'entrevista', 'oferta_finalistas', 'descartados' o sus alias 'review', 'preselected', 'evaluation', 'interview', 'offer', 'discarded'"
+        description="'en_revision', 'preseleccionados', 'prueba_tecnica', 'entrevista', 'oferta_finalistas', 'contratado', 'descartados' o sus alias 'review', 'preselected', 'evaluation', 'interview', 'offer', 'hired', 'discarded'"
     )
     nueva_fase: Optional[str] = None
     fase_anterior: Optional[str] = None

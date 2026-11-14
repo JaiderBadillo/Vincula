@@ -59,6 +59,7 @@ FasePostulacionEnum = PG_ENUM(
     'prueba_tecnica',
     'entrevista',
     'oferta_finalistas',
+    'contratado',
     'descartados',
     name='fase_postulacion_enum',
     create_type=False

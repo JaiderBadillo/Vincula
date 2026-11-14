@@ -50,6 +50,15 @@ export const ATS_STAGES = [
     description: 'Fase de propuesta salarial, exámenes médicos o vinculación.',
   },
   {
+    id: 'hired',
+    label: 'Contratados',
+    shortLabel: 'Contratado',
+    dot: 'bg-emerald-700',
+    badgeColor: 'bg-emerald-700 text-white border-emerald-800',
+    icon: 'bx-badge-check',
+    description: 'Egresados con contratación confirmada por la empresa.',
+  },
+  {
     id: 'discarded',
     label: 'Descartados',
     shortLabel: 'Descarte',

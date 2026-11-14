@@ -51,7 +51,7 @@ KNOWLEDGE_FAMILIES = {
     "devops_cloud": {
         "name": "DevOps, Cloud y Contenedores",
         "canonical_skills": ["Contenedores", "Integración Continua (CI/CD)", "Computación en la Nube"],
-        "tools": ["Docker", "Kubernetes", "AWS", "Azure", "Google Cloud", "GitHub Actions", "Linux"],
+        "tools": ["Docker", "Kubernetes", "AWS", "Azure", "Google Cloud", "GitHub Actions", "Linux", "Git", "GitHub"],
         "equivalence_group": "devops_infrastructure",
     },
     "networking": {
@@ -155,12 +155,12 @@ SUBJECT_KEYWORD_RULES = [
     (["base de datos", "bases de datos", "motores de base", "b.d.", "gestor de base"], "sql_relational"),
     (["programacion web", "desarrollo web", "frontend", "front-end", "diseño web"], "frontend_web"),
     (["full stack", "fullstack", "desarrollo full stack"], "backend_web"),
-    (["backend", "servicios web", "apis", "arquitectura de software", "ingenieria de software"], "backend_web"),
+    (["backend", "servicios web", "apis", "arquitectura de software", "ingenieria de software", "software"], "backend_web"),
     (["movil", "moviles", "aplicaciones moviles", "android", "flutter", "ios"], "mobile_dev"),
     (["redes", "comunicaciones", "telematica", "enrutamiento", "conectividad", "telecomunicaciones"], "networking"),
     (["seguridad informatica", "ciberseguridad", "criptografia", "seguridad en redes", "seguridad en los sistemas"], "cybersecurity"),
     (["devops", "cloud", "computacion en la nube", "sistemas distribuidos", "infraestructura tecnologica"], "devops_cloud"),
-    (["inteligencia de negocios", "business intelligence", "analitica", "mineria de datos", "big data"], "data_analytics"),
+    (["inteligencia de negocios", "business intelligence", "analitica", "mineria de datos", "big data", "ciencia de datos", "inteligencia artificial", "aprendizaje automatico", "machine learning", "estadistica"], "data_analytics"),
     (["algoritmos", "fundamentos de programacion", "lenguajes de programacion", "programacion orientada", "estructura de datos", "programacion"], "backend_web"),
     (["internet de las cosas", "iot", "sistemas embebidos", "sistemas digitales"], "industrial_electronics"),
     
