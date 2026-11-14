@@ -107,11 +107,11 @@ export default function GridVacancyDetailModal({
           
           {/* 1. Header Fotográfico Inmersivo */}
           <div className="relative h-44 sm:h-52 w-full overflow-hidden bg-ink select-none shrink-0">
-            <img
+            {job.companyCover && <img
               src={job.companyCover}
               alt={job.company}
               className="size-full object-cover opacity-60 transition-transform duration-700 hover:scale-105"
-            />
+            />}
             <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/60 to-ink/20" />
 
             {/* Badges superiores flotantes a la izquierda */}
@@ -155,7 +155,7 @@ export default function GridVacancyDetailModal({
               <div className="hidden sm:flex flex-col items-end shrink-0">
                 <span className="rounded-full bg-lime text-ink px-3 py-1 text-xs font-extrabold shadow-md inline-flex items-center gap-1.5 border border-white/30">
                   <i className="bx bxs-bolt text-sm" />
-                  {job.utsMatch}% Match Perfil
+                  {job.utsMatch == null ? 'Afinidad sin calcular' : `${job.utsMatch}% Match Perfil`}
                 </span>
               </div>
             </div>
@@ -196,7 +196,7 @@ export default function GridVacancyDetailModal({
             <nav className="flex gap-2 overflow-x-auto scrollbar-none" aria-label="Detalles de la vacante">
               {[
                 { id: 'cargo', label: 'Cargo & Requisitos', icon: 'bx-briefcase-alt-2' },
-                { id: 'match', label: `Afinidad Curricular (${job.utsMatch}%)`, icon: 'bx-target-lock' },
+                { id: 'match', label: job.utsMatch == null ? 'Afinidad curricular' : `Afinidad Curricular (${job.utsMatch}%)`, icon: 'bx-target-lock' },
                 { id: 'empresa', label: 'Empresa & Beneficios', icon: 'bx-buildings' },
                 { id: 'proceso', label: 'Fases de Selección', icon: 'bx-git-repo-forked' },
               ].map((t) => (
@@ -333,7 +333,7 @@ export default function GridVacancyDetailModal({
               <div className="space-y-6 animate-in fade-in duration-150">
                 <div className="rounded-2xl border border-lime/40 bg-lime/10 p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6">
                   <div className="grid size-24 shrink-0 place-items-center rounded-2xl bg-ink text-white font-display text-3xl font-black shadow-lg border-2 border-lime">
-                    <span>{job.utsMatch}%</span>
+                    <span>{job.utsMatch == null ? '—' : `${job.utsMatch}%`}</span>
                   </div>
                   <div className="space-y-2 text-center sm:text-left">
                     <h4 className="m-0 font-display text-lg font-bold text-ink">

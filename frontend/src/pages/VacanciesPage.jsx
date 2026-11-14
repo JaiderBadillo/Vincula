@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import GraduatePortalLayout from '../components/dashboard/GraduatePortalLayout.jsx';
 import GridVacancyDetailModal from '../components/dashboard/GridVacancyDetailModal.jsx';
-import { proposalJobs } from '../data/proposalJobs.js';
 import { COLOMBIAN_LOCATIONS } from '../data/profile.js';
 import { useProfile } from '../hooks/useProfile.js';
 import { useSavedJobs } from '../hooks/useSavedJobs.js';
@@ -12,7 +11,7 @@ import { authService } from '../services/authService.js';
 
 function mapApiToProposalJob(v) {
   const stack = (v.competencias || []).map((c) => c.nombre);
-  const matchScore = v.porcentaje_afinidad ?? v.match_score ?? 92;
+  const matchScore = v.porcentaje_afinidad ?? v.match_score ?? null;
   const matchReasons = [];
 
   if (v.motivo_recomendacion) {
@@ -24,73 +23,65 @@ function mapApiToProposalJob(v) {
   if (Array.isArray(v.missing_skills) && v.missing_skills.length > 0) {
     matchReasons.push(`Oportunidades de fortalecimiento sugeridas: ${v.missing_skills.join(', ')}.`);
   }
-  if (matchReasons.length === 0) {
-    matchReasons.push('Perfil técnico y competencias evaluadas mediante el motor de afinidad de Vincula.');
-    matchReasons.push('Titulación y formación académica convalidada ante el sector productivo.');
-  }
 
   return {
     id: v.id,
-    vacancyCode: v.codigo_vacante || 'VAC-2026-001',
+    vacancyCode: v.codigo_vacante || '',
     title: v.titulo,
-    company: v.empresa_nombre || (v.empresa ? v.empresa.nombre_comercial : 'Empresa Verificada'),
-    companyShort: v.empresa_nombre || 'Empresa',
-    companySlug: 'empresa-verificada',
-    companyVerified: v.empresa_verificada ?? true,
-    partnershipType: v.etiqueta_badge || 'Empresa Acreditada Vincula',
+    company: v.empresa_nombre || v.empresa?.nombre_comercial || '',
+    companyShort: v.empresa_nombre || v.empresa?.nombre_comercial || '',
+    companySlug: '',
+    companyVerified: v.empresa_verificada === true,
+    partnershipType: v.etiqueta_badge || '',
     sector: 'private',
-    sectorLabel: 'Empresa Formal · Verificada 100%',
-    category: v.categoria || 'Tecnología',
-    companySector: (v.empresa && v.empresa.sector_economico) || 'Tecnología & Servicios',
-    companySize: 'Mediana Empresa',
-    companyFounded: 'Sede Bucaramanga / Santander',
-    companyWebsite: '#',
-    companyCover: v.empresa_logo || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1400&q=80',
-    workplacePhotos: [
-      'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80',
-      'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=600&q=80',
-    ],
-    companyAbout: (v.empresa && v.empresa.razon_social) ? `${v.empresa.razon_social} es una organización validada oficialmente en Vincula.` : 'Empresa formal auditada por el equipo de supervisión de Vincula.',
-    location: v.ubicacion || (v.sede ? `${v.sede.ciudad}, ${v.sede.departamento}` : (v.ciudad && v.departamento ? `${v.ciudad}, ${v.departamento}` : 'Bucaramanga, Santander')),
-    city: v.ciudad || (v.sede ? v.sede.ciudad : 'Bucaramanga'),
-    mode: v.modalidad || 'Presencial',
-    workModeDetail: `${v.modalidad || 'Presencial'} · ${v.jornada_laboral || 'Tiempo Completo'}`,
+    sectorLabel: v.empresa_verificada ? 'Empresa verificada' : '',
+    category: v.categoria || '',
+    companySector: v.empresa?.sector_economico || '',
+    companySize: '',
+    companyFounded: '',
+    companyWebsite: v.empresa?.sitio_web || '',
+    companyCover: v.empresa_logo || '',
+    companyLogoBg: 'bg-ink',
+    workplacePhotos: [],
+    companyAbout: v.empresa?.descripcion || '',
+    location: v.ubicacion || (v.sede ? [v.sede.ciudad, v.sede.departamento].filter(Boolean).join(', ') : [v.ciudad, v.departamento].filter(Boolean).join(', ')),
+    city: v.ciudad || v.sede?.ciudad || '',
+    mode: v.modalidad || '',
+    workModeDetail: [v.modalidad, v.jornada_laboral].filter(Boolean).join(' · '),
     salaryMin: v.salario_minimo || v.rango_salarial_min || 0,
     salaryMax: v.salario_maximo || v.rango_salarial_max || 0,
     salaryFormatted: v.salario_formateado || (v.salario_es_confidencial ? 'Salario Confidencial' : v.salario_minimo ? `$${Number(v.salario_minimo).toLocaleString('es-CO')} COP` : 'A convenir'),
     salaryPeriod: v.periodo_salario || 'Mensual',
-    salaryNotes: 'Prestaciones completas de ley y aportes de seguridad social.',
-    contractType: v.tipo_contrato || 'Término Indefinido Directo',
-    workSchedule: v.jornada_laboral || 'Lunes a Viernes (8:00 AM - 5:00 PM)',
-    seniority: v.nivel_experiencia || 'Junior',
-    experienceYears: '1 a 2 años',
-    experienceEquivalence: 'Se convalidan prácticas universitarias y proyectos de grado avalados.',
-    summary: v.descripcion ? v.descripcion.slice(0, 160) + '...' : (v.titulo ? `Oportunidad laboral para ${v.titulo} en ${v.empresa_nombre || 'empresa formal'}.` : 'Oportunidad laboral formal.'),
+    salaryNotes: '',
+    contractType: v.tipo_contrato || '',
+    workSchedule: v.jornada_laboral || '',
+    seniority: v.nivel_experiencia || '',
+    experienceYears: '',
+    experienceEquivalence: '',
+    summary: v.descripcion ? v.descripcion.slice(0, 160) : '',
+    mission: v.descripcion || '',
+    whatYouWillDo: v.responsabilidades || [],
     description: v.descripcion || '',
-    stack: stack.length > 0 ? stack : (v.skills_match && v.skills_match.length > 0 ? [...v.skills_match, ...(v.missing_skills || [])] : ['Tecnología', 'Desarrollo']),
-    responsibilities: v.responsabilidades && v.responsabilidades.length > 0 ? v.responsabilidades : ['Cumplir con las funciones del cargo'],
-    requirements: v.requisitos && v.requisitos.length > 0 ? v.requisitos : ['Título profesional o técnico'],
+    stack,
+    responsibilities: v.responsabilidades || [],
+    requirements: { mandatory: v.requisitos || [], desirable: [] },
     benefits: (v.beneficios && v.beneficios.length > 0)
       ? v.beneficios.map((b) => ({ title: b, desc: 'Beneficio corporativo', icon: 'bx-check', color: 'bg-green/10 text-green' }))
-      : [
-        { title: 'Seguridad Social Integral', desc: 'Aportes legales garantizados', icon: 'bx-shield-check', color: 'bg-green/10 text-green' },
-        { title: 'Capacitación Continua', desc: 'Acceso a plataformas de formación', icon: 'bx-book-open', color: 'bg-blue/10 text-blue' },
-      ],
-    hiringProcess: [
-      { step: 1, title: 'Revisión Curricular', desc: 'Cotejo de diploma con la universidad' },
-      { step: 2, title: 'Entrevista Inicial', desc: 'Presentación con el equipo de talento' },
-      { step: 3, title: 'Decisión y Oferta', desc: 'Formalización de contrato laboral' }
-    ],
+      : [],
+    hiringProcess: [],
     openPositions: v.cupos_disponibles || 1,
     closingDate: v.fecha_cierre || '',
-    publishedDate: v.publicado_en ? v.publicado_en.slice(0, 10) : (v.fecha_publicacion || 'Hoy'),
-    publishedAt: v.publicado_en ? v.publicado_en.slice(0, 10) : (v.fecha_publicacion || '2026-01-01'),
-    utsMatch: Math.round(matchScore),
+    applicantsCount: v.total_postulantes || 0,
+    daysRemaining: v.fecha_cierre ? Math.max(0, Math.ceil((new Date(v.fecha_cierre).getTime() - Date.now()) / 86400000)) : null,
+    postedTime: v.publicado_en ? new Date(v.publicado_en).toLocaleDateString('es-CO') : '',
+    publishedDate: v.publicado_en ? v.publicado_en.slice(0, 10) : (v.fecha_publicacion || ''),
+    publishedAt: v.publicado_en ? v.publicado_en.slice(0, 10) : (v.fecha_publicacion || ''),
+    utsMatch: matchScore === null ? null : Math.round(matchScore),
     utsMatchReasons: matchReasons,
     skillsMatch: v.skills_match || [],
     missingSkills: v.missing_skills || [],
-    matchBadge: v.etiqueta_badge || `${Math.round(matchScore)}% Match`,
-    matchScore: Math.round(matchScore),
+    matchBadge: v.etiqueta_badge || (matchScore === null ? 'Afinidad no calculada' : `${Math.round(matchScore)}% Match`),
+    matchScore: matchScore === null ? null : Math.round(matchScore),
     source: 'api',
   };
 }
@@ -127,8 +118,10 @@ const MATCH_OPTIONS = [
 export default function VacanciesPage() {
   const { profile } = useProfile();
   const { isSaved, toggleSave, savedCount } = useSavedJobs();
-  const [jobs, setJobs] = useState(proposalJobs);
-  const [selectedId, setSelectedId] = useState(proposalJobs[0]?.id ?? null);
+  const [jobs, setJobs] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [loadingJobs, setLoadingJobs] = useState(true);
+  const [jobsError, setJobsError] = useState('');
   const [activeDetailTab, setActiveDetailTab] = useState('cargo'); // 'cargo' | 'match' | 'empresa' | 'proceso'
   const [viewMode, setViewMode] = useState('grid'); // Default is 'grid' (cuadrícula)
   const [gridDetailJob, setGridDetailJob] = useState(null);
@@ -143,8 +136,9 @@ export default function VacanciesPage() {
           const aiRes = await aiService.getRecommendedVacancies(50);
           if (isMounted && aiRes && Array.isArray(aiRes.vacantes) && aiRes.vacantes.length > 0) {
             const aiJobs = aiRes.vacantes.map(mapApiToProposalJob);
-            setJobs([...aiJobs, ...proposalJobs.filter((pj) => !aiJobs.some((aj) => aj.id === pj.id))]);
+            setJobs(aiJobs);
             setSelectedId(aiJobs[0].id);
+            setLoadingJobs(false);
             return;
           }
         } catch (err) {
@@ -155,13 +149,23 @@ export default function VacanciesPage() {
       // 2. Fallback a catálogo público de vacantes verificadas
       try {
         const res = await vacancyService.getPublicVacancies({ page: 1, limit: 50 });
-        if (isMounted && res && Array.isArray(res.items) && res.items.length > 0) {
-          const apiJobs = res.items.map(mapApiToProposalJob);
-          setJobs([...apiJobs, ...proposalJobs.filter((pj) => !apiJobs.some((aj) => aj.id === pj.id))]);
-          setSelectedId(apiJobs[0].id);
+        if (!Array.isArray(res?.items)) throw new Error('El catálogo de vacantes no respondió correctamente.');
+        const all = [...res.items];
+        for (let page = 2; page <= (res.total_pages || 1); page += 1) {
+          const next = await vacancyService.getPublicVacancies({ page, limit: 50 });
+          if (!Array.isArray(next?.items)) throw new Error('No se pudo cargar el catálogo completo.');
+          all.push(...next.items);
         }
-      } catch {
-        // Fallback transparente a catálogo proposalJobs
+        if (isMounted) {
+          const apiJobs = all.map(mapApiToProposalJob);
+          setJobs(apiJobs);
+          setSelectedId(apiJobs[0]?.id ?? null);
+          setJobsError('');
+        }
+      } catch (err) {
+        if (isMounted) { setJobs([]); setJobsError(err.message); }
+      } finally {
+        if (isMounted) setLoadingJobs(false);
       }
     }
     fetchVacancies();
@@ -345,19 +349,18 @@ export default function VacanciesPage() {
         carta_presentacion: applicationNote,
         salario_esperado: null,
         vacante_titulo: applyModalJob.title,
-        vacante_codigo: applyModalJob.code || `VAC-2026-${String(applyModalJob.id).slice(0, 4).toUpperCase()}`,
+        vacante_codigo: applyModalJob.vacancyCode || '',
         empresa_nombre: applyModalJob.company,
         modalidad: applyModalJob.modality,
         ubicacion: applyModalJob.location,
       });
-      notify(`¡Postulación enviada exitosamente a ${applyModalJob.company}! Te hemos enviado un correo de confirmación.`);
+      notify(`Postulación registrada en ${applyModalJob.company}.`);
+      setAppliedJobs((prev) => new Set(prev).add(applyModalJob.id));
+      setApplyModalJob(null);
+      setApplicationNote('');
     } catch (err) {
-      console.info('[VacanciesPage] Registro de postulación demo/local:', err.message);
-      notify(`¡Postulación enviada exitosamente a ${applyModalJob.company}!`);
+      notify(err.message || 'No se pudo registrar la postulación. Inténtalo de nuevo.');
     }
-    setAppliedJobs((prev) => new Set(prev).add(applyModalJob.id));
-    setApplyModalJob(null);
-    setApplicationNote('');
   }
 
   return (
@@ -783,14 +786,18 @@ export default function VacanciesPage() {
 
         {/* ─── Main Content Area ─── */}
         <div className="max-w-7xl mx-auto px-5 pt-6 sm:px-8 lg:px-10">
-          {filteredJobs.length === 0 ? (
+          {loadingJobs ? (
+            <p role="status" className="rounded-2xl bg-white p-10 text-center text-sm text-body-muted">Consultando vacantes disponibles...</p>
+          ) : jobsError ? (
+            <p role="alert" className="rounded-2xl bg-rose-50 p-10 text-center text-sm text-rose-700">{jobsError}</p>
+          ) : filteredJobs.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-line bg-white p-12 text-center my-6">
               <div className="grid size-16 place-items-center rounded-2xl bg-panel text-3xl text-secondary mx-auto mb-3">
                 <i className="bx bx-search-alt" />
               </div>
               <h3 className="font-display text-lg font-bold text-ink">No encontramos vacantes con esos filtros</h3>
               <p className="text-sm text-body-muted max-w-md mx-auto mt-1">
-                Intenta ajustando el término de búsqueda o cambiando la modalidad para ver todas las oportunidades disponibles.
+                No hay vacantes publicadas que coincidan con los filtros. Ajusta la búsqueda o vuelve más tarde.
               </p>
               <button
                 type="button"
@@ -821,12 +828,12 @@ export default function VacanciesPage() {
                     >
                       {/* Mini top image strip preview */}
                       <div className="relative h-20 w-full overflow-hidden bg-ink">
-                        <img
+                        {job.companyCover && <img
                           src={job.companyCover}
                           alt={job.company}
                           className="size-full object-cover opacity-85 transition-transform duration-500 group-hover:scale-105"
                           loading="lazy"
-                        />
+                        />}
                         <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-transparent" />
 
                         {/* Badges on image */}
@@ -839,7 +846,7 @@ export default function VacanciesPage() {
                         <div className="absolute top-2.5 right-3 flex items-center gap-1.5">
                           <span className="rounded-full bg-lime text-ink px-2.5 py-0.5 text-[0.65rem] font-bold shadow-xs">
                             <i className="bx bxs-bolt text-xs mr-0.5" />
-                            {job.utsMatch}% Match
+                            {job.utsMatch == null ? 'Afinidad sin calcular' : `${job.utsMatch}% Match`}
                           </span>
                         </div>
                       </div>
@@ -950,11 +957,11 @@ export default function VacanciesPage() {
                   <article className="overflow-hidden rounded-2xl border border-line bg-white shadow-hero">
                     {/* Header Panorámico con Foto Real de la Empresa */}
                     <div className="relative h-36 sm:h-44 w-full overflow-hidden bg-ink">
-                      <img
+                      {selectedJob.companyCover && <img
                         src={selectedJob.companyCover}
-                        alt={`Sede de ${selectedJob.company}`}
+                        alt={`Imagen de ${selectedJob.company}`}
                         className="size-full object-cover object-center"
-                      />
+                      />}
                       <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/60 to-transparent" />
 
                       {/* Header Overlays */}
@@ -1001,7 +1008,7 @@ export default function VacanciesPage() {
                         <div className="hidden sm:block text-right">
                           <span className="rounded-full bg-lime text-ink px-3 py-1 text-xs font-bold shadow-sm inline-flex items-center gap-1">
                             <i className="bx bxs-bolt text-sm" />
-                            {selectedJob.utsMatch}% Match Perfil
+                            {selectedJob.utsMatch == null ? 'Afinidad sin calcular' : `${selectedJob.utsMatch}% Match Perfil`}
                           </span>
                         </div>
                       </div>
@@ -1067,7 +1074,7 @@ export default function VacanciesPage() {
                       <nav className="flex gap-2 overflow-x-auto scrollbar-none" aria-label="Detalles de la vacante">
                         {[
                           { id: 'cargo', label: 'Detalles del Cargo', icon: 'bx-briefcase-alt-2' },
-                          { id: 'match', label: `Afinidad Curricular (${selectedJob.utsMatch}%)`, icon: 'bx-target-lock' },
+                          { id: 'match', label: selectedJob.utsMatch == null ? 'Afinidad curricular' : `Afinidad Curricular (${selectedJob.utsMatch}%)`, icon: 'bx-target-lock' },
                           { id: 'empresa', label: 'Empresa & Cultura', icon: 'bx-buildings' },
                           { id: 'proceso', label: 'Proceso de Selección', icon: 'bx-git-repo-forked' },
                         ].map((t) => (
@@ -1270,14 +1277,14 @@ export default function VacanciesPage() {
                                   Algoritmo de Compatibilidad IA
                                 </span>
                                 <h4 className="m-0 font-display text-xl font-bold text-ink mt-0.5">
-                                  Tu afinidad es del {selectedJob.utsMatch}%
+                                  {selectedJob.utsMatch == null ? 'Afinidad aún sin calcular' : `Tu afinidad es del ${selectedJob.utsMatch}%`}
                                 </h4>
                                 <p className="m-0 text-xs text-body-muted mt-1">
                                   Calculado a partir de tu titulación, competencias curriculares y aspiraciones laborales.
                                 </p>
                               </div>
                               <div className="grid size-16 shrink-0 place-items-center rounded-2xl bg-ink text-lime font-display font-black text-2xl shadow-sm">
-                                {selectedJob.utsMatch}%
+                                {selectedJob.utsMatch == null ? '—' : `${selectedJob.utsMatch}%`}
                               </div>
                             </div>
 
@@ -1465,12 +1472,12 @@ export default function VacanciesPage() {
                         className="relative h-40 w-full overflow-hidden bg-ink cursor-pointer"
                         title="Haz clic para ver la ficha completa"
                       >
-                        <img
+                        {job.companyCover && <img
                           src={job.companyCover}
                           alt={job.company}
                           className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
                           loading="lazy"
-                        />
+                        />}
                         <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-transparent" />
 
                         <div className="absolute top-3 left-3 flex items-center gap-2">
@@ -1495,7 +1502,7 @@ export default function VacanciesPage() {
                             <i className={`bx ${isJobSaved ? 'bxs-bookmark-star' : 'bx-bookmark'} text-xs`} />
                           </button>
                           <span className="rounded-full bg-lime text-ink px-2.5 py-0.5 text-[0.65rem] font-bold shadow-xs">
-                            {job.utsMatch}% Match
+                            {job.utsMatch == null ? 'Afinidad sin calcular' : `${job.utsMatch}% Match`}
                           </span>
                         </div>
 
