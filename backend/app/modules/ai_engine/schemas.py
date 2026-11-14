@@ -71,25 +71,35 @@ class RecommendedVacanciesResponse(BaseModel):
 # 2. TRAZABILIDAD CURRICULAR & PERTINENCIA ACADÉMICA (PASO 2)
 # =========================================================================
 
-class CurriculumCoveredSkillItem(BaseModel):
-    """Competencia del pensum demandada por el mercado laboral."""
-    skill: str
-    frecuencia_mercado: int
-    tipo_cobertura: str  # 'exacta' o 'equivalente'
-    detalle: str
+class CurriculumSubjectRef(BaseModel):
+    """Asignatura del pensum que respalda la cobertura de una competencia."""
+    codigo: str
+    nombre: str
+    semestre: int
 
 
-class CurriculumGapItem(BaseModel):
-    """Brecha formativa: Habilidad demandada por empresas ausente en el pensum."""
+class CurriculumDemandItem(BaseModel):
+    """Competencia exigida por vacantes reales dirigidas al programa y su cobertura en la malla."""
     skill: str
-    frecuencia_mercado: int
-    porcentaje_demanda: float
-    criticidad: str  # 'alta', 'media', 'baja'
-    sugerencia_curricular: str
+    categoria: str  # 'tecnica' o 'blanda' (las blandas no entran al índice)
+    vacantes: int
+    obligatoria_en: int
+    porcentaje_vacantes: float
+    cobertura: str  # 'directa', 'afin' o 'brecha'
+    area: Optional[str] = None
+    asignaturas: List[CurriculumSubjectRef] = []
+    criticidad: Optional[str] = None  # solo brechas: 'alta', 'media', 'baja'
+
+
+class CurriculumAreaItem(BaseModel):
+    """Área de formación: cuántas asignaturas la enseñan y cuántas vacantes la piden."""
+    area: str
+    asignaturas: int
+    vacantes: int
 
 
 class CurriculumSubjectResponse(BaseModel):
-    """Materia individual del pensum con sus competencias asociadas."""
+    """Materia del pensum. `herramientas` son las declaradas por la IES, no inferidas."""
     id: str
     codigo: str
     nombre: str
@@ -100,24 +110,46 @@ class CurriculumSubjectResponse(BaseModel):
 
 
 class CurriculumSemesterResponse(BaseModel):
-    """Semestre con lista de asignaturas extraídas."""
     numero_semestre: int
     etiqueta: str
     asignaturas: List[CurriculumSubjectResponse] = []
 
 
 class CurriculumPertinenceReport(BaseModel):
-    """Informe integral de pertinencia curricular y análisis de brechas para IES."""
+    """Informe de pertinencia curricular calculado solo con vacantes reales."""
     success: bool = True
     programa_nombre: str
     id_programa: Optional[str] = None
-    total_semestres: int
-    total_asignaturas: int
-    total_competencias_pensum: int
-    total_vacantes_analizadas: int
-    indice_pertinencia: float
+    pensum_registrado: bool = False
+    pensum_version: Optional[str] = None
+    pensum_actualizado_en: Optional[str] = None
+    total_semestres: int = 0
+    total_asignaturas: int = 0
+    total_vacantes_abiertas: int = 0
+    total_vacantes_analizadas: int = 0
+    vacantes_alta_cobertura: int = 0
+    indice_pertinencia: Optional[float] = None  # None = sin datos para medir
     nivel_pertinencia: str
-    competencias_cubiertas: List[CurriculumCoveredSkillItem] = []
-    brechas_criticas: List[CurriculumGapItem] = []
+    confianza: str  # 'sin_datos', 'baja', 'media', 'alta' según el tamaño de la muestra
+    demanda: List[CurriculumDemandItem] = []
+    areas_formacion: List[CurriculumAreaItem] = []
     recomendaciones_decanatura: List[str] = []
     semestres: List[CurriculumSemesterResponse] = []
+
+
+class PensumSubjectIn(BaseModel):
+    codigo: str = Field("", max_length=50)
+    nombre: str = Field(..., min_length=2, max_length=255)
+    creditos: int = 3  # se acota al guardar: una lectura errónea del PDF no debe bloquear el guardado
+    herramientas: List[str] = Field(default_factory=list, max_length=30)
+
+
+class PensumSemesterIn(BaseModel):
+    numero_semestre: int = Field(..., ge=1, le=12)
+    asignaturas: List[PensumSubjectIn] = Field(default_factory=list, max_length=40)
+
+
+class PensumSaveRequest(BaseModel):
+    """Malla confirmada por la IES para guardar como pensum oficial del programa."""
+    version: Optional[str] = Field(None, max_length=50)
+    semestres: List[PensumSemesterIn] = Field(..., min_length=1, max_length=12)

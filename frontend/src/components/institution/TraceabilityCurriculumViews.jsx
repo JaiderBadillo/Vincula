@@ -1,483 +1,324 @@
-import { useState, useMemo } from 'react';
-import Chart from 'react-apexcharts';
+import { useMemo, useState } from 'react';
 
-/**
- * Busca si una tecnología o herramienta específica está asignada a alguna asignatura del pensum.
- */
-function findSubjectForSkill(skill, pensum) {
-  if (!pensum?.semesters || !skill) return null;
-  const needle = skill.toLowerCase().trim();
+// Estado de cobertura: siempre icono + texto, nunca solo color.
+// Colores fijos: los temas del portal reasignan terracotta/ochre y los tres estados deben distinguirse siempre.
+const COVERAGE = {
+  directa: { label: 'Cubierta', icon: 'bx-check-circle', bar: 'bg-[#336f24]', text: 'text-[#28571d]' },
+  afin: { label: 'Área afín', icon: 'bx-adjust', bar: 'bg-[#e2a336]', text: 'text-ink' },
+  brecha: { label: 'Brecha', icon: 'bx-x-circle', bar: 'bg-[#c4572a]', text: 'text-[#9f431d]' },
+};
 
-  for (const sem of pensum.semesters) {
-    const subjects = Array.isArray(sem?.subjects) ? sem.subjects : [];
-    for (const sub of subjects) {
-      const tools = Array.isArray(sub?.tools) ? sub.tools : [];
-      const match = tools.some((t) => {
-        const toolLower = String(t).toLowerCase().trim();
-        return toolLower === needle || toolLower.includes(needle) || needle.includes(toolLower);
-      });
+const CONFIDENCE = {
+  baja: 'Muestra pequeña',
+  media: 'Muestra media',
+  alta: 'Muestra amplia',
+};
 
-      if (match) {
-        return {
-          subjectName: sub.name,
-          subjectCode: sub.code,
-          semesterNumber: sem.semesterNumber,
-          semesterLabel: sem.label || `Semestre ${sem.semesterNumber}`,
-        };
-      }
-    }
-  }
-  return null;
-}
+const FILTERS = [
+  { id: 'todas', label: 'Todas' },
+  { id: 'brecha', label: 'Brechas' },
+  { id: 'afin', label: 'Área afín' },
+  { id: 'directa', label: 'Cubiertas' },
+  { id: 'blanda', label: 'Transversales' },
+];
 
-/**
- * Sugerencia inteligente de anclaje curricular para brechas no presentes en el pensum.
- */
-function getSmartCurricularAnchor(skill) {
-  const map = {
-    javascript: {
-      subject: 'Programación Web y Servicios REST',
-      semester: 'Semestre VI',
-      strategy: 'Integrar como lenguaje base en el frontend del laboratorio práctico.',
-    },
-    'apis rest': {
-      subject: 'Arquitectura y Patrones de Software',
-      semester: 'Semestre VI',
-      strategy: 'Incorporar diseño de microservicios y consumo de endpoints OpenAPI.',
-    },
-    'power bi': {
-      subject: 'Asignatura Electiva Profesional / Analítica',
-      semester: 'Semestre VII - VIII',
-      strategy: 'Crear electiva de Inteligencia de Negocios y Tableros de Control Empresariales.',
-    },
-    aws: {
-      subject: 'Computación en la Nube y DevOps',
-      semester: 'Semestre VII',
-      strategy: 'Activar convenio AWS Academy con créditos de laboratorio para estudiantes.',
-    },
-    docker: {
-      subject: 'Sistemas Operativos y Redes',
-      semester: 'Semestre IV - V',
-      strategy: 'Añadir módulo de virtualización por contenedores y despliegues CI/CD.',
-    },
-  };
-
-  const key = skill.toLowerCase().trim();
-  return map[key] || {
-    subject: 'Electiva de Profundización Tecnológica',
-    semester: 'Semestres Avanzados',
-    strategy: 'Programar talleres extracurriculares o certificar competencias con convenios.',
-  };
-}
-
-/**
- * Dashboard Ejecutivo Split de Pertinencia Curricular
- * Integra gráfica horizontal de demanda con ApexCharts y panel interactivo de acciones.
- */
-export default function TraceabilityCurriculumViews({
-  exactMatches = [],
-  equivalentMatches = [],
-  criticalGaps = [],
-  coverageScore = 69,
-  deanshipRecommendations = [],
-  activePensum = null,
-  onOpenUploadModal,
-  onFocusSemester,
-}) {
-  const [filterTab, setFilterTab] = useState('gaps'); // 'gaps' | 'matches' | 'equivalents' | 'all'
-
-  // Lista unificada de todas las habilidades con metadatos y trazabilidad
-  const allSkillsList = useMemo(() => {
-    const list = [
-      ...criticalGaps.map((item) => ({
-        ...item,
-        status: 'gap',
-        statusLabel: 'Brecha Crítica (No en Pensum)',
-        badgeColor: 'bg-rose-100 text-rose-800 border-rose-200',
-        color: '#e11d48',
-        anchor: getSmartCurricularAnchor(item.skill),
-        subjectInfo: null,
-      })),
-      ...exactMatches.map((item) => ({
-        ...item,
-        status: 'exact',
-        statusLabel: 'Match Directo (En Pensum)',
-        badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-        color: '#28571d',
-        subjectInfo: findSubjectForSkill(item.skill, activePensum),
-        anchor: null,
-      })),
-      ...equivalentMatches.map((item) => ({
-        ...item,
-        status: 'equivalent',
-        statusLabel: 'Equivalencia Conceptual (75%)',
-        badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
-        color: '#d99b26',
-        subjectInfo: findSubjectForSkill(item.pensumEquivalent || item.skill, activePensum),
-        anchor: null,
-      })),
-    ];
-
-    // Ordenar de mayor a menor demanda de vacantes del mercado
-    return list.sort((a, b) => (b.vacanciesCount || 0) - (a.vacanciesCount || 0));
-  }, [exactMatches, equivalentMatches, criticalGaps, activePensum]);
-
-  // Totales y estadísticas del mercado laboral
-  const totalMarketVacancies = useMemo(() => {
-    return allSkillsList.reduce((sum, item) => sum + (item.vacanciesCount || 0), 0) || 365;
-  }, [allSkillsList]);
-
-  const coveredVacancies = useMemo(() => {
-    return exactMatches.reduce((sum, item) => sum + (item.vacanciesCount || 0), 0) || 252;
-  }, [exactMatches]);
-
-  const gapVacancies = useMemo(() => {
-    return criticalGaps.reduce((sum, item) => sum + (item.vacanciesCount || 0), 0) || 113;
-  }, [criticalGaps]);
-
-  const coveredPercentage = totalMarketVacancies > 0
-    ? Math.round((coveredVacancies / totalMarketVacancies) * 100)
-    : coverageScore;
-
-  const gapPercentage = 100 - coveredPercentage;
-
-  // Filtrado de habilidades para el panel de tarjetas
-  const filteredSkills = useMemo(() => {
-    if (filterTab === 'gaps') return allSkillsList.filter((s) => s.status === 'gap');
-    if (filterTab === 'matches') return allSkillsList.filter((s) => s.status === 'exact');
-    if (filterTab === 'equivalents') return allSkillsList.filter((s) => s.status === 'equivalent');
-    return allSkillsList;
-  }, [filterTab, allSkillsList]);
-
-  // Configuración de ApexCharts para la gráfica de demanda laboral
-  const chartOptions = useMemo(() => {
-    const categories = allSkillsList.map((item) => item.skill);
-    const colors = allSkillsList.map((item) => item.color);
-
-    return {
-      chart: {
-        type: 'bar',
-        height: 380,
-        toolbar: { show: false },
-        fontFamily: 'Inter, system-ui, sans-serif',
-      },
-      plotOptions: {
-        bar: {
-          horizontal: true,
-          borderRadius: 6,
-          barHeight: '62%',
-          distributed: true,
-          dataLabels: { position: 'right' },
-        },
-      },
-      colors: colors,
-      dataLabels: {
-        enabled: true,
-        formatter: (val) => `${val} vac.`,
-        offsetX: 24,
-        style: {
-          fontSize: '11px',
-          fontWeight: 700,
-          colors: ['#051F26'],
-        },
-      },
-      legend: { show: false },
-      xaxis: {
-        categories: categories,
-        max: Math.max(...allSkillsList.map((d) => d.vacanciesCount || 0), 60) + 14,
-        labels: {
-          formatter: (val) => `${val}`,
-          style: { colors: '#64748b', fontSize: '11px', fontWeight: 600 },
-        },
-      },
-      yaxis: {
-        labels: {
-          style: { colors: '#051F26', fontSize: '11px', fontWeight: 700 },
-        },
-      },
-      tooltip: {
-        theme: 'light',
-        y: {
-          formatter: (val, { dataPointIndex }) => {
-            const item = allSkillsList[dataPointIndex];
-            const pct = totalMarketVacancies > 0 ? ((val / totalMarketVacancies) * 100).toFixed(1) : 0;
-            return `${val} vacantes activas (${pct}% del mercado) · ${item?.statusLabel || ''}`;
-          },
-        },
-      },
-      grid: {
-        borderColor: '#f1f5f9',
-        strokeDashArray: 4,
-      },
-    };
-  }, [allSkillsList, totalMarketVacancies]);
-
-  const series = useMemo(
-    () => [
-      {
-        name: 'Demanda del Mercado',
-        data: allSkillsList.map((d) => d.vacanciesCount || 0),
-      },
-    ],
-    [allSkillsList]
+function EmptyState({ icon, title, children, action }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-sand-line bg-cream/40 px-6 py-10 text-center">
+      <i className={`bx ${icon} mb-3 block text-4xl text-terracotta`} aria-hidden="true" />
+      <h4 className="m-0 font-display text-base font-bold text-ink">{title}</h4>
+      <p className="m-0 mx-auto mt-2 max-w-xl text-sm leading-relaxed text-secondary">{children}</p>
+      {action && <div className="mt-5">{action}</div>}
+    </div>
   );
+}
+
+function Kpi({ label, value, detail }) {
+  return (
+    <div className="rounded-2xl border border-sand-line bg-white p-4">
+      <dt className="text-[0.7rem] font-bold uppercase tracking-wider text-secondary">{label}</dt>
+      <dd className="m-0 mt-1 font-display text-3xl font-extrabold leading-none text-ink">{value}</dd>
+      <p className="m-0 mt-2 text-xs leading-snug text-secondary">{detail}</p>
+    </div>
+  );
+}
+
+/**
+ * Diagnóstico de pertinencia de un programa. Todo sale del informe del backend
+ * (vacantes reales dirigidas al programa); sin informe o sin datos se muestra el vacío.
+ */
+export default function TraceabilityCurriculumViews({ report, onOpenUploadModal }) {
+  const [filter, setFilter] = useState('todas');
+
+  const demanda = report?.demanda || [];
+  const tecnicas = useMemo(() => demanda.filter((d) => d.categoria !== 'blanda'), [demanda]);
+  const counts = useMemo(
+    () => ({
+      directa: tecnicas.filter((d) => d.cobertura === 'directa').length,
+      afin: tecnicas.filter((d) => d.cobertura === 'afin').length,
+      brecha: tecnicas.filter((d) => d.cobertura === 'brecha').length,
+      blanda: demanda.length - tecnicas.length,
+    }),
+    [demanda, tecnicas]
+  );
+
+  const visibles = useMemo(() => {
+    if (filter === 'todas') return demanda;
+    if (filter === 'blanda') return demanda.filter((d) => d.categoria === 'blanda');
+    return tecnicas.filter((d) => d.cobertura === filter);
+  }, [filter, demanda, tecnicas]);
+
+  if (!report) return null;
+
+  const n = report.total_vacantes_analizadas;
+  const uploadButton = (
+    <button
+      type="button"
+      onClick={onOpenUploadModal}
+      className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-terracotta px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-terracotta-dark"
+    >
+      <i className="bx bx-upload text-base" aria-hidden="true" />
+      <span>Cargar malla curricular</span>
+    </button>
+  );
+
+  if (!report.pensum_registrado) {
+    return (
+      <EmptyState icon="bx-book-add" title="Este programa aún no tiene malla curricular" action={uploadButton}>
+        Sube el PDF del plan de estudios o regístralo a mano. Con la malla guardada, Víncula la compara con las
+        vacantes que las empresas dirigen a este programa.
+      </EmptyState>
+    );
+  }
+
+  if (report.indice_pertinencia == null) {
+    return (
+      <EmptyState
+        icon="bx-briefcase-alt-2"
+        title={n === 0 ? 'Todavía no hay vacantes dirigidas a este programa' : 'Las vacantes aún no exigen competencias técnicas'}
+      >
+        {n === 0 ? (
+          <>
+            La malla está registrada ({report.total_asignaturas} asignaturas), pero ninguna vacante abierta marca este
+            programa como afín. Hay {report.total_vacantes_abiertas}{' '}
+            {report.total_vacantes_abiertas === 1 ? 'vacante abierta' : 'vacantes abiertas'} en la plataforma. El índice
+            se calculará cuando las empresas publiquen ofertas para este programa; no se muestran datos estimados.
+          </>
+        ) : (
+          <>Las {n} vacantes dirigidas al programa solo registran competencias transversales, que no entran al índice.</>
+        )}
+      </EmptyState>
+    );
+  }
+
+  const indice = Math.round(report.indice_pertinencia);
+  const totalTecnicas = tecnicas.length;
 
   return (
     <div className="space-y-6">
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          DASHBOARD SPLIT: GRÁFICA APEXCHARTS + TARJETAS INTELIGENTES
-          ───────────────────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Panel Izquierdo: Gráfica de Demanda con ApexCharts */}
-        <div className="lg:col-span-5 rounded-2xl border border-sand-line bg-white p-5 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between border-b border-sand-line pb-3">
-            <div>
-              <h4 className="m-0 font-display text-sm font-bold text-ink">
-                Demanda Real de Empresas
-              </h4>
-              <p className="m-0 text-[0.72rem] text-secondary">
-                {totalMarketVacancies} vacantes activas · Ordenadas por demanda
-              </p>
-            </div>
-
-            {/* Leyenda cromática */}
-            <div className="flex items-center gap-2 text-[0.68rem] font-bold">
-              <span className="flex items-center gap-1 text-emerald-800">
-                <span className="size-2 rounded-full bg-[#28571d]" /> Pensum ({coveredVacancies})
-              </span>
-              <span className="flex items-center gap-1 text-rose-800">
-                <span className="size-2 rounded-full bg-[#e11d48]" /> Brecha ({gapVacancies})
-              </span>
-            </div>
-          </div>
-
-          <div className="relative w-full">
-            <Chart options={chartOptions} series={series} type="bar" height={380} width="100%" />
-          </div>
-
-          <div className="rounded-xl bg-cream/60 border border-sand-line p-3 text-[0.72rem] text-secondary leading-relaxed">
-            <strong className="text-ink">Lectura Ejecutiva:</strong> Las barras rojas representan vacantes que las empresas están publicando actualmente pero que los egresados no tienen en su malla oficial.
-          </div>
+      {/* Indicadores */}
+      <dl className="m-0 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl border border-sand-line bg-cream/60 p-4">
+          <dt className="text-[0.7rem] font-bold uppercase tracking-wider text-secondary">Índice de pertinencia</dt>
+          <dd className="m-0 mt-1 font-display text-4xl font-extrabold leading-none text-ink">{indice}%</dd>
+          <p className="m-0 mt-2 text-xs font-semibold text-ink">{report.nivel_pertinencia}</p>
+          <p className="m-0 mt-1 inline-flex items-center gap-1 text-xs text-secondary">
+            <i className="bx bx-info-circle" aria-hidden="true" />
+            {CONFIDENCE[report.confianza]} · {n} {n === 1 ? 'vacante' : 'vacantes'}
+          </p>
         </div>
+        <Kpi
+          label="Vacantes analizadas"
+          value={n}
+          detail={`Dirigidas a este programa, de ${report.total_vacantes_abiertas} abiertas en la plataforma.`}
+        />
+        <Kpi
+          label="Competencias respaldadas"
+          value={`${counts.directa + counts.afin} de ${totalTecnicas}`}
+          detail={`${counts.directa} cubiertas y ${counts.afin} por área afín, entre las técnicas que piden las vacantes.`}
+        />
+        <Kpi
+          label="Vacantes bien cubiertas"
+          value={`${report.vacantes_alta_cobertura} de ${n}`}
+          detail="La malla respalda al menos el 70 % de lo que exige cada una."
+        />
+      </dl>
 
-        {/* Panel Derecho: Pestañas Interactivas y Tarjetas Inteligentes */}
-        <div className="lg:col-span-7 rounded-2xl border border-sand-line bg-white p-5 shadow-2xs space-y-4">
-          {/* Cabecera con selector de Pestañas */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-sand-line pb-3">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setFilterTab('gaps')}
-                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  filterTab === 'gaps'
-                    ? 'bg-rose-600 text-white shadow-2xs'
-                    : 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200'
-                }`}
-              >
-                <i className="bx bx-error-circle text-sm" />
-                <span>Brechas Críticas</span>
-                <span className="rounded-full bg-white/20 px-1.5 py-0.2 text-[0.65rem]">
-                  {criticalGaps.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFilterTab('matches')}
-                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  filterTab === 'matches'
-                    ? 'bg-green-dark text-white shadow-2xs'
-                    : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
-                }`}
-              >
-                <i className="bx bx-check-circle text-sm" />
-                <span>Match Directo</span>
-                <span className="rounded-full bg-white/20 px-1.5 py-0.2 text-[0.65rem]">
-                  {exactMatches.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFilterTab('equivalents')}
-                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  filterTab === 'equivalents'
-                    ? 'bg-amber-600 text-white shadow-2xs'
-                    : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
-                }`}
-              >
-                <i className="bx bx-git-compare text-sm" />
-                <span>Equivalencias</span>
-                <span className="rounded-full bg-white/20 px-1.5 py-0.2 text-[0.65rem]">
-                  {equivalentMatches.length}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFilterTab('all')}
-                className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                  filterTab === 'all'
-                    ? 'bg-ink text-white shadow-2xs'
-                    : 'text-secondary hover:text-ink'
-                }`}
-              >
-                Todas ({allSkillsList.length})
-              </button>
-            </div>
-
-            <span className="text-xs text-secondary font-medium hidden sm:inline">
-              {filteredSkills.length} mostradas
-            </span>
-          </div>
-
-          {/* Lista interactiva de tarjetas enriquecidas */}
-          <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
-            {filteredSkills.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-sand-line p-8 text-center text-secondary">
-                <i className="bx bx-check-double text-3xl text-emerald-600 mb-2 block" />
-                <p className="m-0 text-xs font-bold text-ink">
-                  No se registran elementos en esta categoría
-                </p>
-                <p className="m-0 mt-1 text-[0.72rem]">
-                  El plan de estudios no presenta desajustes en este segmento.
-                </p>
-              </div>
-            ) : (
-              filteredSkills.map((item) => {
-                const isGap = item.status === 'gap';
-                const isMatch = item.status === 'exact';
-
-                return (
-                  <div
-                    key={item.skill}
-                    className={`rounded-xl border p-3.5 transition-all space-y-2 ${
-                      isGap
-                        ? 'border-rose-200 bg-rose-50/30 hover:bg-rose-50/60 shadow-2xs'
-                        : isMatch
-                        ? 'border-emerald-200/70 bg-emerald-50/20 hover:bg-emerald-50/50 shadow-2xs'
-                        : 'border-sand-line bg-sand/20 hover:bg-sand/40'
-                    }`}
-                  >
-                    {/* Fila principal */}
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span
-                          className={`size-8 rounded-lg grid place-items-center text-white shrink-0 shadow-2xs ${
-                            isGap ? 'bg-rose-600' : isMatch ? 'bg-green-dark' : 'bg-amber-600'
-                          }`}
-                        >
-                          <i
-                            className={`bx ${
-                              isGap ? 'bx-error-circle' : isMatch ? 'bx-check-circle' : 'bx-git-compare'
-                            } text-base`}
-                          />
-                        </span>
-                        <div className="min-w-0">
-                          <span className="font-display text-sm font-bold text-ink block truncate">
-                            {item.skill}
-                          </span>
-                          <span className="text-[0.68rem] font-semibold text-secondary">
-                            {item.vacanciesCount} vacantes activas en empresas aliadas
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-[0.68rem] font-bold px-2 py-0.5 rounded-md border ${item.badgeColor}`}>
-                          {isGap ? 'No en Pensum' : isMatch ? '100% Cubierto' : 'Curva Rápida (75%)'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Detalles contextuales según el estado */}
-                    {isGap && item.anchor && (
-                      <div className="rounded-lg bg-white/90 border border-rose-200/80 p-2.5 text-xs space-y-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[0.7rem] font-bold text-rose-900 flex items-center gap-1">
-                            <i className="bx bx-bulb text-amber-600 text-sm" />
-                            <span>Sugerencia del Motor IA para la Malla:</span>
-                          </span>
-                          <span className="text-[0.65rem] font-bold text-secondary bg-cream px-1.5 py-0.5 rounded border border-sand-line">
-                            {item.anchor.semester}
-                          </span>
-                        </div>
-                        <p className="m-0 text-[0.72rem] text-ink/80 leading-relaxed">
-                          Vincular a <strong className="text-ink">{item.anchor.subject}</strong>. {item.anchor.strategy}
-                        </p>
-
-                        <div className="pt-1 flex items-center justify-end">
-                          <button
-                            type="button"
-                            onClick={onOpenUploadModal}
-                            className="text-[0.7rem] font-bold text-rose-700 hover:text-rose-900 flex items-center gap-1 transition-colors cursor-pointer"
-                          >
-                            <i className="bx bx-plus-circle" />
-                            <span>Incorporar herramienta a esta materia &rarr;</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {isMatch && (
-                      <div className="flex items-center justify-between text-xs text-secondary bg-white/80 rounded-lg px-2.5 py-1.5 border border-emerald-200/50">
-                        <span className="flex items-center gap-1.5">
-                          <i className="bx bxs-book-content text-emerald-700" />
-                          <span>
-                            {item.subjectInfo ? (
-                              <>
-                                Impartida en: <strong className="text-ink">{item.subjectInfo.subjectName}</strong> ({item.subjectInfo.semesterLabel})
-                              </>
-                            ) : (
-                              <>Validada en asignaturas troncales del pensum oficial.</>
-                            )}
-                          </span>
-                        </span>
-                        <span className="text-[0.68rem] font-bold text-emerald-800">
-                          Alineado CNA
-                        </span>
-                      </div>
-                    )}
-
-                    {!isGap && !isMatch && (
-                      <div className="text-xs text-secondary bg-white/80 rounded-lg p-2 border border-sand-line">
-                        <span>
-                          Equivalencia conceptual con <strong className="text-ink">{item.pensumEquivalent || 'tecnología base'}</strong> ({item.familyName || 'Área troncal'}).
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ─────────────────────────────────────────────────────────────────────────────
-          3. Recomendaciones del Motor IA para la Decanatura y Comité Curricular
-          ───────────────────────────────────────────────────────────────────────────── */}
-      {Array.isArray(deanshipRecommendations) && deanshipRecommendations.length > 0 && (
-        <div className="rounded-2xl border border-sand-line bg-gradient-to-r from-cream via-sand/40 to-cream p-5 space-y-3">
-          <h4 className="m-0 text-xs font-bold uppercase tracking-wider text-terracotta-dark flex items-center gap-2">
-            <i className="bx bx-bulb text-base text-ochre" />
-            <span>Recomendaciones del Motor IA para la Decanatura y Comité Curricular</span>
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {deanshipRecommendations.map((rec, idx) => (
-              <div
-                key={idx}
-                className="flex items-start gap-2.5 text-xs text-ink/90 bg-white/90 rounded-xl p-3 border border-sand-line/60 shadow-2xs"
-              >
-                <span className="grid size-5 shrink-0 place-items-center rounded bg-terracotta/10 text-terracotta font-bold text-[0.68rem] mt-0.5">
-                  {idx + 1}
-                </span>
-                <span className="leading-relaxed">{rec}</span>
-              </div>
+      {/* Composición de la demanda técnica */}
+      {totalTecnicas > 0 && (
+        <div className="space-y-2">
+          <div className="flex h-3 gap-0.5 overflow-hidden rounded-full" role="img"
+            aria-label={`${counts.directa} cubiertas, ${counts.afin} por área afín, ${counts.brecha} brechas`}>
+            {['directa', 'afin', 'brecha'].map((k) => counts[k] > 0 && (
+              <span key={k} className={COVERAGE[k].bar} style={{ flexGrow: counts[k] }} title={`${COVERAGE[k].label}: ${counts[k]}`} />
             ))}
           </div>
+          <ul className="m-0 flex list-none flex-wrap gap-x-5 gap-y-1 p-0 text-xs text-secondary">
+            {['directa', 'afin', 'brecha'].map((k) => (
+              <li key={k} className="inline-flex items-center gap-1.5">
+                <span className={`size-2.5 rounded-sm ${COVERAGE[k].bar}`} aria-hidden="true" />
+                <span><strong className="text-ink">{counts[k]}</strong> {COVERAGE[k].label.toLowerCase()}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
+
+      {/* Demanda por competencia */}
+      <div className="rounded-2xl border border-sand-line bg-white">
+        <div className="flex flex-col gap-3 border-b border-sand-line p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div>
+            <h4 className="m-0 font-display text-base font-bold text-ink">Lo que piden las vacantes y dónde lo enseña la malla</h4>
+            <p className="m-0 mt-0.5 text-xs text-secondary">
+              Ordenado por número de vacantes. La barra muestra en qué parte de las {n} vacantes aparece cada competencia.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filtrar competencias">
+            {FILTERS.map((f) => {
+              const count = f.id === 'todas' ? demanda.length : counts[f.id];
+              const active = filter === f.id;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setFilter(f.id)}
+                  className={`cursor-pointer rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors ${
+                    active ? 'border-cocoa bg-cocoa text-white' : 'border-sand-line bg-white text-secondary hover:bg-cream hover:text-ink'
+                  }`}
+                >
+                  {f.label} <span className={active ? 'text-white/70' : 'text-secondary'}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {visibles.length === 0 ? (
+          <p className="m-0 p-6 text-center text-sm text-secondary">No hay competencias en esta categoría.</p>
+        ) : (
+          <ul className="m-0 list-none divide-y divide-sand-line p-0">
+            {visibles.map((item) => {
+              const esBlanda = item.categoria === 'blanda';
+              const c = COVERAGE[item.cobertura];
+              return (
+                <li key={item.skill} className="grid grid-cols-1 gap-x-5 gap-y-2 p-4 sm:px-5 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_10rem] md:items-center">
+                  <div className="min-w-0">
+                    <p className="m-0 font-display text-sm font-bold text-ink">{item.skill}</p>
+                    <p className="m-0 mt-0.5 text-xs leading-snug text-secondary">
+                      {esBlanda ? (
+                        'Competencia transversal: se informa, pero no entra al índice.'
+                      ) : item.cobertura === 'brecha' ? (
+                        item.area ? `Ninguna asignatura del área «${item.area}» la respalda.` : 'Ninguna asignatura la respalda.'
+                      ) : (
+                        <>
+                          {item.cobertura === 'afin' ? 'Se enseña el área, no la herramienta: ' : 'Respaldada por '}
+                          {item.asignaturas.map((a, i) => (
+                            <span key={`${a.codigo}-${a.nombre}`}>
+                              {i > 0 && ', '}
+                              <strong className="font-semibold text-ink">{a.nombre}</strong> (sem. {a.semestre})
+                            </span>
+                          ))}
+                        </>
+                      )}
+                    </p>
+                  </div>
+
+                  <div title={`${item.vacantes} de ${n} vacantes (${item.porcentaje_vacantes}%)`}>
+                    <div className="h-2 overflow-hidden rounded-full bg-sand">
+                      <div
+                        className={`h-full rounded-full ${esBlanda ? 'bg-secondary' : c.bar}`}
+                        style={{ width: `${Math.max(item.porcentaje_vacantes, 3)}%` }}
+                      />
+                    </div>
+                    <p className="m-0 mt-1 text-xs text-secondary">
+                      <strong className="text-ink">{item.vacantes}</strong> de {n} vacantes
+                      {item.obligatoria_en > 0 && ` · obligatoria en ${item.obligatoria_en}`}
+                    </p>
+                  </div>
+
+                  {esBlanda ? (
+                    <span className="text-xs font-semibold text-secondary md:justify-self-end">Transversal</span>
+                  ) : (
+                    <span className={`inline-flex items-center gap-1 justify-self-start text-xs font-bold md:justify-self-end ${c.text}`}>
+                      <i className={`bx ${c.icon} text-base`} aria-hidden="true" />
+                      {c.label}
+                      {item.criticidad === 'alta' && <span className="font-semibold text-secondary">· prioritaria</span>}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      {/* Áreas de formación: oferta de la malla frente a la demanda */}
+      {report.areas_formacion?.length > 0 && (
+        <div className="overflow-x-auto rounded-2xl border border-sand-line bg-white">
+          <table className="w-full border-collapse text-left text-sm">
+            <caption className="caption-top border-b border-sand-line p-4 text-left sm:px-5">
+              <span className="block font-display text-base font-bold text-ink">Áreas de formación</span>
+              <span className="block text-xs text-secondary">Cuántas asignaturas enseñan cada área y cuántas vacantes la piden.</span>
+            </caption>
+            <thead>
+              <tr className="text-[0.7rem] uppercase tracking-wider text-secondary">
+                <th scope="col" className="px-4 py-2 font-bold sm:px-5">Área</th>
+                <th scope="col" className="px-4 py-2 text-right font-bold">Asignaturas</th>
+                <th scope="col" className="px-4 py-2 text-right font-bold sm:px-5">Vacantes que la piden</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-sand-line">
+              {report.areas_formacion.map((a) => (
+                <tr key={a.area}>
+                  <th scope="row" className="px-4 py-2.5 font-semibold text-ink sm:px-5">
+                    {a.area}
+                    {a.asignaturas === 0 && <span className="ml-2 text-xs font-normal text-terracotta-dark">sin asignaturas</span>}
+                    {a.vacantes === 0 && <span className="ml-2 text-xs font-normal text-secondary">sin demanda en las vacantes actuales</span>}
+                  </th>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-ink">{a.asignaturas}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-ink sm:px-5">{a.vacantes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Hallazgos */}
+      {report.recomendaciones_decanatura?.length > 0 && (
+        <div className="rounded-2xl border border-sand-line bg-cream/60 p-5">
+          <h4 className="m-0 font-display text-base font-bold text-ink">Hallazgos para el comité curricular</h4>
+          <ul className="m-0 mt-3 list-none space-y-2 p-0">
+            {report.recomendaciones_decanatura.map((rec) => (
+              <li key={rec} className="flex items-start gap-2 text-sm leading-relaxed text-ink">
+                <i className="bx bx-right-arrow-alt mt-0.5 text-base text-terracotta" aria-hidden="true" />
+                <span>{rec}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <details className="rounded-2xl border border-sand-line bg-white p-4 text-sm text-secondary sm:px-5">
+        <summary className="cursor-pointer font-semibold text-ink">Cómo se calcula el índice</summary>
+        <div className="mt-3 space-y-2 leading-relaxed">
+          <p className="m-0">
+            Solo cuentan las vacantes abiertas de empresas aprobadas que marcan este programa como afín. De cada una se
+            toman las competencias que exige: una obligatoria pesa 1 y una deseable 0,5.
+          </p>
+          <p className="m-0">
+            Cada competencia se busca en la malla. Vale 1 si está <strong className="text-ink">cubierta</strong> (es propia del
+            área de una asignatura o la institución la declaró en ella), 0,5 si es de un <strong className="text-ink">área afín</strong>{' '}
+            (se enseña el área, pero no esa herramienta) y 0 si es una <strong className="text-ink">brecha</strong>.
+          </p>
+          <p className="m-0">
+            El índice es la suma de lo cubierto dividida entre todo lo exigido. Las competencias transversales se
+            muestran, pero no entran al cálculo. Con menos de 5 vacantes el resultado es solo indicativo.
+          </p>
+        </div>
+      </details>
     </div>
   );
 }

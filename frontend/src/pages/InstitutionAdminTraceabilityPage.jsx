@@ -1,539 +1,260 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import InstitutionPortalLayout from '../components/institution/InstitutionPortalLayout.jsx';
 import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
 import PensumUploadModal from '../components/institution/PensumUploadModal.jsx';
 import TraceabilityCurriculumViews from '../components/institution/TraceabilityCurriculumViews.jsx';
 import { useInstitutionPrograms } from '../hooks/useInstitutionPrograms.js';
-import { useInstitutionPensums, resolvePensum } from '../hooks/useInstitutionPensums.js';
 import { institutionPhotos } from '../data/institutionImages.js';
 import { aiService } from '../services/aiService.js';
-import { authService } from '../services/authService.js';
+
+const selectClass =
+  'w-full appearance-none rounded-xl border border-sand-line bg-cream/50 hover:bg-cream px-4 py-2.5 pr-10 text-sm font-semibold text-ink focus:border-terracotta focus:bg-white focus:outline-none transition-colors cursor-pointer';
+
+/** Malla del informe en la forma que edita el modal. */
+function toEditablePensum(report) {
+  if (!report?.pensum_registrado) return null;
+  return {
+    programName: report.programa_nombre,
+    version: report.pensum_version || '',
+    semesters: report.semestres.map((sem) => ({
+      semesterNumber: sem.numero_semestre,
+      label: sem.etiqueta,
+      subjects: sem.asignaturas.map((sub) => ({
+        id: sub.id,
+        code: sub.codigo,
+        name: sub.nombre,
+        credits: sub.creditos,
+        family: sub.familia,
+        tools: sub.herramientas || [],
+      })),
+    })),
+  };
+}
 
 export default function InstitutionAdminTraceabilityPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { programs } = useInstitutionPrograms();
-  const { pensums, savePensum, addSubjectTool, removeSubjectTool, calculateTraceability } = useInstitutionPensums();
+  const { programs: allPrograms } = useInstitutionPrograms();
+  // Solo programas registrados en el backend: los de demostración no tienen malla ni vacantes.
+  const programs = useMemo(() => (allPrograms || []).filter((p) => p.source === 'api'), [allPrograms]);
 
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [activeSemesterAccordion, setActiveSemesterAccordion] = useState(5);
-  const [quickAddToolInput, setQuickAddToolInput] = useState({});
   const [selectedFaculty, setSelectedFaculty] = useState('all');
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [openSemester, setOpenSemester] = useState(null);
+  const [report, setReport] = useState(null);
+  const [loadError, setLoadError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Programa seleccionado (por query param o el primero disponible)
+  const faculties = useMemo(() => [...new Set(programs.map((p) => p.faculty).filter(Boolean))], [programs]);
+  const filteredPrograms = useMemo(
+    () => (selectedFaculty === 'all' ? programs : programs.filter((p) => p.faculty === selectedFaculty)),
+    [programs, selectedFaculty]
+  );
+
   const selectedProgramId = searchParams.get('programa');
+  const selectedProgram = useMemo(
+    () => filteredPrograms.find((p) => p.id === selectedProgramId) || filteredPrograms[0] || null,
+    [filteredPrograms, selectedProgramId]
+  );
 
-  const selectedProgram = useMemo(() => {
-    const list = Array.isArray(programs) && programs.length > 0 ? programs : [];
-    if (selectedProgramId) {
-      const match = list.find((p) => p.id === selectedProgramId || p.code?.toLowerCase() === selectedProgramId.toLowerCase());
-      if (match) return match;
+  const loadReport = useCallback(async (programId) => {
+    setIsLoading(true);
+    setLoadError('');
+    try {
+      setReport(await aiService.getProgramPertinence(programId));
+    } catch (err) {
+      setReport(null);
+      setLoadError(err.message || 'No se pudo consultar la pertinencia del programa.');
+    } finally {
+      setIsLoading(false);
     }
-    return list[0] || {
-      id: 'prog-01',
-      code: 'SNIES 10452',
-      name: 'Ingeniería de Sistemas',
-      faculty: 'Facultad de Ciencias Naturales e Ingenierías',
-      level: 'Profesional Universitario',
-    };
-  }, [programs, selectedProgramId]);
-
-  // Lista de facultades únicas
-  const faculties = useMemo(() => {
-    const set = new Set();
-    (programs || []).forEach((p) => {
-      if (p.faculty) set.add(p.faculty);
-    });
-    return Array.from(set);
-  }, [programs]);
-
-  // Programas filtrados según la facultad seleccionada
-  const filteredPrograms = useMemo(() => {
-    const list = Array.isArray(programs) ? programs : [];
-    if (selectedFaculty === 'all') return list;
-    return list.filter((p) => p.faculty === selectedFaculty);
-  }, [programs, selectedFaculty]);
-
-  const activePensum = useMemo(() => {
-    return resolvePensum(pensums, selectedProgram?.id) || resolvePensum(pensums, 'prog-01');
-  }, [pensums, selectedProgram?.id]);
-
-  const traceability = useMemo(() => {
-    return calculateTraceability(selectedProgram?.id);
-  }, [calculateTraceability, selectedProgram?.id]);
-
-  // Métricas globales de la IES
-  const globalMetrics = useMemo(() => {
-    const keys = Object.keys(pensums || {});
-    let totalScore = 0;
-    let totalGaps = 0;
-    let totalVacancies = 0;
-
-    keys.forEach((k) => {
-      const match = calculateTraceability(k);
-      totalScore += match?.coverageScore || 0;
-      totalGaps += (match?.criticalGaps || []).length;
-      const demands = pensums[k]?.vacanciesDemand || [];
-      totalVacancies += demands.reduce((acc, v) => acc + (v?.vacanciesCount || 1), 0);
-    });
-
-    const avgScore = keys.length > 0 ? Math.round(totalScore / keys.length) : 84;
-    const totalProgCount = Math.max(programs?.length || 0, keys.length, 1);
-
-    return {
-      avgScore,
-      digitizedCount: keys.length,
-      totalPrograms: totalProgCount,
-      totalGaps: Math.max(totalGaps, 4),
-      totalVacancies: Math.max(totalVacancies, 180),
-    };
-  }, [pensums, calculateTraceability, programs]);
-
-  function handleSelectProgram(progId) {
-    setSearchParams({ programa: progId });
-  }
-
-  function handleFacultyChange(e) {
-    const newFaculty = e.target.value;
-    setSelectedFaculty(newFaculty);
-
-    const validPrograms = newFaculty === 'all'
-      ? (programs || [])
-      : (programs || []).filter((p) => p.faculty === newFaculty);
-
-    if (validPrograms.length > 0) {
-      const stillValid = validPrograms.some((p) => p.id === selectedProgram?.id);
-      if (!stillValid) {
-        handleSelectProgram(validPrograms[0].id);
-      }
-    }
-  }
-
-  function handleProgramChange(e) {
-    const newProgId = e.target.value;
-    handleSelectProgram(newProgId);
-
-    const prog = (programs || []).find((p) => p.id === newProgId);
-    if (prog && prog.faculty && selectedFaculty !== 'all' && selectedFaculty !== prog.faculty) {
-      setSelectedFaculty(prog.faculty);
-    }
-  }
-
-  function handleQuickAddTool(subjectId, semesterNum) {
-    const tool = (quickAddToolInput[subjectId] || '').trim();
-    if (!tool) return;
-    addSubjectTool(selectedProgram.id, semesterNum, subjectId, tool);
-    setQuickAddToolInput({ ...quickAddToolInput, [subjectId]: '' });
-  }
-
-  // Reporte de pertinencia curricular consultado en tiempo real desde el motor de IA
-  const [backendReport, setBackendReport] = useState(null);
+  }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    async function fetchBackendPertinence() {
-      if (!selectedProgram?.id || !authService.isAuthenticated()) return;
-      try {
-        const report = await aiService.getProgramPertinence(selectedProgram.id);
-        if (isMounted && report && (report.success || report.indice_pertinencia != null)) {
-          setBackendReport(report);
-        }
-      } catch (err) {
-        console.info('[TraceabilityPage] Reporte backend offline o en inicialización:', err.message);
-      }
-    }
-    fetchBackendPertinence();
-    return () => {
-      isMounted = false;
-    };
-  }, [selectedProgram?.id]);
+    if (selectedProgram?.id) loadReport(selectedProgram.id);
+    else setReport(null);
+  }, [selectedProgram?.id, loadReport]);
 
-  const coverageScore = backendReport?.indice_pertinencia != null
-    ? Math.round(backendReport.indice_pertinencia)
-    : (traceability?.coverageScore ?? 84);
+  const editablePensum = useMemo(() => toEditablePensum(report), [report]);
+  const brechas = (report?.demanda || []).filter((d) => d.categoria !== 'blanda' && d.cobertura === 'brecha').length;
+  const actualizado = report?.pensum_actualizado_en
+    ? new Date(report.pensum_actualizado_en).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
 
-  const exactMatches = (backendReport?.competencias_cubiertas && backendReport.competencias_cubiertas.length > 0)
-    ? backendReport.competencias_cubiertas.map((c) => ({
-        skill: c.skill,
-        vacanciesCount: c.frecuencia_mercado,
-        matchType: c.tipo_cobertura,
-        label: c.detalle,
-      }))
-    : (traceability?.exactMatches || []);
-
-  const equivalentMatches = traceability?.equivalentMatches || [];
-
-  const criticalGaps = (backendReport?.brechas_criticas && backendReport.brechas_criticas.length > 0)
-    ? backendReport.brechas_criticas.map((b) => ({
-        skill: b.skill,
-        vacanciesCount: b.frecuencia_mercado,
-        criticidad: b.criticidad,
-        sugerencia: b.sugerencia_curricular,
-      }))
-    : (traceability?.criticalGaps || []);
-
-  const deanshipRecommendations = backendReport?.recomendaciones_decanatura || [
-    'Articular talleres semestrales de cloud computing y CI/CD con convenios empresariales.',
-    'Promover asignaturas electivas de analítica avanzada e inteligencia de negocios.'
-  ];
+  const uploadButton = (
+    <button
+      type="button"
+      onClick={() => setIsUploadModalOpen(true)}
+      disabled={!selectedProgram}
+      className="inline-flex items-center gap-2 rounded-xl bg-terracotta hover:bg-terracotta-dark px-4 py-2.5 text-xs font-bold text-white transition-colors cursor-pointer shadow-xs disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <i className="bx bxs-file-pdf text-base" aria-hidden="true" />
+      <span>{report?.pensum_registrado ? 'Actualizar malla curricular' : 'Cargar malla curricular'}</span>
+    </button>
+  );
 
   return (
     <InstitutionPortalLayout role="admin" activePage="admin-trazabilidad">
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-        {/* Banner Fotográfico con Métricas Esmeriladas */}
         <InstitutionPageHero
           photo={institutionPhotos.trazabilidad}
           eyebrow="Observatorio de Pertinencia Curricular"
           title="Trazabilidad de Programas y Demanda del Mercado"
-          subtitle="Mide si las competencias y herramientas impartidas en el aula responden a las exigencias de vacantes activas de empresas aliadas."
-          stats={[
-            { label: 'Alineación Global', value: `${globalMetrics.avgScore}%` },
-            { label: 'Pensums Digitalizados', value: `${globalMetrics.digitizedCount} de ${globalMetrics.totalPrograms}` },
-            { label: 'Brechas Detectadas', value: globalMetrics.totalGaps },
-            { label: 'Vacantes Analizadas', value: globalMetrics.totalVacancies },
-          ]}
-          actions={
-            <button
-              type="button"
-              onClick={() => setIsUploadModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-terracotta hover:bg-terracotta-dark px-4 py-2.5 text-xs font-bold text-white transition-colors cursor-pointer shadow-xs"
-            >
-              <i className="bx bxs-file-pdf text-base text-ochre" />
-              <span>Actualizar Malla Curricular</span>
-            </button>
-          }
+          subtitle="Compara la malla de cada programa con las competencias que exigen las vacantes abiertas dirigidas a él."
+          stats={report ? [
+            { label: 'Índice de pertinencia', value: report.indice_pertinencia == null ? 'Sin datos' : `${Math.round(report.indice_pertinencia)}%` },
+            { label: 'Vacantes analizadas', value: report.total_vacantes_analizadas },
+            { label: 'Competencias exigidas', value: report.demanda.length },
+            { label: 'Brechas', value: brechas },
+          ] : []}
+          actions={uploadButton}
         />
 
-        {/* Filtro de Selección por Facultad y Carrera */}
+        {/* Selección de facultad y programa */}
         <section data-tour="ies-trazabilidad-grafica" className="rounded-card border border-sand-line bg-white p-5 sm:p-6 shadow-card">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <div>
-              <span className="text-[0.68rem] font-bold uppercase tracking-wider text-secondary block">
-                Filtro de Pertinencia Curricular
-              </span>
-              <h3 className="m-0 font-display text-base font-bold text-ink">
-                Selecciona Facultad y Carrera a Auditar
-              </h3>
-            </div>
-
-            {selectedProgram && (
-              <div className="inline-flex items-center gap-2 rounded-xl bg-sand border border-sand-line px-3 py-1.5 self-start sm:self-auto">
-                <span className="grid size-6 place-items-center rounded-lg bg-cocoa text-ochre font-mono text-[0.65rem] font-bold">
-                  {selectedProgram.code?.slice(0, 3) || 'SNI'}
-                </span>
-                <span className="text-xs font-bold text-ink">
-                  {selectedProgram.name}
-                </span>
-                {coverageScore != null && (
-                  <span className={`text-[0.68rem] font-bold px-2 py-0.5 rounded-full ${
-                    coverageScore >= 80
-                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                      : coverageScore >= 60
-                      ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                      : 'bg-rose-100 text-rose-800 border border-rose-200'
-                  }`}>
-                    {coverageScore}% pertinencia
-                  </span>
-                )}
+          {programs.length === 0 ? (
+            <p className="m-0 text-sm text-secondary">
+              No se encontraron programas registrados en el servidor. Si ya creaste programas, revisa que el backend esté en línea y recarga la página; los que se crean sin conexión quedan solo en este navegador.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label htmlFor="select-faculty" className="text-xs font-bold text-ink">Facultad o escuela</label>
+                <div className="relative">
+                  <select id="select-faculty" value={selectedFaculty} onChange={(e) => setSelectedFaculty(e.target.value)} className={selectClass}>
+                    <option value="all">Todas las facultades ({faculties.length})</option>
+                    {faculties.map((fac) => <option key={fac} value={fac}>{fac}</option>)}
+                  </select>
+                  <i className="bx bx-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-lg text-secondary" aria-hidden="true" />
+                </div>
               </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Desplegable 1: Facultad */}
-            <div className="space-y-1.5">
-              <label htmlFor="select-faculty" className="text-xs font-bold text-ink flex items-center gap-1.5">
-                <i className="bx bxs-institution text-terracotta text-base" />
-                <span>1. Facultad o Escuela:</span>
-              </label>
-              <div className="relative">
-                <select
-                  id="select-faculty"
-                  value={selectedFaculty}
-                  onChange={handleFacultyChange}
-                  className="w-full appearance-none rounded-xl border border-sand-line bg-cream/50 hover:bg-cream px-4 py-2.5 text-xs sm:text-sm font-semibold text-ink focus:border-terracotta focus:bg-white focus:outline-none transition-colors cursor-pointer pr-10 shadow-2xs"
-                >
-                  <option value="all">Todas las Facultades ({faculties.length})</option>
-                  {faculties.map((fac) => {
-                    const countInFac = (programs || []).filter((p) => p.faculty === fac).length;
-                    return (
-                      <option key={fac} value={fac}>
-                        {fac} ({countInFac} {countInFac === 1 ? 'carrera' : 'carreras'})
-                      </option>
-                    );
-                  })}
-                </select>
-                <i className="bx bx-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-lg text-secondary" />
+              <div className="space-y-1.5">
+                <label htmlFor="select-program" className="text-xs font-bold text-ink">Programa académico</label>
+                <div className="relative">
+                  <select
+                    id="select-program"
+                    value={selectedProgram?.id || ''}
+                    onChange={(e) => setSearchParams({ programa: e.target.value })}
+                    className={selectClass}
+                  >
+                    {filteredPrograms.map((prog) => (
+                      <option key={prog.id} value={prog.id}>{prog.name} ({prog.code || 'sin código'})</option>
+                    ))}
+                  </select>
+                  <i className="bx bx-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-lg text-secondary" aria-hidden="true" />
+                </div>
               </div>
             </div>
-
-            {/* Desplegable 2: Carrera / Programa */}
-            <div className="space-y-1.5">
-              <label htmlFor="select-program" className="text-xs font-bold text-ink flex items-center gap-1.5">
-                <i className="bx bxs-graduation text-terracotta text-base" />
-                <span>2. Carrera o Programa Académico:</span>
-              </label>
-              <div className="relative">
-                <select
-                  id="select-program"
-                  value={selectedProgram?.id || ''}
-                  onChange={handleProgramChange}
-                  className="w-full appearance-none rounded-xl border border-sand-line bg-cream/50 hover:bg-cream px-4 py-2.5 text-xs sm:text-sm font-semibold text-ink focus:border-terracotta focus:bg-white focus:outline-none transition-colors cursor-pointer pr-10 shadow-2xs"
-                >
-                  {filteredPrograms.map((prog) => {
-                    const progMatch = calculateTraceability(prog.id);
-                    const score = progMatch?.coverageScore ?? null;
-                    const scoreLabel = score != null ? ` · ${score}% pertinencia` : '';
-                    return (
-                      <option key={prog.id} value={prog.id}>
-                        {prog.name} ({prog.code || 'SNIES'}){scoreLabel}
-                      </option>
-                    );
-                  })}
-                </select>
-                <i className="bx bx-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-lg text-secondary" />
-              </div>
-            </div>
-          </div>
+          )}
         </section>
 
-        {/* Espacio de Diagnóstico del Programa Seleccionado */}
-        <section className="rounded-card border border-sand-line bg-white p-6 sm:p-8 shadow-card space-y-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-sand-line">
-            <div>
-              <p className="m-0 flex flex-wrap items-center gap-x-2 text-xs text-secondary mb-1">
-                <span className="font-mono text-xs font-bold text-terracotta-dark">{selectedProgram?.code || 'PRG-01'}</span>
-                <span className="text-secondary/50">•</span>
-                <span>{selectedProgram?.faculty || 'Facultad'}</span>
-                <span className="text-secondary/50">•</span>
-                <span className="font-semibold text-ink">{selectedProgram?.level || 'Pregrado'}</span>
-              </p>
-
-              <h2 className="m-0 font-display text-xl sm:text-2xl font-bold text-ink">
-                {selectedProgram?.name || 'Programa Académico'}
-              </h2>
-              <p className="m-0 mt-1 text-xs sm:text-sm text-secondary">
-                {activePensum?.version || 'Plan de Estudios Oficial'} · Última actualización: {activePensum?.lastUpdated || 'Reciente'}
-              </p>
+        {selectedProgram && (
+          <section className="rounded-card border border-sand-line bg-white p-6 sm:p-8 shadow-card space-y-6" aria-busy={isLoading}>
+            <div className="flex flex-col gap-4 border-b border-sand-line pb-6 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="m-0 mb-1 text-xs text-secondary">
+                  <span className="font-mono font-bold text-terracotta-dark">{selectedProgram.code}</span>
+                  {' · '}{selectedProgram.faculty}{' · '}{selectedProgram.level}
+                </p>
+                <h2 className="m-0 font-display text-xl sm:text-2xl font-bold text-ink">{selectedProgram.name}</h2>
+                <p className="m-0 mt-1 text-sm text-secondary">
+                  {report?.pensum_registrado
+                    ? `${report.pensum_version || 'Malla registrada'} · ${report.total_asignaturas} asignaturas en ${report.total_semestres} semestres${actualizado ? ` · actualizada el ${actualizado}` : ''}`
+                    : 'Sin malla curricular registrada'}
+                </p>
+              </div>
             </div>
 
-            {/* Scorecard de Cobertura */}
-            <div className="flex items-center gap-4 bg-cream/60 border border-sand-line rounded-2xl p-4 self-start lg:self-auto">
-              <div className="text-right">
-                <span className="text-[0.68rem] font-bold uppercase tracking-wider text-secondary block">
-                  Índice de Pertinencia
-                </span>
-                <span className={`font-display text-3xl font-extrabold ${
-                  coverageScore >= 75 ? 'text-emerald-700' : (coverageScore >= 60 ? 'text-amber-800' : 'text-rose-700')
-                }`}>
-                  {coverageScore}%
-                </span>
-                <span className="text-[0.68rem] font-bold text-emerald-800 block">
-                  {coverageScore >= 75 ? 'Alta Alineación Laboral' : 'Brecha Curricular Detectada'}
-                </span>
+            {isLoading && <p className="m-0 text-sm text-secondary" role="status">Consultando el informe…</p>}
+            {loadError && (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900" role="alert">
+                <strong className="block font-bold">No se pudo cargar el informe</strong>
+                <span>{loadError}</span>
+                <button type="button" onClick={() => loadReport(selectedProgram.id)} className="ml-2 cursor-pointer font-bold underline">
+                  Reintentar
+                </button>
               </div>
+            )}
+            {!isLoading && !loadError && (
+              <TraceabilityCurriculumViews report={report} onOpenUploadModal={() => setIsUploadModalOpen(true)} />
+            )}
+          </section>
+        )}
 
-              <div className="h-12 w-px bg-sand-line" />
-
+        {/* Malla curricular guardada */}
+        {report?.pensum_registrado && (
+          <section className="rounded-card border border-sand-line bg-white p-6 sm:p-8 shadow-card space-y-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="m-0 font-display text-lg font-bold text-ink">Malla curricular</h3>
+                <p className="m-0 mt-0.5 text-sm text-secondary">
+                  El área de cada asignatura se deduce de su nombre. Las herramientas las declara la institución y cuentan como cobertura directa.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsUploadModalOpen(true)}
-                className="rounded-xl border border-sand-line bg-white hover:bg-cream px-3.5 py-2 text-xs font-bold text-ink shadow-2xs transition-colors cursor-pointer flex items-center gap-1.5"
+                className="inline-flex cursor-pointer items-center gap-1.5 self-start rounded-xl border border-sand-line bg-white px-3.5 py-2 text-xs font-bold text-ink transition-colors hover:bg-cream"
               >
-                <i className="bx bx-upload text-sm text-terracotta" />
-                <span>Actualizar Malla Curricular</span>
+                <i className="bx bx-edit text-sm text-terracotta" aria-hidden="true" />
+                <span>Editar malla y herramientas</span>
               </button>
             </div>
-          </div>
 
-          {/* Vistas Avanzadas de Pertinencia Curricular y Brechas */}
-          <TraceabilityCurriculumViews
-            exactMatches={exactMatches}
-            equivalentMatches={equivalentMatches}
-            criticalGaps={criticalGaps}
-            coverageScore={coverageScore}
-            deanshipRecommendations={deanshipRecommendations}
-            activePensum={activePensum}
-            onOpenUploadModal={() => setIsUploadModalOpen(true)}
-            onFocusSemester={(semNumber) => {
-              setActiveSemesterAccordion(semNumber);
-              const el = document.getElementById('malla-curricular-section');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }}
-          />
-        </section>
-
-        {/* Malla Curricular Oficial del Programa */}
-        <section id="malla-curricular-section" className="rounded-card border border-sand-line bg-white p-6 sm:p-8 shadow-card space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6 border-b border-sand-line">
-            <div>
-              <h3 className="m-0 font-display text-lg font-bold text-ink">
-                Malla Curricular Oficial y Software de Práctica en el Aula
-              </h3>
-              <p className="m-0 mt-0.5 text-xs text-secondary">
-                Asignaturas estructuradas por semestre. Puedes agregar o ajustar las herramientas de laboratorio de cada materia con 1 clic.
-              </p>
-            </div>
-
-            <span className="text-xs font-bold text-ink bg-cream px-3 py-1.5 rounded-xl border border-sand-line self-start sm:self-auto">
-              {activePensum?.totalSemesters || (activePensum?.semesters || []).length || 6} Semestres · {activePensum?.totalCredits || 120} Créditos
-            </span>
-          </div>
-
-          {/* Acordeón de Semestres */}
-          <div className="space-y-3">
-            {(activePensum?.semesters || []).length === 0 ? (
-              <div className="p-8 text-center text-secondary border border-dashed border-sand-line rounded-2xl">
-                <i className="bx bx-book-open text-3xl mb-2 block text-terracotta" />
-                <p className="text-xs m-0">No se encontraron semestres registrados para este programa.</p>
-              </div>
-            ) : (
-              (activePensum?.semesters || []).map((sem) => {
-                const isOpen = activeSemesterAccordion === sem.semesterNumber;
-                const subjects = Array.isArray(sem?.subjects) ? sem.subjects : [];
-
+            <div className="space-y-3">
+              {report.semestres.map((sem) => {
+                const isOpen = openSemester === sem.numero_semestre;
                 return (
-                  <div
-                    key={sem.semesterNumber || Math.random()}
-                    className="rounded-2xl border border-sand-line overflow-hidden transition-all"
-                  >
+                  <div key={sem.numero_semestre} className="overflow-hidden rounded-2xl border border-sand-line">
                     <button
                       type="button"
-                      onClick={() => setActiveSemesterAccordion(isOpen ? null : sem.semesterNumber)}
-                      className="w-full flex items-center justify-between p-4 bg-cream/40 hover:bg-cream text-left cursor-pointer transition-colors"
+                      aria-expanded={isOpen}
+                      onClick={() => setOpenSemester(isOpen ? null : sem.numero_semestre)}
+                      className="flex w-full cursor-pointer items-center justify-between bg-cream/40 p-4 text-left transition-colors hover:bg-cream"
                     >
-                      <div className="flex items-center gap-3">
-                        <span className="grid size-7 place-items-center rounded-lg bg-cocoa text-ochre text-xs font-bold">
-                          {sem.semesterNumber}
-                        </span>
-                        <span className="font-display text-sm font-bold text-ink">
-                          {sem.label || `Semestre ${sem.semesterNumber}`}
-                        </span>
-                        <span className="text-xs text-secondary font-medium">
-                          ({subjects.length} Asignaturas)
-                        </span>
-                      </div>
-
-                      <i className={`bx bx-chevron-down text-lg text-secondary transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                      <span className="flex items-center gap-3">
+                        <span className="grid size-7 place-items-center rounded-lg bg-cocoa text-xs font-bold text-white">{sem.numero_semestre}</span>
+                        <span className="font-display text-sm font-bold text-ink">{sem.etiqueta}</span>
+                        <span className="text-xs text-secondary">{sem.asignaturas.length} asignaturas</span>
+                      </span>
+                      <i className={`bx bx-chevron-down text-lg text-secondary transition-transform ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                     </button>
-
                     {isOpen && (
-                      <div className="p-4 sm:p-5 bg-white space-y-3 border-t border-sand-line">
-                        {subjects.length === 0 ? (
-                          <p className="text-xs text-secondary italic m-0">No hay asignaturas en este semestre.</p>
-                        ) : (
-                          subjects.map((sub) => {
-                            const tools = Array.isArray(sub?.tools) ? sub.tools : [];
-                            return (
-                              <div
-                                key={sub.id || sub.code || Math.random()}
-                                className="rounded-xl border border-sand-line bg-cream/30 p-3.5 space-y-2 hover:bg-cream/50 transition-colors"
-                              >
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-mono text-[0.65rem] font-bold text-secondary uppercase bg-white px-1.5 py-0.5 rounded border border-sand-line">
-                                      {sub.code || 'MAT-00'}
-                                    </span>
-                                    <span className="font-display text-xs font-bold text-ink">
-                                      {sub.name || 'Asignatura'}
-                                    </span>
-                                  </div>
-
-                                  <div className="flex items-center gap-2 text-[0.68rem] text-secondary">
-                                    <span>{sub.family || 'Formación General'}</span>
-                                    <span className="size-1 rounded-full bg-secondary" />
-                                    <span className="font-semibold text-ink">{sub.credits || 3} créditos</span>
-                                  </div>
-                                </div>
-
-                                {/* Herramientas de Laboratorio */}
-                                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                                  <span className="text-[0.65rem] font-bold uppercase text-secondary mr-1">
-                                    Software / Práctica:
-                                  </span>
-                                  {tools.length === 0 ? (
-                                    <span className="text-[0.7rem] text-secondary/70 italic">
-                                      Sin herramientas específicas asignadas.
-                                    </span>
-                                  ) : (
-                                    tools.map((t) => (
-                                      <span
-                                        key={t}
-                                        className="inline-flex items-center gap-1 rounded-lg bg-white border border-sand-line px-2 py-0.5 text-[0.68rem] font-bold text-ink shadow-2xs"
-                                      >
-                                        <span>{t}</span>
-                                        <button
-                                          type="button"
-                                          onClick={() => removeSubjectTool(selectedProgram.id, sem.semesterNumber, sub.id, t)}
-                                          className="text-secondary hover:text-rose-600 text-xs cursor-pointer ml-0.5"
-                                          title="Eliminar herramienta"
-                                        >
-                                          &times;
-                                        </button>
-                                      </span>
-                                    ))
-                                  )}
-
-                                  {/* Input rápido para agregar herramienta */}
-                                  <div className="inline-flex items-center gap-1 ml-1">
-                                    <input
-                                      type="text"
-                                      value={quickAddToolInput[sub.id] || ''}
-                                      onChange={(e) => setQuickAddToolInput({ ...quickAddToolInput, [sub.id]: e.target.value })}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                          e.preventDefault();
-                                          handleQuickAddTool(sub.id, sem.semesterNumber);
-                                        }
-                                      }}
-                                      placeholder="+ Herramienta (ej: MySQL)"
-                                      className="w-32 rounded-lg border border-sand-line bg-white px-2 py-0.5 text-[0.65rem] text-ink placeholder:text-secondary focus:border-terracotta focus:outline-none"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => handleQuickAddTool(sub.id, sem.semesterNumber)}
-                                      className="grid size-5 place-items-center rounded bg-cocoa text-white hover:bg-terracotta text-xs cursor-pointer"
-                                    >
-                                      <i className="bx bx-plus" />
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
+                      <ul className="m-0 list-none divide-y divide-sand-line border-t border-sand-line p-0">
+                        {sem.asignaturas.map((sub) => (
+                          <li key={sub.id} className="flex flex-col gap-1.5 p-4 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <p className="m-0 text-sm font-bold text-ink">
+                                <span className="mr-2 font-mono text-xs font-bold text-secondary">{sub.codigo}</span>
+                                {sub.nombre}
+                              </p>
+                              <p className="m-0 mt-0.5 text-xs text-secondary">{sub.familia}</p>
+                              {sub.herramientas.length > 0 && (
+                                <p className="m-0 mt-1.5 flex flex-wrap gap-1.5">
+                                  {sub.herramientas.map((t) => (
+                                    <span key={t} className="rounded-lg border border-sand-line bg-cream px-2 py-0.5 text-xs font-semibold text-ink">{t}</span>
+                                  ))}
+                                </p>
+                              )}
+                            </div>
+                            <span className="shrink-0 text-xs font-semibold text-secondary">{sub.creditos} créditos</span>
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
                 );
-              })
-            )}
-          </div>
-        </section>
+              })}
+            </div>
+          </section>
+        )}
 
-        {/* Modal de Carga de Pensum PDF / Manual */}
         <PensumUploadModal
           isOpen={isUploadModalOpen}
           onClose={() => setIsUploadModalOpen(false)}
           program={selectedProgram}
-          currentPensum={activePensum}
-          onSavePensum={(programId, parsedData) => {
-            savePensum(programId, parsedData);
-            if (parsedData?.indicePertinencia != null) {
-              setBackendReport({
-                success: true,
-                programa_nombre: parsedData.programName || selectedProgram?.name,
-                id_programa: programId,
-                total_semestres: parsedData.totalSemesters || 6,
-                total_asignaturas: parsedData.totalSubjects || 30,
-                indice_pertinencia: parsedData.indicePertinencia,
-                nivel_pertinencia: parsedData.nivelPertinencia,
-                competencias_cubiertas: parsedData.competenciasCubiertas || [],
-                brechas_criticas: parsedData.brechasCriticas || [],
-                recomendaciones_decanatura: parsedData.recomendacionesDecanatura || [],
-              });
-            }
-          }}
+          currentPensum={editablePensum}
+          onSavePensum={async (programId, pensum) => setReport(await aiService.savePensum(programId, pensum))}
         />
       </div>
     </InstitutionPortalLayout>

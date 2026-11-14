@@ -22,7 +22,8 @@ from app.modules.ai_engine.schemas import (
     CandidateMatchResult,
     EvaluateMatchRequest,
     RecommendedVacanciesResponse,
-    CurriculumPertinenceReport
+    CurriculumPertinenceReport,
+    PensumSaveRequest
 )
 from app.modules.ai_engine.services import TalentMatcherService
 from app.modules.ai_engine.curriculum_service import CurriculumTraceabilityService
@@ -184,18 +185,23 @@ def match_curriculum(payload: MatchCurriculumRequest):
     )
 
 
+IES_LECTURA = ["admin_ies", "ies_admin", "asesor_ies", "ies_asesor", "superadmin_vincula", "superadmin"]
+IES_ESCRITURA = ["admin_ies", "ies_admin", "superadmin_vincula", "superadmin"]
+
+
 @router.post("/trazabilidad/analizar-pensum-pdf", response_model=CurriculumPertinenceReport)
 async def analyze_pensum_pdf(
     file: UploadFile = File(..., description="Archivo PDF del pensum o plan de estudios"),
     program_hint: Optional[str] = Form(default="", description="Nombre o sugerencia de la carrera"),
     id_programa: Optional[str] = Form(default=None, description="UUID del programa académico en la IES (opcional)"),
+    current_user: Dict[str, Any] = Depends(require_role(IES_ESCRITURA)),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Recibe el PDF del plan de estudio de un programa académico, extrae asignaturas y competencias
-    y calcula el reporte integral de pertinencia curricular y brechas críticas frente al mercado laboral.
+    Vista previa: extrae la malla del PDF y la mide contra las vacantes reales.
+    No guarda nada; la malla se guarda con PUT /trazabilidad/programas/{id}/pensum.
     """
-    if not file.filename.lower().endswith(".pdf"):
+    if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"codigo": "FORMATO_INVALIDO", "mensaje": "El archivo debe tener formato PDF (.pdf)."}
@@ -205,6 +211,7 @@ async def analyze_pensum_pdf(
     return await CurriculumTraceabilityService.extract_and_analyze_pdf_async(
         session=db,
         pdf_bytes=pdf_bytes,
+        current_user=current_user,
         program_hint=program_hint or "",
         id_programa=id_programa
     )
@@ -213,16 +220,22 @@ async def analyze_pensum_pdf(
 @router.get("/trazabilidad/programas/{id_programa}/pertinencia", response_model=CurriculumPertinenceReport)
 async def get_program_pertinence(
     id_programa: str,
+    current_user: Dict[str, Any] = Depends(require_role(IES_LECTURA)),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Retorna el informe de pertinencia curricular y brechas formativas
-    para un programa académico registrado de una Institución de Educación Superior.
-    """
-    return await CurriculumTraceabilityService.analyze_program_by_id_async(
-        session=db,
-        id_programa=id_programa
-    )
+    """Informe de pertinencia curricular del programa frente a las vacantes dirigidas a él."""
+    return await CurriculumTraceabilityService.analyze_program_by_id_async(db, id_programa, current_user)
+
+
+@router.put("/trazabilidad/programas/{id_programa}/pensum", response_model=CurriculumPertinenceReport)
+async def save_program_pensum(
+    id_programa: str,
+    payload: PensumSaveRequest,
+    current_user: Dict[str, Any] = Depends(require_role(IES_ESCRITURA)),
+    db: AsyncSession = Depends(get_db)
+):
+    """Guarda la malla confirmada por la IES (asignaturas y herramientas declaradas) y devuelve el informe."""
+    return await CurriculumTraceabilityService.save_pensum_async(db, id_programa, payload, current_user)
 
 
 @router.get("/trazabilidad/taxonomy")

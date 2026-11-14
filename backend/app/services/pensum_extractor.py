@@ -415,6 +415,8 @@ class PensumPDFExtractor:
             roman = ROMAN_TOKENS[n - 1] if n <= len(ROMAN_TOKENS) else str(n)
             for sub in sems[n]:
                 sub["tools"] = sub.get("suggested_tools", [])
+                if not 1 <= (sub.get("credits") or 0) <= 12:  # lectura errónea (totales, celdas pegadas): mismo valor que cuando falta
+                    sub["credits"] = 3
                 skills.extend(sub.get("skills", []))
                 tools.extend(sub["tools"])
             formatted.append({

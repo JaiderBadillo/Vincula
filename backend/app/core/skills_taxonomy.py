@@ -4,6 +4,7 @@ Costo de tokens: $0.00.
 Basado en estándares abiertos de clasificación académica y laboral (CNO Colombia / ESCO).
 """
 
+import re
 import unicodedata
 
 def normalize_text(text: str) -> str:
@@ -191,22 +192,34 @@ SUBJECT_KEYWORD_RULES = [
 ]
 
 
+def contains_term(term: str, text: str) -> bool:
+    """True si `term` aparece como palabra(s) completa(s) en `text` (ambos ya normalizados). Admite plural."""
+    return bool(term) and re.search(rf"(?<![a-z0-9]){re.escape(term)}(?:e?s)?(?![a-z0-9])", text) is not None
+
+
+def families_for_text(text: str) -> list:
+    """
+    Claves de las familias de conocimiento cuyo vocabulario aparece en el texto.
+    Por palabra completa: "ios" no debe activarse con "negocios" ni "cad" con "mercadeo".
+    """
+    clean = normalize_text(text)
+    hits = [(normalize_text(kw), fam) for kws, fam in SUBJECT_KEYWORD_RULES for kw in kws
+            if contains_term(normalize_text(kw), clean)]
+    families = []
+    for kw, fam in hits:
+        # "redes" dentro de "redes sociales": manda la coincidencia más larga
+        if fam not in families and not any(kw != other and kw in other for other, _ in hits):
+            families.append(fam)
+    return families
+
+
 def match_subject_to_skills(subject_name: str) -> dict:
     """
     Recibe el nombre formal de una asignatura y retorna sus habilidades y herramientas canónicas.
     Costo: 0 tokens (operación puramente determinista O(N)).
     """
-    clean_name = normalize_text(subject_name)
-    
-    matched_families = []
-    
-    for keywords, family_key in SUBJECT_KEYWORD_RULES:
-        for kw in keywords:
-            if normalize_text(kw) in clean_name:
-                if family_key not in matched_families:
-                    matched_families.append(family_key)
-                break
-                
+    matched_families = families_for_text(subject_name)
+
     if not matched_families:
         # Fallback genérico para materias formativas / institucionales
         return {

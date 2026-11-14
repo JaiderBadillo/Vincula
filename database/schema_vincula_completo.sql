@@ -240,7 +240,8 @@ CREATE TABLE asignaturas_pensum (
     numero_semestre INTEGER NOT NULL CHECK (numero_semestre BETWEEN 1 AND 12),
     codigo_asignatura VARCHAR(50) NOT NULL,
     nombre VARCHAR(255) NOT NULL,
-    creditos INTEGER NOT NULL CHECK (creditos >= 1)
+    creditos INTEGER NOT NULL CHECK (creditos >= 1),
+    herramientas TEXT[] NOT NULL DEFAULT '{}' -- declaradas por la IES
 );
 
 CREATE INDEX idx_asignaturas_pensum ON asignaturas_pensum(id_pensum);

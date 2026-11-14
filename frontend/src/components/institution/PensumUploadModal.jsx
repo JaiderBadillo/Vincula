@@ -1,27 +1,6 @@
 import { useState, useEffect } from 'react';
 import { aiService } from '../../services/aiService.js';
 
-const KNOWLEDGE_FAMILIES = [
-  'Contabilidad, Nómina y Sistemas ERP',
-  'Administración y Gestión Empresarial',
-  'Logística, Cadena de Suministro y Comercio Exterior',
-  'Marketing Digital y Gestión Comercial',
-  'Gestión de Proyectos y Metodologías Ágiles',
-  'Gestión Ambiental, Sostenibilidad y SST',
-  'Bases de Datos Relacionales (SQL)',
-  'Bases de Datos NoSQL y Documentales',
-  'Desarrollo Frontend Web',
-  'Desarrollo Backend y APIs',
-  'Desarrollo de Aplicaciones Móviles',
-  'DevOps, Cloud y Contenedores',
-  'Redes, Comunicaciones y Telecomunicaciones',
-  'Seguridad Informática y Ciberseguridad',
-  'Analítica de Datos e Inteligencia de Negocios',
-  'Electrónica, Automatización e Instrumentación',
-  'Diseño CAD, Topografía y Modelado Estructural',
-  'Formación General e Institucional',
-];
-
 export default function PensumUploadModal({
   isOpen,
   onClose,
@@ -44,9 +23,9 @@ export default function PensumUploadModal({
     code: '',
     name: '',
     credits: 3,
-    family: 'Desarrollo Backend y APIs',
     tools: '',
   });
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -84,7 +63,7 @@ export default function PensumUploadModal({
       ];
       setParsedData({
         programName: program?.name || 'Programa Académico',
-        version: 'Pensum Oficial 2024',
+        version: '',
         totalSemesters: 1,
         totalSubjects: 0,
         semesters: defaultInitialSemesters,
@@ -107,7 +86,7 @@ export default function PensumUploadModal({
     setFile(selectedFile);
     setIsProcessing(true);
     setApiError('');
-    setProgressStep('Analizando PDF con el motor de IA y pypdf...');
+    setProgressStep('Leyendo semestres y asignaturas. Un PDF escaneado puede tardar cerca de un minuto.');
 
     try {
       const data = await aiService.analyzePensumPdf(selectedFile, program?.name || '', program?.id || null);
@@ -124,73 +103,25 @@ export default function PensumUploadModal({
             name: sub.nombre,
             credits: sub.creditos,
             family: sub.familia,
-            tools: sub.herramientas && sub.herramientas.length > 0 ? sub.herramientas : (sub.skills || []),
+            tools: sub.herramientas || [],
           })),
         }));
 
         setParsedData({
           programName: data.programa_nombre || program?.name,
-          version: `Pensum Extraído (${selectedFile.name})`,
+          version: '',
           totalSemesters: data.total_semestres || mappedSemesters.length,
           totalSubjects: data.total_asignaturas || mappedSemesters.reduce((acc, s) => acc + s.subjects.length, 0),
-          indicePertinencia: data.indice_pertinencia,
-          nivelPertinencia: data.nivel_pertinencia,
-          competenciasCubiertas: data.competencias_cubiertas || [],
-          brechasCriticas: data.brechas_criticas || [],
-          recomendacionesDecanatura: data.recomendaciones_decanatura || [],
           semesters: mappedSemesters,
         });
         setActiveTabSemester(mappedSemesters[0]?.semesterNumber || 1);
         return;
       }
+      setApiError('El servidor no devolvió una malla válida.');
     } catch (err) {
-      console.warn('[PensumUploadModal] Fallo conexión API backend:', err.message);
-      setApiError('Procesamiento asistido con motor local de contingencia: ' + (err.message || ''));
+      setApiError(err.message || 'No se pudo analizar el PDF.');
     }
-
-    setTimeout(() => {
-      setProgressStep('Extrayendo asignaturas y semestres del documento...');
-      setTimeout(() => {
-        setIsProcessing(false);
-        const fallbackSemesters = [
-          {
-            semesterNumber: 1,
-            label: 'Semestre I',
-            subjects: [
-              { id: 'f-1-1', code: 'MAT-101', name: 'Lógica y Fundamentos', credits: 3, family: 'Desarrollo Backend y APIs', tools: ['Python'] },
-              { id: 'f-1-2', code: 'MAT-102', name: 'Cálculo I', credits: 4, family: 'Formación General e Institucional', tools: [] },
-              { id: 'f-1-3', code: 'HUM-103', name: 'Competencias Comunicativas', credits: 2, family: 'Formación General e Institucional', tools: [] },
-            ],
-          },
-          {
-            semesterNumber: 2,
-            label: 'Semestre II',
-            subjects: [
-              { id: 'f-2-1', code: 'SIS-201', name: 'Programación Orientada a Objetos', credits: 4, family: 'Desarrollo Backend y APIs', tools: ['Java'] },
-              { id: 'f-2-2', code: 'MAT-202', name: 'Álgebra Lineal', credits: 3, family: 'Formación General e Institucional', tools: [] },
-            ],
-          },
-          {
-            semesterNumber: 5,
-            label: 'Semestre V',
-            subjects: [
-              { id: 'f-5-1', code: 'SIS-501', name: 'Motores de Bases de Datos', credits: 3, family: 'Bases de Datos Relacionales (SQL)', tools: ['MySQL', 'SQL'] },
-              { id: 'f-5-2', code: 'SIS-502', name: 'Redes y Telecomunicaciones', credits: 3, family: 'Redes, Comunicaciones y Telecomunicaciones', tools: ['TCP/IP', 'Cisco'] },
-              { id: 'f-5-3', code: 'SIS-503', name: 'Programación Web', credits: 4, family: 'Desarrollo Frontend Web', tools: ['JavaScript', 'HTML/CSS'] },
-            ],
-          },
-        ];
-
-        setParsedData({
-          programName: program?.name || 'Programa Académico',
-          version: `Pensum Extraído (${selectedFile.name})`,
-          totalSemesters: fallbackSemesters.length,
-          totalSubjects: fallbackSemesters.reduce((acc, s) => acc + s.subjects.length, 0),
-          semesters: fallbackSemesters,
-        });
-        setActiveTabSemester(1);
-      }, 400);
-    }, 450);
+    setIsProcessing(false);
   }
 
   function handleChangeSemester(subjectId, currentSem, targetSem) {
@@ -288,7 +219,6 @@ export default function PensumUploadModal({
       code: newSubjectForm.code.trim().toUpperCase() || `ASIG-${Date.now().toString().slice(-4)}`,
       name: newSubjectForm.name.trim(),
       credits: Number(newSubjectForm.credits) || 3,
-      family: newSubjectForm.family,
       tools: rawTools,
     };
 
@@ -324,10 +254,19 @@ export default function PensumUploadModal({
       code: '',
       name: '',
       credits: 3,
-      family: 'Desarrollo Backend y APIs',
       tools: '',
     });
     setIsAddingSubject(false);
+  }
+
+  function handleChangeCredits(subjectId, semesterNum, value) {
+    setParsedData((prev) => ({
+      ...prev,
+      semesters: (prev?.semesters || []).map((sem) => (sem.semesterNumber !== semesterNum ? sem : {
+        ...sem,
+        subjects: (sem.subjects || []).map((sub) => (sub.id === subjectId ? { ...sub, credits: value } : sub)),
+      })),
+    }));
   }
 
   function handleAddTag(subjectId, semesterNum) {
@@ -370,10 +309,18 @@ export default function PensumUploadModal({
     });
   }
 
-  function handleConfirmSave() {
-    if (!parsedData) return;
-    onSavePensum(program?.id, parsedData);
-    onClose();
+  async function handleConfirmSave() {
+    if (!parsedData || !program?.id) return;
+    setIsSaving(true);
+    setApiError('');
+    try {
+      await onSavePensum(program.id, parsedData);
+      onClose();
+    } catch (err) {
+      setApiError(err.message || 'No se pudo guardar la malla.');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function toRoman(n) {
@@ -472,7 +419,7 @@ export default function PensumUploadModal({
                   {file ? file.name : 'Arrastra aquí el PDF del Plan de Estudios o Malla Oficial'}
                 </h3>
                 <p className="m-0 mt-1 text-xs text-secondary max-w-sm mx-auto">
-                  El sistema extraerá automáticamente los semestres, códigos, créditos, nombres y herramientas de práctica.
+                  Se extraen semestres, códigos, nombres y créditos. Revisa el resultado y declara las herramientas de cada asignatura antes de guardar.
                 </p>
 
                 <div className="mt-4 flex items-center justify-center gap-2">
@@ -496,15 +443,16 @@ export default function PensumUploadModal({
                 </div>
               )}
 
-              {apiError && (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 flex items-start gap-3">
-                  <i className="bx bx-error-circle text-rose-600 text-lg shrink-0 mt-0.5" />
-                  <div className="text-xs text-rose-900">
-                    <strong className="block font-bold">Aviso del extractor:</strong>
-                    <span>{apiError}</span>
-                  </div>
-                </div>
-              )}
+            </div>
+          )}
+
+          {apiError && (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 flex items-start gap-3">
+              <i className="bx bx-error-circle text-rose-600 text-lg shrink-0 mt-0.5" />
+              <div className="text-xs text-rose-900">
+                <strong className="block font-bold">No se pudo completar la operación</strong>
+                <span>{apiError}</span>
+              </div>
             </div>
           )}
 
@@ -581,22 +529,6 @@ export default function PensumUploadModal({
                       />
                     </div>
 
-                    <div className="sm:col-span-2">
-                      <label className="block text-[0.68rem] font-bold text-ink mb-1">
-                        Familia de Conocimiento:
-                      </label>
-                      <select
-                        value={newSubjectForm.family}
-                        onChange={(e) => setNewSubjectForm({ ...newSubjectForm, family: e.target.value })}
-                        className="w-full rounded-xl border border-sand-line bg-white px-3 py-2 text-xs text-ink focus:border-terracotta focus:outline-none cursor-pointer"
-                      >
-                        {KNOWLEDGE_FAMILIES.map((fam) => (
-                          <option key={fam} value={fam}>
-                            {fam}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
                   </div>
 
                   <div>
@@ -699,15 +631,23 @@ export default function PensumUploadModal({
                               {sub.name}
                             </h4>
                           </div>
-                          <span className="text-[0.68rem] font-semibold text-secondary shrink-0">
-                            {sub.credits} créditos
-                          </span>
+                          <label className="flex shrink-0 items-center gap-1 text-[0.68rem] font-semibold text-secondary">
+                            <input
+                              type="number"
+                              min="1"
+                              max="40"
+                              value={sub.credits}
+                              onChange={(e) => handleChangeCredits(sub.id, activeTabSemester, e.target.value)}
+                              className="w-14 rounded-lg border border-sand-line bg-white px-2 py-0.5 text-right text-xs font-bold text-ink focus:border-terracotta focus:outline-none"
+                            />
+                            <span>créditos</span>
+                          </label>
                         </div>
 
                         <div className="flex flex-wrap items-center justify-between gap-2 text-[0.7rem] text-secondary pt-1 border-t border-sand-line">
                           <span className="flex items-center gap-1 text-ink/80">
                             <i className="bx bx-bookmark text-terracotta" />
-                            <span>Familia: <strong>{sub.family}</strong></span>
+                            <span>{sub.family ? <>Área: <strong>{sub.family}</strong></> : 'El área se asigna al guardar'}</span>
                           </span>
 
                           <div className="flex items-center gap-2">
@@ -808,10 +748,11 @@ export default function PensumUploadModal({
             <button
               type="button"
               onClick={handleConfirmSave}
-              className="rounded-xl bg-terracotta hover:bg-terracotta-dark px-5 py-2 text-xs font-bold text-white transition-colors cursor-pointer shadow-xs inline-flex items-center gap-2"
+              disabled={isSaving}
+              className="rounded-xl bg-terracotta hover:bg-terracotta-dark px-5 py-2 text-xs font-bold text-white transition-colors cursor-pointer shadow-xs inline-flex items-center gap-2 disabled:cursor-wait disabled:opacity-60"
             >
               <i className="bx bx-check text-base" />
-              <span>Confirmar y Guardar Pensum Oficial</span>
+              <span>{isSaving ? 'Guardando…' : 'Confirmar y Guardar Pensum Oficial'}</span>
             </button>
           )}
         </div>

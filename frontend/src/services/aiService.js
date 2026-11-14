@@ -5,6 +5,7 @@
  * - Vacantes Recomendadas por IA: GET /api/v1/ia/vacantes-recomendadas
  * - Extracción y Pertinencia de Pensum PDF: POST /api/v1/ia/trazabilidad/analizar-pensum-pdf
  * - Pertinencia de Programa Académico: GET /api/v1/ia/trazabilidad/programas/{id}/pertinencia
+ * - Guardar malla del programa: PUT /api/v1/ia/trazabilidad/programas/{id}/pensum
  * - Taxonomía de Familias de Conocimiento: GET /api/v1/ia/trazabilidad/taxonomy
  */
 
@@ -108,6 +109,36 @@ class AIService {
       console.warn('[AIService] getProgramPertinence error:', err.message);
       throw err;
     }
+  }
+
+  /**
+   * Guarda la malla confirmada por la IES (asignaturas y herramientas declaradas) y devuelve el informe.
+   */
+  async savePensum(programId, pensum) {
+    const body = {
+      version: pensum.version || null,
+      semestres: (pensum.semesters || [])
+        .filter((sem) => (sem.subjects || []).length > 0)
+        .map((sem) => ({
+          numero_semestre: sem.semesterNumber,
+          asignaturas: sem.subjects.map((sub) => ({
+            codigo: sub.code || '',
+            nombre: sub.name,
+            creditos: Number(sub.credits) || 0,
+            herramientas: Array.isArray(sub.tools) ? sub.tools : [],
+          })),
+        })),
+    };
+    const res = await fetch(`${API_BASE_URL}/ia/trazabilidad/programas/${programId}/pensum`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(extractErrorMessage(errorData, 'No se pudo guardar la malla curricular.'));
+    }
+    return await res.json();
   }
 
   /**
