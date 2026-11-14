@@ -20,7 +20,6 @@ from sqlalchemy import select, update, delete, func, desc, or_, and_
 from app.modules.companies.models import Empresa, SedeEmpresa, ReclutadorEmpresa
 from app.modules.institutions.models import ProgramaAcademico
 from app.modules.graduates.models import Egresado, AcademicoEgresado
-from app.integrations.email_service import EmailService
 from app.integrations.n8n_webhooks import N8nWebhookDispatcher
 from app.integrations.transactional_notifications import send_vincula_email
 from app.modules.vacancies_ats.models import (
@@ -578,6 +577,37 @@ class VacancyATSService:
             print(f"[AVISO CORREO VACANTE] {exc}")
 
     @classmethod
+    async def _notify_application_created(
+        cls, session: AsyncSession, empresa, vacante, egresado, fallback_email: Optional[str] = None
+    ) -> None:
+        """Envía confirmación al egresado y aviso al reclutador/empresa por Brevo (sin bloquear el registro)."""
+        emp_nombre = (empresa.nombre_comercial or empresa.razon_social) if empresa else ""
+        try:
+            grad_email = egresado.correo_personal or fallback_email
+            if grad_email:
+                await send_vincula_email(
+                    "postulacion_creada", grad_email,
+                    nombre=egresado.nombre_completo, empresa=emp_nombre,
+                    vacante=vacante.titulo, codigo=vacante.codigo_vacante,
+                )
+            rec = None
+            if vacante.id_reclutador_responsable:
+                rec = (await session.execute(
+                    select(ReclutadorEmpresa).where(ReclutadorEmpresa.id == vacante.id_reclutador_responsable)
+                )).scalar_one_or_none()
+            company_email = (rec.correo_corporativo if rec and rec.correo_corporativo else None) or (empresa.correo_contacto if empresa else None)
+            company_contact = (rec.nombre_completo if rec and rec.nombre_completo else None) or (empresa.persona_contacto if empresa else None)
+            if company_email:
+                await send_vincula_email(
+                    "nueva_postulacion_empresa", company_email,
+                    nombre=company_contact, empresa=emp_nombre,
+                    vacante=vacante.titulo, codigo=vacante.codigo_vacante,
+                    candidato=egresado.nombre_completo,
+                )
+        except Exception as exc:
+            print(f"[AVISO CORREO POSTULACION] {exc}")
+
+    @classmethod
     async def get_company_vacancy_detail(cls, session: AsyncSession, company_id: str, vacancy_id: str) -> VacanteResponse:
         """Obtiene el detalle completo de una vacante para la empresa propietaria."""
         try:
@@ -980,9 +1010,8 @@ class VacancyATSService:
         await session.refresh(nueva_postulacion)
 
         emp_nombre = empresa.nombre_comercial or empresa.razon_social
-        ubicacion_str = f"{vacante.sede.ciudad}, {vacante.sede.departamento}" if vacante.sede else "Colombia"
 
-        # 7. Disparar webhook n8n y enviar correo de confirmación de postulación (Fase 1)
+        # 7. Disparar webhook n8n y enviar correos transaccionales (Brevo / fallback n8n)
         await N8nWebhookDispatcher.dispatch_event(
             "postulacion-creada",
             {
@@ -997,20 +1026,10 @@ class VacancyATSService:
                 "fase_actual": "en_revision",
             }
         )
-        if egresado.correo_personal:
-            try:
-                await EmailService.send_application_created_email(
-                    to_email=egresado.correo_personal,
-                    graduate_name=egresado.nombre_completo,
-                    vacancy_title=vacante.titulo,
-                    company_name=emp_nombre,
-                    vacancy_code=vacante.codigo_vacante,
-                    modality=vacante.modalidad,
-                    location=ubicacion_str,
-                    current_stage="en_revision",
-                )
-            except Exception as mail_err:
-                print(f"[AVISO CORREO POSTULACION] {mail_err}")
+        await cls._notify_application_created(
+            session, empresa, vacante, egresado,
+            fallback_email=current_user.get("correo") if current_user else None,
+        )
 
         return PostulacionResponse(
             id=str(nueva_postulacion.id),

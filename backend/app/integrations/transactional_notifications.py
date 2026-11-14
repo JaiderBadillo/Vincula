@@ -57,14 +57,23 @@ def build_message(kind, data):
             "Tu vacante ya está publicada",
             f"La vacante {vacancy} ya está visible para los egresados en Vincula.",
             [("Vacante", vacancy), ("Código", _clean(data.get("codigo"), "—")), ("Empresa", company)]),
+        "postulacion_creada": ("Postulación enviada · Vincula", "En revisión inicial", "CONFIRMACIÓN DE POSTULACIÓN",
+            "Recibimos tu postulación",
+            f"Tu postulación a {vacancy} en {company} fue registrada en etapa inicial.",
+            [("Convocatoria", vacancy), ("Código", _clean(data.get("codigo"), "—")), ("Empresa", company), ("Fase actual", "En revisión inicial")]),
+        "nueva_postulacion_empresa": ("Nueva postulación recibida · Vincula", "Nuevo candidato", "SEGUIMIENTO DE VACANTE",
+            "Recibiste una nueva postulación",
+            f"{_clean(data.get('candidato'), 'Un egresado')} se postuló a {vacancy}.",
+            [("Candidato", _clean(data.get("candidato"), "Egresado")), ("Vacante", vacancy), ("Código", _clean(data.get("codigo"), "—")), ("Empresa", company)]),
     }
     if kind not in content:
         raise ValueError(f"Tipo de correo desconocido: {kind}")
     subject, pill, eyebrow, title, paragraph, metadata = content[kind]
+    pipeline_stage = data.get("fase_nueva") if kind == "fase_postulacion" else ("en_revision" if kind == "postulacion_creada" else None)
     html = _generate_vincula_email_html(
         preheader=paragraph, status_pill=pill, eyebrow=eyebrow, title=title,
         greeting=f"Hola, {name}:", paragraphs=[paragraph], metadata_rows=metadata,
-        pipeline_stage=data.get("fase_nueva") if kind == "fase_postulacion" else None,
+        pipeline_stage=pipeline_stage,
         cta_text="Ingresar a Vincula", cta_url="https://vincula.vercel.app/login",
     )
     # El logo CID de la plantilla SMTP no se adjunta al enviar con Gmail API.
