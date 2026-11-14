@@ -153,3 +153,35 @@ class PensumSaveRequest(BaseModel):
     """Malla confirmada por la IES para guardar como pensum oficial del programa."""
     version: Optional[str] = Field(None, max_length=50)
     semestres: List[PensumSemesterIn] = Field(..., min_length=1, max_length=12)
+
+
+class OutcomeFunnelStep(BaseModel):
+    fase: str
+    etiqueta: str
+    postulaciones: int  # postulaciones que alcanzaron esta fase o una posterior
+
+
+class OutcomeDiscardReason(BaseModel):
+    motivo: str
+    postulaciones: int
+
+
+class ProgramOutcomesReport(BaseModel):
+    """Resultados reales de los egresados de un programa en los procesos de selección."""
+    id_programa: str
+    programa_nombre: str
+    egresados_registrados: int
+    egresados_postulados: int
+    egresados_contratados: int
+    total_postulaciones: int
+    postulaciones_descartadas: int
+    minimo_muestra: int
+    muestra_suficiente: bool
+    # None mientras no haya muestra suficiente: no se muestran tasas con pocos datos
+    tasa_contratacion: Optional[float] = None
+    dias_mediana_oferta: Optional[float] = None
+    dias_mediana_contratacion: Optional[float] = None
+    afinidad_promedio_contratados: Optional[float] = None
+    afinidad_promedio_descartados: Optional[float] = None
+    embudo: List[OutcomeFunnelStep] = []
+    motivos_descarte: List[OutcomeDiscardReason] = []

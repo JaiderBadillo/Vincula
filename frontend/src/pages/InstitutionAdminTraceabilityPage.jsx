@@ -4,6 +4,7 @@ import InstitutionPortalLayout from '../components/institution/InstitutionPortal
 import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
 import PensumUploadModal from '../components/institution/PensumUploadModal.jsx';
 import TraceabilityCurriculumViews from '../components/institution/TraceabilityCurriculumViews.jsx';
+import TraceabilityOutcomes from '../components/institution/TraceabilityOutcomes.jsx';
 import { useInstitutionPrograms } from '../hooks/useInstitutionPrograms.js';
 import { institutionPhotos } from '../data/institutionImages.js';
 import { aiService } from '../services/aiService.js';
@@ -42,6 +43,7 @@ export default function InstitutionAdminTraceabilityPage() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [openSemester, setOpenSemester] = useState(null);
   const [report, setReport] = useState(null);
+  const [outcomes, setOutcomes] = useState(null);
   const [loadError, setLoadError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -61,9 +63,15 @@ export default function InstitutionAdminTraceabilityPage() {
     setIsLoading(true);
     setLoadError('');
     try {
-      setReport(await aiService.getProgramPertinence(programId));
+      const [pertinencia, resultados] = await Promise.all([
+        aiService.getProgramPertinence(programId),
+        aiService.getProgramOutcomes(programId),
+      ]);
+      setReport(pertinencia);
+      setOutcomes(resultados);
     } catch (err) {
       setReport(null);
+      setOutcomes(null);
       setLoadError(err.message || 'No se pudo consultar la pertinencia del programa.');
     } finally {
       setIsLoading(false);
@@ -176,7 +184,26 @@ export default function InstitutionAdminTraceabilityPage() {
               </div>
             )}
             {!isLoading && !loadError && (
-              <TraceabilityCurriculumViews report={report} onOpenUploadModal={() => setIsUploadModalOpen(true)} />
+              <>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="m-0 font-display text-lg font-bold text-ink">Resultados de egresados</h3>
+                    <p className="m-0 mt-0.5 text-sm text-secondary">
+                      Qué pasa con las postulaciones de los egresados de este programa. Son hechos registrados en la plataforma.
+                    </p>
+                  </div>
+                  <TraceabilityOutcomes outcomes={outcomes} />
+                </div>
+                <div className="space-y-4 border-t border-sand-line pt-6">
+                  <div>
+                    <h3 className="m-0 font-display text-lg font-bold text-ink">Alineación malla–demanda</h3>
+                    <p className="m-0 mt-0.5 text-sm text-secondary">
+                      Qué piden las vacantes dirigidas al programa y qué respalda la malla. Ayuda a explicar los resultados.
+                    </p>
+                  </div>
+                  <TraceabilityCurriculumViews report={report} onOpenUploadModal={() => setIsUploadModalOpen(true)} />
+                </div>
+              </>
             )}
           </section>
         )}

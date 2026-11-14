@@ -23,10 +23,12 @@ from app.modules.ai_engine.schemas import (
     EvaluateMatchRequest,
     RecommendedVacanciesResponse,
     CurriculumPertinenceReport,
-    PensumSaveRequest
+    PensumSaveRequest,
+    ProgramOutcomesReport
 )
 from app.modules.ai_engine.services import TalentMatcherService
 from app.modules.ai_engine.curriculum_service import CurriculumTraceabilityService
+from app.modules.ai_engine.outcomes_service import program_outcomes_async
 from app.modules.ai_engine.chat import router as chat_router
 
 router = APIRouter(prefix="/ia", tags=["Motor IA & Matching de Talento"])
@@ -225,6 +227,16 @@ async def get_program_pertinence(
 ):
     """Informe de pertinencia curricular del programa frente a las vacantes dirigidas a él."""
     return await CurriculumTraceabilityService.analyze_program_by_id_async(db, id_programa, current_user)
+
+
+@router.get("/trazabilidad/programas/{id_programa}/resultados", response_model=ProgramOutcomesReport)
+async def get_program_outcomes(
+    id_programa: str,
+    current_user: Dict[str, Any] = Depends(require_role(IES_LECTURA)),
+    db: AsyncSession = Depends(get_db)
+):
+    """Resultados de los egresados del programa en los procesos de selección (postulaciones reales)."""
+    return await program_outcomes_async(db, id_programa, current_user)
 
 
 @router.put("/trazabilidad/programas/{id_programa}/pensum", response_model=CurriculumPertinenceReport)

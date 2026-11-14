@@ -112,6 +112,20 @@ class AIService {
   }
 
   /**
+   * Resultados reales de los egresados del programa en los procesos de selección.
+   */
+  async getProgramOutcomes(programId) {
+    const res = await fetch(`${API_BASE_URL}/ia/trazabilidad/programas/${programId}/resultados`, {
+      headers: this.getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(extractErrorMessage(errorData, 'Error al consultar los resultados de egresados.'));
+    }
+    return await res.json();
+  }
+
+  /**
    * Guarda la malla confirmada por la IES (asignaturas y herramientas declaradas) y devuelve el informe.
    */
   async savePensum(programId, pensum) {
