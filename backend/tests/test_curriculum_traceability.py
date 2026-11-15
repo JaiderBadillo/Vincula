@@ -116,6 +116,15 @@ class PropaedeuticCycleTests(unittest.TestCase):
         self.assertEqual((r.programa_previo_nombre, r.total_asignaturas), ("Tecnología", 2))
         self.assertEqual([s.programa_origen for s in r.semestres], ["Tecnología", None])
 
+    def test_los_semestres_propios_continuan_tras_el_ciclo_previo(self):
+        sem = lambda n, prog=None: {"semester_number": n, "program": prog, "subjects": []}
+        previos = [sem(n, "Tecnología") for n in range(1, 7)]
+        numeros = lambda propios: [s["semester_number"] for s in Service._chain_semesters(previos, propios)]
+        self.assertEqual(numeros([sem(1), sem(2), sem(3), sem(4)]), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        # una malla ya numerada 7..10 no se desplaza
+        self.assertEqual(numeros([sem(7), sem(8)]), [1, 2, 3, 4, 5, 6, 7, 8])
+        self.assertEqual([s["semester_number"] for s in Service._chain_semesters([], [sem(1)])], [1])
+
     def test_sin_malla_propia_no_esta_registrada_aunque_el_previo_tenga(self):
         data = {"program_name": "X", "previous": {"id": "t", "nombre": "Tecnología"}, "semesters": [
             {"semester_number": 1, "program": "Tecnología", "subjects": [

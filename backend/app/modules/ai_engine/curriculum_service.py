@@ -339,6 +339,15 @@ class CurriculumTraceabilityService:
             )
         return [{"semester_number": n, "subjects": subs, "program": program} for n, subs in sorted(by_sem.items())]
 
+    @staticmethod
+    def _chain_semesters(previos: List[Dict[str, Any]], propios: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Une las dos mallas. Si la propia se cargó numerada desde 1 (como viene en el plan del ciclo
+        profesional), se continúa la numeración donde termina el ciclo previo: 1 -> 7, 2 -> 8..."""
+        ultimo = max((s["semester_number"] for s in previos), default=0)
+        if propios and propios[0]["semester_number"] <= ultimo:
+            propios = [{**s, "semester_number": s["semester_number"] + ultimo} for s in propios]
+        return previos + propios
+
     @classmethod
     async def _previous_program(cls, session: AsyncSession, id_programa) -> Optional[Dict[str, str]]:
         """Programa previo del ciclo propedéutico (dos niveles como máximo)."""
@@ -361,7 +370,7 @@ class CurriculumTraceabilityService:
         semesters = cls._to_semesters(rows)
         if previous:
             previos = cls._to_semesters(await cls._load_subjects(session, uuid.UUID(previous["id"])), previous["nombre"])
-            semesters = previos + semesters
+            semesters = cls._chain_semesters(previos, semesters)
         return {
             "program_name": programa.nombre,
             "previous": previous,
