@@ -22,6 +22,18 @@ class SedeCreateRequest(BaseModel):
     es_sede_principal: bool = Field(False, description="Indica si es la sede rectoral principal")
 
 
+class SedeUpdateRequest(BaseModel):
+    nombre: Optional[str] = Field(None, min_length=2, max_length=150)
+    nombre_corto: Optional[str] = Field(None, max_length=50)
+    ciudad: Optional[str] = Field(None, max_length=100)
+    departamento: Optional[str] = Field(None, max_length=100)
+    direccion: Optional[str] = Field(None, max_length=255)
+    telefono: Optional[str] = Field(None, max_length=50)
+    correo: Optional[str] = Field(None, max_length=255)
+    es_sede_principal: Optional[bool] = None
+    estado: Optional[str] = Field(None, max_length=30)
+
+
 class SedeResponse(BaseModel):
     id: str
     id_institucion: str
@@ -48,6 +60,16 @@ class FacultadCreateRequest(BaseModel):
     telefono: Optional[str] = Field(None, max_length=50)
     oficina: Optional[str] = Field(None, max_length=100)
     color_distintivo: Optional[str] = Field(None, max_length=30, description="Color distintivo HEX o Tailwind (ej: '#00A86B')")
+
+
+class FacultadUpdateRequest(BaseModel):
+    codigo: Optional[str] = Field(None, min_length=1, max_length=50)
+    sigla: Optional[str] = Field(None, max_length=30)
+    nombre: Optional[str] = Field(None, min_length=2, max_length=255)
+    telefono: Optional[str] = Field(None, max_length=50)
+    oficina: Optional[str] = Field(None, max_length=100)
+    color_distintivo: Optional[str] = Field(None, max_length=30)
+    estado: Optional[str] = Field(None, max_length=30)
 
 
 class FacultadResponse(BaseModel):
@@ -83,8 +105,12 @@ class ProgramaCreateRequest(BaseModel):
 
 
 class ProgramaUpdateRequest(BaseModel):
+    id_facultad: Optional[str] = None
+    id_sede: Optional[str] = None
     nombre: Optional[str] = Field(None, min_length=2, max_length=255)
     codigo_interno: Optional[str] = Field(None, max_length=50)
+    codigo_snies: Optional[str] = Field(None, min_length=3, max_length=30)
+    nivel_formacion: Optional[str] = None
     duracion_semestres: Optional[int] = Field(None, ge=1, le=14)
     total_creditos: Optional[int] = Field(None, ge=10, le=350)
     modalidad: Optional[str] = None

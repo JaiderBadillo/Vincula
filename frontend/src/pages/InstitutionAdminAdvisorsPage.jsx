@@ -29,7 +29,7 @@ function sanitizeAdvisorsList(list) {
     const campusIds = getAdvisorCampusIds(a);
     return {
       ...a,
-      campusIds: campusIds.length > 0 ? campusIds : ['sede-bga-principal'],
+      campusIds,
     };
   });
 }
@@ -107,7 +107,7 @@ export default function InstitutionAdminAdvisorsPage() {
     email: '',
     phone: '',
     position: 'Asesor de Graduados y Empleabilidad',
-    campusIds: [campuses[0]?.id || 'sede-bga-principal'],
+    campusIds: campuses[0]?.id ? [campuses[0].id] : [],
     status: 'active',
     password: '',
   });
@@ -147,7 +147,7 @@ export default function InstitutionAdminAdvisorsPage() {
               email: item.correo_institucional,
               phone: item.telefono || '',
               position: item.cargo || 'Asesor de Enlace y Prácticas',
-              campusIds: backendCampusIds || (campuses.length > 0 ? campuses.map((c) => c.id) : ['sede-bga-principal']),
+              campusIds: backendCampusIds || (campuses.length > 0 ? campuses.map((c) => c.id) : []),
               status: item.estado === 'activo' ? 'active' : 'inactive',
               lastAccess: 'Hoy',
               avatar: null,
@@ -266,7 +266,7 @@ export default function InstitutionAdminAdvisorsPage() {
       email: '',
       phone: '',
       position: 'Asesor de Graduados y Empleabilidad',
-      campusIds: [campuses[0]?.id || 'sede-bga-principal'],
+      campusIds: campuses[0]?.id ? [campuses[0].id] : [],
       status: 'active',
       password: '',
     });
@@ -431,12 +431,12 @@ export default function InstitutionAdminAdvisorsPage() {
   }
 
   // Campus Handlers
-  function handleSaveCampus(formData) {
+  async function handleSaveCampus(formData) {
     if (editingCampus) {
-      updateCampus(editingCampus.id, formData);
+      await updateCampus(editingCampus.id, formData);
       notify(`Se actualizó la información de "${formData.name}".`);
     } else {
-      addCampus(formData);
+      await addCampus(formData);
       notify(`Se registró exitosamente la sede "${formData.name}".`);
     }
   }
@@ -453,10 +453,14 @@ export default function InstitutionAdminAdvisorsPage() {
     setDeletingCampus(campusItem);
   }
 
-  function handleConfirmDeleteCampus() {
+  async function handleConfirmDeleteCampus() {
     if (!deletingCampus) return;
-    deleteCampus(deletingCampus.id);
-    notify(`Se eliminó la sede "${deletingCampus.name}".`);
+    try {
+      await deleteCampus(deletingCampus.id);
+      notify(`Se eliminó la sede "${deletingCampus.name}".`);
+    } catch (err) {
+      notify(`No se eliminó "${deletingCampus.name}": ${err.message}`);
+    }
     setDeletingCampus(null);
   }
 

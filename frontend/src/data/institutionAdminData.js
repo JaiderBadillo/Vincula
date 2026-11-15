@@ -28,12 +28,6 @@ export const initialInstitutionProfile = {
   legalRepresentative: '',
 };
 
-export const institutionPrograms = [
-  { id: 'sistemas', name: 'Ingeniería de Sistemas' },
-  { id: 'electronica', name: 'Ingeniería Electrónica' },
-  { id: 'gestion', name: 'Tecnología en Gestión Empresarial' },
-  { id: 'contabilidad', name: 'Tecnología en Contabilidad Financiera' },
-  { id: 'topografia', name: 'Tecnología en Topografía e Infraestructura' },
-];
+export const institutionPrograms = [];
 
 export const initialAdvisors = [];

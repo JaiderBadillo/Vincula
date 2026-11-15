@@ -90,6 +90,44 @@ class InstitutionService {
     return await res.json();
   }
 
+  async updateSede(sedeId, payload, idInstitucion = null) {
+    const params = new URLSearchParams();
+    if (idInstitucion) params.append('id_institucion', idInstitucion);
+
+    const url = `${API_BASE_URL}/instituciones/sedes/${sedeId}${params.toString() ? `?${params.toString()}` : ''}`;
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => null);
+      const err = new Error(extractErrorMessage(errJson, 'Error al actualizar sede institucional.'));
+      err.status = res.status;
+      throw err;
+    }
+    return await res.json();
+  }
+
+  async deleteSede(sedeId, idInstitucion = null) {
+    const params = new URLSearchParams();
+    if (idInstitucion) params.append('id_institucion', idInstitucion);
+
+    const url = `${API_BASE_URL}/instituciones/sedes/${sedeId}${params.toString() ? `?${params.toString()}` : ''}`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => null);
+      const err = new Error(extractErrorMessage(errJson, 'No se pudo eliminar la sede institucional.'));
+      err.status = res.status;
+      throw err;
+    }
+  }
+
   // =========================================================================
   // 2. FACULTADES
   // =========================================================================
@@ -140,6 +178,44 @@ class InstitutionService {
       throw err;
     }
     return await res.json();
+  }
+
+  async updateFacultad(facultadId, payload, idInstitucion = null) {
+    const params = new URLSearchParams();
+    if (idInstitucion) params.append('id_institucion', idInstitucion);
+
+    const url = `${API_BASE_URL}/instituciones/facultades/${facultadId}${params.toString() ? `?${params.toString()}` : ''}`;
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => null);
+      const err = new Error(extractErrorMessage(errJson, 'Error al actualizar la facultad.'));
+      err.status = res.status;
+      throw err;
+    }
+    return await res.json();
+  }
+
+  async deleteFacultad(facultadId, idInstitucion = null) {
+    const params = new URLSearchParams();
+    if (idInstitucion) params.append('id_institucion', idInstitucion);
+
+    const url = `${API_BASE_URL}/instituciones/facultades/${facultadId}${params.toString() ? `?${params.toString()}` : ''}`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => null);
+      const err = new Error(extractErrorMessage(errJson, 'No se pudo eliminar la facultad.'));
+      err.status = res.status;
+      throw err;
+    }
   }
 
   // =========================================================================

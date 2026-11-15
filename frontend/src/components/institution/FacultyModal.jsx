@@ -22,8 +22,11 @@ export default function FacultyModal({ isOpen, onClose, faculty, onSave }) {
   });
 
   const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    setSubmitError('');
     if (faculty) {
       setForm({
         name: faculty.name || '',
@@ -52,8 +55,9 @@ export default function FacultyModal({ isOpen, onClose, faculty, onSave }) {
 
   if (!isOpen) return null;
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+    setSubmitError('');
     const newErrors = {};
 
     if (!form.name.trim()) newErrors.name = 'El nombre de la facultad es obligatorio';
@@ -74,8 +78,15 @@ export default function FacultyModal({ isOpen, onClose, faculty, onSave }) {
       description: form.description.trim(),
     };
 
-    onSave(payload);
-    onClose();
+    setIsSaving(true);
+    try {
+      await onSave(payload);
+      onClose();
+    } catch (err) {
+      setSubmitError(err?.message || 'No se pudo guardar la facultad en el servidor.');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   const inputClass =
@@ -120,6 +131,12 @@ export default function FacultyModal({ isOpen, onClose, faculty, onSave }) {
 
         {/* Modal Scrollable Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+          {submitError && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-900" role="alert">
+              <strong className="font-bold">No se pudo guardar: </strong>
+              <span>{submitError}</span>
+            </div>
+          )}
           {/* Nombre y Sigla */}
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="sm:col-span-2">

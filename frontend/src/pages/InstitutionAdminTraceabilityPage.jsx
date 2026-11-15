@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import InstitutionPortalLayout from '../components/institution/InstitutionPortalLayout.jsx';
 import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
 import PensumUploadModal from '../components/institution/PensumUploadModal.jsx';
 import TraceabilityCurriculumViews from '../components/institution/TraceabilityCurriculumViews.jsx';
 import TraceabilityOutcomes from '../components/institution/TraceabilityOutcomes.jsx';
 import { useInstitutionPrograms } from '../hooks/useInstitutionPrograms.js';
+import { useInstitutionFaculties } from '../hooks/useInstitutionFaculties.js';
 import { institutionPhotos } from '../data/institutionImages.js';
 import { aiService } from '../services/aiService.js';
 
@@ -35,7 +36,8 @@ function toEditablePensum(report) {
 
 export default function InstitutionAdminTraceabilityPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { programs: allPrograms } = useInstitutionPrograms();
+  const { programs: allPrograms, loading: programsLoading, error: programsError, refreshPrograms } = useInstitutionPrograms();
+  const { faculties: apiFaculties } = useInstitutionFaculties();
   // Solo programas registrados en el backend: los de demostración no tienen malla ni vacantes.
   const programs = useMemo(() => (allPrograms || []).filter((p) => p.source === 'api'), [allPrograms]);
 
@@ -47,7 +49,20 @@ export default function InstitutionAdminTraceabilityPage() {
   const [loadError, setLoadError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const faculties = useMemo(() => [...new Set(programs.map((p) => p.faculty).filter(Boolean))], [programs]);
+  const faculties = useMemo(() => {
+    const names = new Set([
+      ...(apiFaculties || []).filter((f) => f.source === 'api').map((f) => f.name).filter(Boolean),
+      ...programs.map((p) => p.faculty).filter(Boolean),
+    ]);
+    return Array.from(names).sort((a, b) => a.localeCompare(b, 'es'));
+  }, [apiFaculties, programs]);
+
+  useEffect(() => {
+    if (selectedFaculty !== 'all' && !programsLoading && !faculties.includes(selectedFaculty)) {
+      setSelectedFaculty('all');
+    }
+  }, [selectedFaculty, faculties, programsLoading]);
+
   const filteredPrograms = useMemo(
     () => (selectedFaculty === 'all' ? programs : programs.filter((p) => p.faculty === selectedFaculty)),
     [programs, selectedFaculty]
@@ -80,7 +95,10 @@ export default function InstitutionAdminTraceabilityPage() {
 
   useEffect(() => {
     if (selectedProgram?.id) loadReport(selectedProgram.id);
-    else setReport(null);
+    else {
+      setReport(null);
+      setOutcomes(null);
+    }
   }, [selectedProgram?.id, loadReport]);
 
   const editablePensum = useMemo(() => toEditablePensum(report), [report]);
@@ -128,40 +146,70 @@ export default function InstitutionAdminTraceabilityPage() {
         />
 
         {/* Selección de facultad y programa */}
-        <section data-tour="ies-trazabilidad-grafica" className="rounded-card border border-sand-line bg-white p-5 sm:p-6 shadow-card">
-          {programs.length === 0 ? (
+        <section data-tour="ies-trazabilidad-grafica" className="rounded-card border border-sand-line bg-white p-5 sm:p-6 shadow-card space-y-4">
+          {programsError ? (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900" role="alert">
+              <strong className="font-bold">No se pudieron consultar los programas: </strong>
+              <span>{programsError}</span>
+              <button type="button" onClick={refreshPrograms} className="ml-2 cursor-pointer font-bold underline">
+                Reintentar
+              </button>
+            </div>
+          ) : programsLoading && programs.length === 0 ? (
+            <p className="m-0 text-sm text-secondary" role="status">Cargando programas y facultades registradas...</p>
+          ) : programs.length === 0 ? (
             <p className="m-0 text-sm text-secondary">
-              No se encontraron programas registrados en el servidor. Si ya creaste programas, revisa que el backend esté en línea y recarga la página; los que se crean sin conexión quedan solo en este navegador.
+              No se encontraron programas registrados en el servidor.{' '}
+              <Link to="/institucion/admin/programas" className="font-bold text-terracotta-dark hover:underline">
+                Registra una carrera en Programas Académicos
+              </Link>
+              {' '}para iniciar su trazabilidad.
             </p>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label htmlFor="select-faculty" className="text-xs font-bold text-ink">Facultad o escuela</label>
-                <div className="relative">
-                  <select id="select-faculty" value={selectedFaculty} onChange={(e) => setSelectedFaculty(e.target.value)} className={selectClass}>
-                    <option value="all">Todas las facultades ({faculties.length})</option>
-                    {faculties.map((fac) => <option key={fac} value={fac}>{fac}</option>)}
-                  </select>
-                  <i className="bx bx-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-lg text-secondary" aria-hidden="true" />
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label htmlFor="select-faculty" className="text-xs font-bold text-ink">Facultad o escuela</label>
+                  <div className="relative">
+                    <select id="select-faculty" value={selectedFaculty} onChange={(e) => setSelectedFaculty(e.target.value)} className={selectClass}>
+                      <option value="all">Todas las facultades ({faculties.length})</option>
+                      {faculties.map((fac) => <option key={fac} value={fac}>{fac}</option>)}
+                    </select>
+                    <i className="bx bx-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-lg text-secondary" aria-hidden="true" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="select-program" className="text-xs font-bold text-ink">Programa académico</label>
+                  <div className="relative">
+                    <select
+                      id="select-program"
+                      value={selectedProgram?.id || ''}
+                      onChange={(e) => setSearchParams({ programa: e.target.value })}
+                      disabled={filteredPrograms.length === 0}
+                      className={selectClass}
+                    >
+                      {filteredPrograms.length === 0 ? (
+                        <option value="">Sin programas en esta facultad</option>
+                      ) : (
+                        filteredPrograms.map((prog) => (
+                          <option key={prog.id} value={prog.id}>{prog.name} ({prog.code || 'sin código'})</option>
+                        ))
+                      )}
+                    </select>
+                    <i className="bx bx-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-lg text-secondary" aria-hidden="true" />
+                  </div>
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <label htmlFor="select-program" className="text-xs font-bold text-ink">Programa académico</label>
-                <div className="relative">
-                  <select
-                    id="select-program"
-                    value={selectedProgram?.id || ''}
-                    onChange={(e) => setSearchParams({ programa: e.target.value })}
-                    className={selectClass}
-                  >
-                    {filteredPrograms.map((prog) => (
-                      <option key={prog.id} value={prog.id}>{prog.name} ({prog.code || 'sin código'})</option>
-                    ))}
-                  </select>
-                  <i className="bx bx-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-lg text-secondary" aria-hidden="true" />
-                </div>
-              </div>
-            </div>
+              {filteredPrograms.length === 0 && (
+                <p className="m-0 text-xs text-secondary">
+                  La facultad seleccionada aún no tiene programas asignados.{' '}
+                  <Link to="/institucion/admin/programas" className="font-bold text-terracotta-dark hover:underline">
+                    Ir a Programas y Facultades
+                  </Link>
+                  {' '}o elige otra facultad.
+                </p>
+              )}
+            </>
           )}
         </section>
 

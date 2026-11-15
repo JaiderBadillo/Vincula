@@ -16,8 +16,11 @@ export default function CampusModal({ isOpen, onClose, onSave, campus }) {
   });
 
   const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    setSubmitError('');
     if (campus) {
       setForm({
         name: campus.name || '',
@@ -59,8 +62,9 @@ export default function CampusModal({ isOpen, onClose, onSave, campus }) {
     return errs;
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+    setSubmitError('');
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -71,15 +75,22 @@ export default function CampusModal({ isOpen, onClose, onSave, campus }) {
       ...form,
       name: form.name.trim(),
       city: form.city.trim(),
-      department: form.department.trim(),
+      department: form.department.trim() || 'Santander',
       address: form.address.trim(),
       phone: form.phone.trim(),
       email: form.email.trim(),
       description: form.description.trim(),
     };
 
-    onSave(payload);
-    onClose();
+    setIsSaving(true);
+    try {
+      await onSave(payload);
+      onClose();
+    } catch (err) {
+      setSubmitError(err?.message || 'No se pudo guardar la sede en el servidor.');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   const inputClass =
@@ -121,6 +132,12 @@ export default function CampusModal({ isOpen, onClose, onSave, campus }) {
 
         {/* Body Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+          {submitError && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-900" role="alert">
+              <strong className="font-bold">No se pudo guardar: </strong>
+              <span>{submitError}</span>
+            </div>
+          )}
           {/* Nombre de la Sede */}
           <div>
             <label htmlFor="campus-name" className="block text-xs font-bold text-ink mb-1">

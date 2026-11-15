@@ -4,8 +4,10 @@ import InstitutionPortalLayout from '../components/institution/InstitutionPortal
 import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
 import ProgramModal from '../components/institution/ProgramModal.jsx';
 import FacultyModal from '../components/institution/FacultyModal.jsx';
+import CampusModal from '../components/institution/CampusModal.jsx';
 import { useInstitutionPrograms } from '../hooks/useInstitutionPrograms.js';
 import { useInstitutionFaculties } from '../hooks/useInstitutionFaculties.js';
+import { useInstitutionCampuses } from '../hooks/useInstitutionCampuses.js';
 import { institutionPhotos } from '../data/institutionImages.js';
 
 const FACULTY_STATUS_TABS = [
@@ -15,8 +17,9 @@ const FACULTY_STATUS_TABS = [
 ];
 
 export default function InstitutionAdminProgramsPage() {
-  const { programs, addProgram, updateProgram, deleteProgram } = useInstitutionPrograms();
-  const { faculties, addFaculty, updateFaculty, deleteFaculty } = useInstitutionFaculties();
+  const { programs, error: programsError, refreshPrograms, addProgram, updateProgram, deleteProgram } = useInstitutionPrograms();
+  const { faculties, error: facultiesError, refreshFaculties, addFaculty, updateFaculty, deleteFaculty } = useInstitutionFaculties();
+  const { campuses, error: campusesError, refreshCampuses, addCampus } = useInstitutionCampuses();
 
   // Vista principal: 'carreras' | 'facultades'
   const [activeView, setActiveView] = useState('carreras');
@@ -36,10 +39,13 @@ export default function InstitutionAdminProgramsPage() {
   const [editingProgram, setEditingProgram] = useState(null);
   const [deletingProgram, setDeletingProgram] = useState(null);
 
-  // Modals state (Facultades)
+  // Modals state (Facultades y Sedes)
   const [isFacultyModalOpen, setIsFacultyModalOpen] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState(null);
   const [deletingFaculty, setDeletingFaculty] = useState(null);
+  const [isCampusModalOpen, setIsCampusModalOpen] = useState(false);
+  const [suggestedFacultyId, setSuggestedFacultyId] = useState('');
+  const [suggestedCampusId, setSuggestedCampusId] = useState('');
 
   // Toast
   const [toastMessage, setToastMessage] = useState(null);
@@ -49,13 +55,13 @@ export default function InstitutionAdminProgramsPage() {
     setTimeout(() => setToastMessage(null), 3500);
   }
 
-  // Lista de nombres de facultades disponibles
+  // Lista de nombres de facultades disponibles (mismo catálogo real que el modal y trazabilidad)
   const facultyNames = useMemo(() => {
-    if (faculties.length > 0) {
-      return faculties.map((f) => f.name).sort();
-    }
-    const set = new Set(programs.map((p) => p.faculty));
-    return Array.from(set).sort();
+    const names = new Set([
+      ...faculties.map((f) => f.name).filter(Boolean),
+      ...programs.map((p) => p.faculty).filter(Boolean),
+    ]);
+    return Array.from(names).sort((a, b) => a.localeCompare(b, 'es'));
   }, [faculties, programs]);
 
   // Niveles únicos
@@ -141,18 +147,15 @@ export default function InstitutionAdminProgramsPage() {
   // Program Handlers
   async function handleCreateOrUpdateProgram(formData) {
     if (editingProgram) {
-      updateProgram(editingProgram.id, formData);
+      await updateProgram(editingProgram.id, formData);
       notify(`Programa "${formData.name}" actualizado exitosamente.`);
     } else {
-      const newId = 'prog-' + Date.now();
-      try {
-        await addProgram({ ...formData, id: newId });
-        notify(`Programa "${formData.name}" registrado en la oferta institucional.`);
-      } catch (err) {
-        notify(`No se registró "${formData.name}": ${err.message}`);
-      }
+      await addProgram(formData);
+      notify(`Programa "${formData.name}" registrado en la oferta institucional.`);
     }
     setEditingProgram(null);
+    setSuggestedFacultyId('');
+    setSuggestedCampusId('');
   }
 
   async function handleConfirmDeleteProgram() {
@@ -167,52 +170,57 @@ export default function InstitutionAdminProgramsPage() {
   }
 
   // Faculty Handlers
-  function handleCreateOrUpdateFaculty(formData) {
+  async function handleCreateOrUpdateFaculty(formData) {
     if (editingFaculty) {
       const oldName = editingFaculty.name;
-      updateFaculty(editingFaculty.id, formData);
-
-      // Si cambió el nombre oficial de la facultad, sincronizar programas adscritos
+      await updateFaculty(editingFaculty.id, formData);
       if (oldName !== formData.name) {
-        programs.forEach((prog) => {
-          if (prog.faculty === oldName) {
-            updateProgram(prog.id, { faculty: formData.name });
-          }
-        });
+        refreshPrograms();
       }
       notify(`Facultad "${formData.name}" actualizada con éxito.`);
     } else {
-      const newId = 'fac-' + Date.now();
-      addFaculty({
-        ...formData,
-        id: newId,
-      });
+      const created = await addFaculty(formData);
+      if (created?.id) setSuggestedFacultyId(created.id);
       notify(`Facultad "${formData.name}" creada exitosamente.`);
     }
     setEditingFaculty(null);
   }
 
-  function handleConfirmDeleteFaculty() {
+  async function handleSaveCampusFromProgramModal(formData) {
+    const created = await addCampus(formData);
+    if (created?.id) setSuggestedCampusId(created.id);
+    notify(`Sede "${formData.name}" creada exitosamente.`);
+  }
+
+  async function handleConfirmDeleteFaculty() {
     if (!deletingFaculty) return;
-    const assigned = programs.filter((p) => p.faculty === deletingFaculty.name);
+    const assigned = programs.filter((p) => p.facultyId === deletingFaculty.id || p.faculty === deletingFaculty.name);
     if (assigned.length > 0) {
       notify(`No se puede eliminar la facultad porque tiene ${assigned.length} carreras asociadas.`);
       return;
     }
-    deleteFaculty(deletingFaculty.id);
-    notify(`Facultad "${deletingFaculty.name}" eliminada.`);
-    setDeletingFaculty(null);
+    try {
+      await deleteFaculty(deletingFaculty.id);
+      notify(`Facultad "${deletingFaculty.name}" eliminada.`);
+      setDeletingFaculty(null);
+    } catch (err) {
+      notify(`No se pudo eliminar "${deletingFaculty.name}": ${err.message}`);
+    }
   }
 
-  function handleToggleFacultyStatus(fac) {
+  async function handleToggleFacultyStatus(fac) {
     const nextStatus = fac.status === 'active' ? 'inactive' : 'active';
-    updateFaculty(fac.id, { status: nextStatus });
-    notify(`Facultad "${fac.name}" marcada como ${nextStatus === 'active' ? 'Activa' : 'Inactiva'}.`);
+    try {
+      await updateFaculty(fac.id, { status: nextStatus });
+      notify(`Facultad "${fac.name}" marcada como ${nextStatus === 'active' ? 'Activa' : 'Inactiva'}.`);
+    } catch (err) {
+      notify(`No se pudo actualizar "${fac.name}": ${err.message}`);
+    }
   }
 
   const deletingFacultyAssignedPrograms = useMemo(() => {
     if (!deletingFaculty) return [];
-    return programs.filter((p) => p.faculty === deletingFaculty.name);
+    return programs.filter((p) => p.facultyId === deletingFaculty.id || p.faculty === deletingFaculty.name);
   }, [deletingFaculty, programs]);
 
   return (
@@ -309,6 +317,23 @@ export default function InstitutionAdminProgramsPage() {
             </div>
           }
         />
+
+        {(programsError || facultiesError || campusesError) && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-900 flex flex-wrap items-center justify-between gap-2" role="alert">
+            <span>{programsError || facultiesError || campusesError}</span>
+            <button
+              type="button"
+              onClick={() => {
+                refreshPrograms();
+                refreshFaculties();
+                refreshCampuses();
+              }}
+              className="font-bold underline cursor-pointer"
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
 
         {/* ══════════════════════════════════════════════════════════════
             VISTA 1: CARRERAS Y PROGRAMAS (LISTA RECTANGULAR HACIA ABAJO)
@@ -454,19 +479,19 @@ export default function InstitutionAdminProgramsPage() {
                         <p className="m-0 mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-ink/80">
                           <span className="flex items-center gap-1.5">
                             <i className="bx bx-time-five text-sm text-terracotta" />
-                            {prog.duration}
+                            {prog.duration || (prog.semesters ? `${prog.semesters} semestres` : 'Por definir')}
                           </span>
                           <span className="flex items-center gap-1.5">
                             <i className="bx bx-book-open text-sm text-terracotta" />
                             {prog.credits} créditos
                           </span>
-                          {prog.employmentRate && (
+                          {prog.employmentRate > 0 && (
                             <span className="flex items-center gap-1.5">
                               <i className="bx bx-trending-up text-sm text-emerald-600" />
                               <strong className="font-bold text-emerald-800">{prog.employmentRate}%</strong> empleabilidad
                             </span>
                           )}
-                          {prog.graduatesCount && (
+                          {prog.graduatesCount > 0 && (
                             <span className="flex items-center gap-1.5">
                               <i className="bx bxs-graduation text-sm text-terracotta" />
                               {prog.graduatesCount} egresados
@@ -584,7 +609,7 @@ export default function InstitutionAdminProgramsPage() {
             ) : (
               <ul className="m-0 flex list-none flex-col gap-3 p-0">
                 {filteredFaculties.map((fac) => {
-                  const assignedPrograms = programs.filter((p) => p.faculty === fac.name);
+                  const assignedPrograms = programs.filter((p) => p.facultyId === fac.id || p.faculty === fac.name);
                   const isOperational = fac.status === 'active';
 
                   return (
@@ -689,12 +714,21 @@ export default function InstitutionAdminProgramsPage() {
           isOpen={isModalOpen}
           program={editingProgram}
           availableFaculties={faculties}
+          availableCampuses={campuses}
+          suggestedFacultyId={suggestedFacultyId}
+          suggestedCampusId={suggestedCampusId}
           onOpenNewFaculty={() => {
+            setEditingFaculty(null);
             setIsFacultyModalOpen(true);
+          }}
+          onOpenNewCampus={() => {
+            setIsCampusModalOpen(true);
           }}
           onClose={() => {
             setIsModalOpen(false);
             setEditingProgram(null);
+            setSuggestedFacultyId('');
+            setSuggestedCampusId('');
           }}
           onSave={handleCreateOrUpdateProgram}
         />
@@ -708,6 +742,14 @@ export default function InstitutionAdminProgramsPage() {
             setEditingFaculty(null);
           }}
           onSave={handleCreateOrUpdateFaculty}
+        />
+
+        {/* ─── Modal Crear Sede rápido desde ProgramModal ─── */}
+        <CampusModal
+          isOpen={isCampusModalOpen}
+          campus={null}
+          onClose={() => setIsCampusModalOpen(false)}
+          onSave={handleSaveCampusFromProgramModal}
         />
 
         {/* ─── Modal Confirmar Eliminación de Programa ─── */}

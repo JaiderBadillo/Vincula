@@ -20,8 +20,10 @@ from app.core.database import get_db
 from app.core.dependencies import require_role, require_approved_institution
 from app.modules.institutions.schemas import (
     SedeCreateRequest,
+    SedeUpdateRequest,
     SedeResponse,
     FacultadCreateRequest,
+    FacultadUpdateRequest,
     FacultadResponse,
     ProgramaCreateRequest,
     ProgramaUpdateRequest,
@@ -175,6 +177,31 @@ async def create_sede(
     return await InstitutionService.create_sede(db, ies_id, payload)
 
 
+@router.put("/sedes/{sede_id}", response_model=SedeResponse)
+async def update_sede(
+    sede_id: str,
+    payload: SedeUpdateRequest,
+    id_institucion: Optional[str] = Query(None, description="UUID de la IES (Superadmin)"),
+    current_user: Dict[str, Any] = Depends(require_role(["admin_ies", "ies_admin", "superadmin_vincula", "superadmin"])),
+    db: AsyncSession = Depends(get_db)
+):
+    """Actualiza una sede institucional existente."""
+    ies_id = _resolve_ies_id(current_user, id_institucion)
+    return await InstitutionService.update_sede(db, ies_id, sede_id, payload)
+
+
+@router.delete("/sedes/{sede_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_sede(
+    sede_id: str,
+    id_institucion: Optional[str] = Query(None, description="UUID de la IES (Superadmin)"),
+    current_user: Dict[str, Any] = Depends(require_role(["admin_ies", "ies_admin", "superadmin_vincula", "superadmin"])),
+    db: AsyncSession = Depends(get_db)
+):
+    """Elimina una sede institucional si no tiene programas académicos vinculados."""
+    ies_id = _resolve_ies_id(current_user, id_institucion)
+    await InstitutionService.delete_sede(db, ies_id, sede_id)
+
+
 # =============================================================================
 # 2. FACULTADES
 # =============================================================================
@@ -200,6 +227,31 @@ async def create_facultad(
     """Registra una nueva facultad con código interno único dentro de la institución."""
     ies_id = _resolve_ies_id(current_user, id_institucion)
     return await InstitutionService.create_facultad(db, ies_id, payload)
+
+
+@router.put("/facultades/{facultad_id}", response_model=FacultadResponse)
+async def update_facultad(
+    facultad_id: str,
+    payload: FacultadUpdateRequest,
+    id_institucion: Optional[str] = Query(None, description="UUID de la IES (Superadmin)"),
+    current_user: Dict[str, Any] = Depends(require_role(["admin_ies", "ies_admin", "superadmin_vincula", "superadmin"])),
+    db: AsyncSession = Depends(get_db)
+):
+    """Actualiza una facultad existente dentro de la institución."""
+    ies_id = _resolve_ies_id(current_user, id_institucion)
+    return await InstitutionService.update_facultad(db, ies_id, facultad_id, payload)
+
+
+@router.delete("/facultades/{facultad_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_facultad(
+    facultad_id: str,
+    id_institucion: Optional[str] = Query(None, description="UUID de la IES (Superadmin)"),
+    current_user: Dict[str, Any] = Depends(require_role(["admin_ies", "ies_admin", "superadmin_vincula", "superadmin"])),
+    db: AsyncSession = Depends(get_db)
+):
+    """Elimina una facultad si no tiene programas académicos vinculados."""
+    ies_id = _resolve_ies_id(current_user, id_institucion)
+    await InstitutionService.delete_facultad(db, ies_id, facultad_id)
 
 
 # =============================================================================

@@ -40,8 +40,10 @@ from app.modules.institutions.schemas import (
     GraduatePendingValidationItem,
     SubsanarDocumentoIESRequest,
     SedeCreateRequest,
+    SedeUpdateRequest,
     SedeResponse,
     FacultadCreateRequest,
+    FacultadUpdateRequest,
     FacultadResponse,
     ProgramaCreateRequest,
     ProgramaUpdateRequest,
@@ -129,6 +131,83 @@ class InstitutionService:
             creado_en=nueva_sede.creado_en.isoformat() if nueva_sede.creado_en else ""
         )
 
+    @classmethod
+    def _to_sede_response(cls, sede: SedeInstitucion) -> SedeResponse:
+        return SedeResponse(
+            id=str(sede.id),
+            id_institucion=str(sede.id_institucion),
+            nombre=sede.nombre,
+            nombre_corto=sede.nombre_corto,
+            ciudad=sede.ciudad,
+            departamento=sede.departamento,
+            direccion=sede.direccion,
+            telefono=sede.telefono,
+            correo=sede.correo,
+            es_sede_principal=sede.es_sede_principal,
+            estado=sede.estado,
+            creado_en=sede.creado_en.isoformat() if sede.creado_en else "",
+        )
+
+    @classmethod
+    async def update_sede(cls, session: AsyncSession, ies_id: str, sede_id: str, payload: SedeUpdateRequest) -> SedeResponse:
+        try:
+            val_ies, val_sede = uuid.UUID(str(ies_id)), uuid.UUID(str(sede_id))
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"codigo": "ID_SEDE_INVALIDO", "mensaje": "ID de sede inválido."})
+
+        sede = (await session.execute(
+            select(SedeInstitucion).where(SedeInstitucion.id == val_sede, SedeInstitucion.id_institucion == val_ies)
+        )).scalar_one_or_none()
+        if not sede:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"codigo": "SEDE_NO_ENCONTRADA", "mensaje": "La sede no existe en tu institución."})
+
+        if payload.es_sede_principal:
+            await session.execute(
+                update(SedeInstitucion)
+                .where(SedeInstitucion.id_institucion == val_ies, SedeInstitucion.id != val_sede)
+                .values(es_sede_principal=False)
+            )
+
+        for field_name in ("nombre", "nombre_corto", "ciudad", "departamento", "direccion", "telefono", "correo", "estado"):
+            val = getattr(payload, field_name)
+            if val is not None:
+                setattr(sede, field_name, val.strip() if isinstance(val, str) else val)
+        if payload.es_sede_principal is not None:
+            sede.es_sede_principal = payload.es_sede_principal
+
+        await session.commit()
+        await session.refresh(sede)
+        return cls._to_sede_response(sede)
+
+    @classmethod
+    async def delete_sede(cls, session: AsyncSession, ies_id: str, sede_id: str) -> None:
+        try:
+            val_ies, val_sede = uuid.UUID(str(ies_id)), uuid.UUID(str(sede_id))
+        except ValueError:
+            val_ies = val_sede = None
+        sede = (await session.execute(
+            select(SedeInstitucion).where(SedeInstitucion.id == val_sede, SedeInstitucion.id_institucion == val_ies)
+        )).scalar_one_or_none() if val_sede else None
+        if not sede:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"codigo": "SEDE_NO_ENCONTRADA", "mensaje": "La sede no existe en tu institución."})
+
+        programas = (await session.execute(
+            select(func.count()).select_from(ProgramaAcademico).where(
+                ProgramaAcademico.id_sede == val_sede,
+                ProgramaAcademico.id_institucion == val_ies,
+            )
+        )).scalar() or 0
+        if programas:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "codigo": "SEDE_CON_PROGRAMAS",
+                    "mensaje": f"No se puede eliminar la sede porque tiene {programas} programa(s) académico(s) asociados.",
+                }
+            )
+        await session.delete(sede)
+        await session.commit()
+
     # =========================================================================
     # 2. FACULTADES
     # =========================================================================
@@ -202,6 +281,85 @@ class InstitutionService:
             estado=nueva_fac.estado,
             creado_en=nueva_fac.creado_en.isoformat() if nueva_fac.creado_en else ""
         )
+
+    @classmethod
+    def _to_facultad_response(cls, fac: Facultad) -> FacultadResponse:
+        return FacultadResponse(
+            id=str(fac.id),
+            id_institucion=str(fac.id_institucion),
+            codigo=fac.codigo,
+            sigla=fac.sigla,
+            nombre=fac.nombre,
+            telefono=fac.telefono,
+            oficina=fac.oficina,
+            color_distintivo=fac.color_distintivo,
+            estado=fac.estado,
+            creado_en=fac.creado_en.isoformat() if fac.creado_en else "",
+        )
+
+    @classmethod
+    async def update_facultad(cls, session: AsyncSession, ies_id: str, facultad_id: str, payload: FacultadUpdateRequest) -> FacultadResponse:
+        try:
+            val_ies, val_fac = uuid.UUID(str(ies_id)), uuid.UUID(str(facultad_id))
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"codigo": "ID_FACULTAD_INVALIDO", "mensaje": "ID de facultad inválido."})
+
+        fac = (await session.execute(
+            select(Facultad).where(Facultad.id == val_fac, Facultad.id_institucion == val_ies)
+        )).scalar_one_or_none()
+        if not fac:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"codigo": "FACULTAD_NO_ENCONTRADA", "mensaje": "La facultad no existe en tu institución."})
+
+        if payload.codigo is not None:
+            cod_clean = payload.codigo.strip().upper()
+            if cod_clean != fac.codigo:
+                dup = (await session.execute(
+                    select(Facultad).where(Facultad.id_institucion == val_ies, Facultad.codigo == cod_clean, Facultad.id != val_fac)
+                )).scalar_one_or_none()
+                if dup:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail={"codigo": "CODIGO_FACULTAD_DUPLICADO", "mensaje": f"Ya existe otra facultad con el código '{cod_clean}'."},
+                    )
+            fac.codigo = cod_clean
+
+        for field_name in ("sigla", "nombre", "telefono", "oficina", "color_distintivo", "estado"):
+            val = getattr(payload, field_name)
+            if val is not None:
+                setattr(fac, field_name, val.strip() if isinstance(val, str) else val)
+
+        await session.commit()
+        await session.refresh(fac)
+        return cls._to_facultad_response(fac)
+
+    @classmethod
+    async def delete_facultad(cls, session: AsyncSession, ies_id: str, facultad_id: str) -> None:
+        try:
+            val_ies, val_fac = uuid.UUID(str(ies_id)), uuid.UUID(str(facultad_id))
+        except ValueError:
+            val_ies = val_fac = None
+        fac = (await session.execute(
+            select(Facultad).where(Facultad.id == val_fac, Facultad.id_institucion == val_ies)
+        )).scalar_one_or_none() if val_fac else None
+        if not fac:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"codigo": "FACULTAD_NO_ENCONTRADA", "mensaje": "La facultad no existe en tu institución."})
+
+        programas = (await session.execute(
+            select(func.count()).select_from(ProgramaAcademico).where(
+                ProgramaAcademico.id_facultad == val_fac,
+                ProgramaAcademico.id_institucion == val_ies,
+            )
+        )).scalar() or 0
+        if programas:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "codigo": "FACULTAD_CON_PROGRAMAS",
+                    "mensaje": f"No se puede eliminar la facultad porque tiene {programas} carrera(s) asociada(s).",
+                }
+            )
+        await session.delete(fac)
+        await session.commit()
 
     # =========================================================================
     # 3. PROGRAMAS ACADÉMICOS (SNIES)
@@ -475,10 +633,50 @@ class InstitutionService:
                 detail={"codigo": "PROGRAMA_NO_ENCONTRADO", "mensaje": f"Programa con ID {program_id} no encontrado en tu institución."}
             )
 
+        if payload.id_facultad is not None:
+            try:
+                val_fac = uuid.UUID(str(payload.id_facultad))
+            except ValueError:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"codigo": "ID_FACULTAD_INVALIDO", "mensaje": "El ID de la facultad no es válido."})
+            fac = (await session.execute(
+                select(Facultad).where(Facultad.id == val_fac, Facultad.id_institucion == val_ies)
+            )).scalar_one_or_none()
+            if not fac:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"codigo": "FACULTAD_NO_ENCONTRADA", "mensaje": "La facultad seleccionada no existe en tu institución."})
+            prog.id_facultad = val_fac
+
+        if payload.id_sede is not None:
+            try:
+                val_sede = uuid.UUID(str(payload.id_sede))
+            except ValueError:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"codigo": "ID_SEDE_INVALIDO", "mensaje": "El ID de la sede no es válido."})
+            sede = (await session.execute(
+                select(SedeInstitucion).where(SedeInstitucion.id == val_sede, SedeInstitucion.id_institucion == val_ies)
+            )).scalar_one_or_none()
+            if not sede:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"codigo": "SEDE_NO_ENCONTRADA", "mensaje": "La sede seleccionada no existe en tu institución."})
+            prog.id_sede = val_sede
+
+        if payload.codigo_snies is not None:
+            snies_clean = payload.codigo_snies.strip()
+            if snies_clean != prog.codigo_snies:
+                dup = (await session.execute(
+                    select(ProgramaAcademico).where(
+                        ProgramaAcademico.id_institucion == val_ies,
+                        ProgramaAcademico.codigo_snies == snies_clean,
+                        ProgramaAcademico.id != val_prog,
+                    )
+                )).scalar_one_or_none()
+                if dup:
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"codigo": "CODIGO_SNIES_DUPLICADO", "mensaje": f"El código SNIES '{snies_clean}' ya está asignado al programa '{dup.nombre}'."})
+            prog.codigo_snies = snies_clean
+
         if payload.nombre is not None:
             prog.nombre = payload.nombre.strip()
         if payload.codigo_interno is not None:
             prog.codigo_interno = payload.codigo_interno.strip()
+        if payload.nivel_formacion is not None:
+            prog.nivel_formacion = payload.nivel_formacion.strip()
         if payload.duracion_semestres is not None:
             prog.duracion_semestres = payload.duracion_semestres
         if payload.total_creditos is not None:
@@ -495,29 +693,8 @@ class InstitutionService:
             prog.estado = payload.estado.strip()
 
         await session.commit()
-        await session.refresh(prog)
-
-        return ProgramaItemResponse(
-            id=str(prog.id),
-            id_institucion=str(prog.id_institucion),
-            id_facultad=str(prog.id_facultad),
-            nombre_facultad=prog.facultad.nombre if prog.facultad else None,
-            id_sede=str(prog.id_sede),
-            nombre_sede=prog.sede.nombre if prog.sede else None,
-            codigo_interno=prog.codigo_interno,
-            codigo_snies=prog.codigo_snies,
-            nombre=prog.nombre,
-            nivel_formacion=prog.nivel_formacion,
-            modalidad=prog.modalidad,
-            duracion_semestres=prog.duracion_semestres,
-            total_creditos=prog.total_creditos,
-            nombre_director=prog.nombre_director,
-            correo_director=prog.correo_director,
-            estado_acreditacion=prog.estado_acreditacion,
-            estado=prog.estado,
-            total_asesores=len(prog.asesores_asignados) if prog.asesores_asignados else 0,
-            creado_en=prog.creado_en.isoformat() if prog.creado_en else ""
-        )
+        session.expire(prog)
+        return await cls.get_programa_by_id(session, ies_id, program_id)
 
     @classmethod
     async def delete_programa(cls, session: AsyncSession, ies_id: str, program_id: str) -> None:

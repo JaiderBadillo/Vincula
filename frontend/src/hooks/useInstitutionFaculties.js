@@ -1,25 +1,41 @@
 import { useCallback, useEffect, useState } from 'react';
-import { initialInstitutionFaculties } from '../data/institutionFacultiesData.js';
+import { authService } from '../services/authService.js';
 import { institutionService } from '../services/institutionService.js';
 
 const STORAGE_KEY = 'vincula.institution.faculties.v1';
 const SYNC_EVENT = 'vincula:institution-faculties-updated';
 
+function mapApiFaculty(f) {
+  return {
+    id: f.id,
+    code: f.codigo,
+    shortName: f.sigla || f.codigo,
+    acronym: f.sigla || f.codigo,
+    name: f.nombre,
+    phone: f.telefono || '',
+    office: f.oficina || '',
+    color: f.color_distintivo || '#00A86B',
+    status: f.estado === 'activa' ? 'active' : 'inactive',
+    source: 'api',
+  };
+}
+
 function readFaculties() {
-  if (typeof window === 'undefined') return initialInstitutionFaculties;
+  if (typeof window === 'undefined' || !authService.getToken()) return [];
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return initialInstitutionFaculties;
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.map(({ dean, deanEmail, ...rest }) => rest) : initialInstitutionFaculties;
+    return Array.isArray(parsed) ? parsed.filter((f) => f && f.source === 'api') : [];
   } catch {
-    return initialInstitutionFaculties;
+    return [];
   }
 }
 
 function writeFaculties(faculties) {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(faculties));
+    const apiOnly = Array.isArray(faculties) ? faculties.filter((f) => f && f.source === 'api') : [];
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(apiOnly));
   } catch {
     // safe fallback
   }
@@ -32,36 +48,37 @@ function writeFaculties(faculties) {
 
 export function useInstitutionFaculties() {
   const [faculties, setFaculties] = useState(readFaculties);
+  const [loading, setLoading] = useState(Boolean(authService.getToken()));
+  const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
-  // Sincronización con Backend REST API (Fase 3 Paso 1)
   useEffect(() => {
     let isMounted = true;
     async function fetchFacultiesFromBackend() {
+      if (!authService.getToken()) {
+        if (isMounted) {
+          setFaculties([]);
+          setLoading(false);
+          setError('');
+        }
+        return;
+      }
+
+      setLoading(true);
       try {
         const list = await institutionService.getFacultades();
-        if (isMounted && Array.isArray(list) && list.length > 0) {
-          const apiFaculties = list.map((f) => ({
-            id: f.id,
-            code: f.codigo,
-            shortName: f.sigla || f.codigo,
-            name: f.nombre,
-            phone: f.telefono || '',
-            office: f.oficina || '',
-            color: f.color_distintivo || '#00A86B',
-            status: f.estado === 'activa' ? 'active' : 'inactive',
-            source: 'api',
-          }));
-
-          setFaculties((prev) => {
-            const apiIds = new Set(apiFaculties.map((a) => a.id));
-            const localOnly = prev.filter((l) => !apiIds.has(l.id) && l.source !== 'api');
-            const merged = [...apiFaculties, ...localOnly];
-            writeFaculties(merged);
-            return merged;
-          });
+        if (isMounted && Array.isArray(list)) {
+          const apiFaculties = list.map(mapApiFaculty);
+          writeFaculties(apiFaculties);
+          setFaculties(apiFaculties);
+          setError('');
         }
       } catch (err) {
-        console.warn('[useInstitutionFaculties] Usando facultades locales:', err.message);
+        if (isMounted) {
+          setError(err.message || 'No se pudieron consultar las facultades.');
+        }
+      } finally {
+        if (isMounted) setLoading(false);
       }
     }
 
@@ -69,46 +86,63 @@ export function useInstitutionFaculties() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [reloadKey]);
 
   useEffect(() => {
     function handleSync(event) {
-      setFaculties(event.detail ?? readFaculties());
+      setFaculties(Array.isArray(event.detail) ? event.detail : readFaculties());
     }
     window.addEventListener(SYNC_EVENT, handleSync);
     return () => window.removeEventListener(SYNC_EVENT, handleSync);
   }, []);
 
+  const refreshFaculties = useCallback(() => {
+    setReloadKey((k) => k + 1);
+  }, []);
+
   const addFaculty = useCallback(async (newFaculty) => {
-    try {
-      await institutionService.createFacultad({
-        codigo: newFaculty.code,
-        sigla: newFaculty.shortName || newFaculty.code,
-        nombre: newFaculty.name,
-        telefono: newFaculty.phone || undefined,
-        oficina: newFaculty.office || undefined,
-        color_distintivo: newFaculty.color || '#00A86B',
-      });
-    } catch (err) {
-      console.warn('[useInstitutionFaculties] Guardando facultad local tras error API:', err.message);
-    }
-
+    const created = await institutionService.createFacultad({
+      codigo: newFaculty.code,
+      sigla: newFaculty.acronym || newFaculty.shortName || newFaculty.code,
+      nombre: newFaculty.name,
+      telefono: newFaculty.phone || undefined,
+      oficina: newFaculty.office || undefined,
+      color_distintivo: newFaculty.color || '#00A86B',
+    });
+    const mapped = mapApiFaculty(created);
     setFaculties((prev) => {
-      const next = [newFaculty, ...prev];
+      const next = [...prev.filter((f) => f.id !== mapped.id), mapped].sort((a, b) =>
+        a.name.localeCompare(b.name, 'es')
+      );
       writeFaculties(next);
       return next;
     });
+    setReloadKey((k) => k + 1);
+    return mapped;
   }, []);
 
-  const updateFaculty = useCallback((id, patch) => {
+  const updateFaculty = useCallback(async (id, patch) => {
+    const updated = await institutionService.updateFacultad(id, {
+      codigo: patch.code,
+      sigla: patch.acronym || patch.shortName,
+      nombre: patch.name,
+      telefono: patch.phone,
+      oficina: patch.office,
+      color_distintivo: patch.color,
+      estado: patch.status === 'active' ? 'activa' : patch.status === 'inactive' ? 'inactiva' : undefined,
+    });
+    const mapped = mapApiFaculty(updated);
     setFaculties((prev) => {
-      const next = prev.map((f) => (f.id === id ? { ...f, ...patch } : f));
+      const next = prev.map((f) => (f.id === id ? mapped : f));
       writeFaculties(next);
       return next;
     });
+    setReloadKey((k) => k + 1);
+    return mapped;
   }, []);
 
-  const deleteFaculty = useCallback((id) => {
+  const deleteFaculty = useCallback(async (id) => {
+    await institutionService.deleteFacultad(id);
     setFaculties((prev) => {
       const next = prev.filter((f) => f.id !== id);
       writeFaculties(next);
@@ -117,12 +151,15 @@ export function useInstitutionFaculties() {
   }, []);
 
   const resetFaculties = useCallback(() => {
-    writeFaculties(initialInstitutionFaculties);
-    setFaculties(initialInstitutionFaculties);
+    writeFaculties([]);
+    setFaculties([]);
   }, []);
 
   return {
     faculties,
+    loading,
+    error,
+    refreshFaculties,
     addFaculty,
     updateFaculty,
     deleteFaculty,

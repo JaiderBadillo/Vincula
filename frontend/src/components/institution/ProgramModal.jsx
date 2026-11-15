@@ -1,18 +1,24 @@
 import { useEffect, useState } from 'react';
 
-const FACULTIES = [
-  'Facultad de Ciencias Naturales e Ingenierías',
-  'Facultad de Ciencias Socioeconómicas y Empresariales',
-];
-
 const LEVELS = [
   'Profesional Universitario',
   'Tecnológico',
   'Técnico Laboral',
+  'Especialización',
+  'Maestría',
   'Posgrado',
 ];
 
-const MODALITIES = ['Presencial', 'Virtual / Distancia', 'Híbrida'];
+const MODALITIES = ['Presencial', 'Virtual', 'Híbrida', 'A Distancia'];
+
+function parseSemesters(program) {
+  if (!program) return 10;
+  if (Number.isFinite(Number(program.semesters)) && Number(program.semesters) > 0) {
+    return Number(program.semesters);
+  }
+  const match = String(program.duration || '').match(/\d+/);
+  return match ? Number(match[0]) : 10;
+}
 
 export default function ProgramModal({
   isOpen,
@@ -20,94 +26,168 @@ export default function ProgramModal({
   program,
   onSave,
   availableFaculties = [],
+  availableCampuses = [],
+  suggestedFacultyId = '',
+  suggestedCampusId = '',
   onOpenNewFaculty,
+  onOpenNewCampus,
 }) {
   const isEditing = Boolean(program);
-  const facultyOptions = availableFaculties.length > 0
-    ? availableFaculties.map((f) => (typeof f === 'string' ? f : f.name))
-    : FACULTIES;
 
   const [form, setForm] = useState({
     name: '',
     code: '',
-    faculty: facultyOptions[0] || FACULTIES[0],
+    facultyId: '',
+    campusId: '',
     level: LEVELS[0],
     modality: MODALITIES[0],
-    duration: '10 semestres',
+    semesters: 10,
     credits: 160,
-    campus: 'Bucaramanga · Ciudadela Real de Minas',
     accreditation: 'Registro Calificado Vigente',
-    description: '',
-    competenciesStr: '',
+    director: '',
+    directorEmail: '',
   });
 
   const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    if (!isOpen) return;
+    setSubmitError('');
+    setErrors({});
+
     if (program) {
+      const matchedFaculty =
+        availableFaculties.find((f) => f.id === program.facultyId) ||
+        availableFaculties.find((f) => f.name === program.faculty) ||
+        null;
+      const matchedCampus =
+        availableCampuses.find((c) => c.id === program.campusId) ||
+        availableCampuses.find((c) => c.name === program.campus || c.shortName === program.campus) ||
+        null;
+
       setForm({
         name: program.name || '',
-        code: program.code || '',
-        faculty: program.faculty || facultyOptions[0] || FACULTIES[0],
-        level: program.level || LEVELS[0],
-        modality: program.modality || MODALITIES[0],
-        duration: program.duration || '10 semestres',
-        credits: program.credits || 160,
-        campus: program.campus || 'Bucaramanga · Ciudadela Real de Minas',
+        code: program.sniesCode || program.code || '',
+        facultyId: matchedFaculty?.id || program.facultyId || '',
+        campusId: matchedCampus?.id || program.campusId || '',
+        level: LEVELS.includes(program.level) ? program.level : LEVELS[0],
+        modality: MODALITIES.includes(program.modality) ? program.modality : MODALITIES[0],
+        semesters: parseSemesters(program),
+        credits: Number(program.credits) || 160,
         accreditation: program.accreditation || 'Registro Calificado Vigente',
-        description: program.description || '',
-        competenciesStr: (program.competencies || []).join(', '),
+        director: program.director || '',
+        directorEmail: program.directorEmail || '',
       });
     } else {
+      const defaultFaculty = availableFaculties.find((f) => f.status !== 'inactive') || availableFaculties[0];
+      const defaultCampus = availableCampuses.find((c) => c.isMain) || availableCampuses[0];
+
       setForm({
         name: '',
         code: '',
-        faculty: FACULTIES[0],
+        facultyId: defaultFaculty?.id || '',
+        campusId: defaultCampus?.id || '',
         level: LEVELS[0],
         modality: MODALITIES[0],
-        duration: '10 semestres',
+        semesters: 10,
         credits: 160,
-        campus: 'Bucaramanga · Ciudadela Real de Minas',
         accreditation: 'Registro Calificado Vigente',
-        description: '',
-        competenciesStr: '',
+        director: '',
+        directorEmail: '',
       });
     }
-    setErrors({});
   }, [program, isOpen]);
+
+  // Si se crea una facultad o sede nueva mientras este modal está abierto, seleccionarla automáticamente
+  useEffect(() => {
+    if (!isOpen) return;
+    if (suggestedFacultyId && availableFaculties.some((f) => f.id === suggestedFacultyId)) {
+      setForm((prev) => ({ ...prev, facultyId: suggestedFacultyId }));
+      setErrors((prev) => ({ ...prev, facultyId: null }));
+    } else if (!form.facultyId && availableFaculties.length > 0) {
+      const first = availableFaculties.find((f) => f.status !== 'inactive') || availableFaculties[0];
+      setForm((prev) => ({ ...prev, facultyId: first.id }));
+    }
+  }, [isOpen, suggestedFacultyId, availableFaculties]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (suggestedCampusId && availableCampuses.some((c) => c.id === suggestedCampusId)) {
+      setForm((prev) => ({ ...prev, campusId: suggestedCampusId }));
+      setErrors((prev) => ({ ...prev, campusId: null }));
+    } else if (!form.campusId && availableCampuses.length > 0) {
+      const first = availableCampuses.find((c) => c.isMain) || availableCampuses[0];
+      setForm((prev) => ({ ...prev, campusId: first.id }));
+    }
+  }, [isOpen, suggestedCampusId, availableCampuses]);
 
   if (!isOpen) return null;
 
   function validate() {
     const errs = {};
-    if (!form.name.trim()) errs.name = 'El nombre del programa es obligatorio.';
-    if (!form.code.trim()) errs.code = 'El código SNIES es obligatorio.';
+    if (!form.name.trim() || form.name.trim().length < 2) {
+      errs.name = 'El nombre oficial del programa es obligatorio (mínimo 2 caracteres).';
+    }
+    if (!form.code.trim() || form.code.trim().length < 3) {
+      errs.code = 'El código SNIES es obligatorio (mínimo 3 caracteres).';
+    }
+    if (!form.facultyId) {
+      errs.facultyId = 'Debes seleccionar o crear una facultad antes de registrar la carrera.';
+    }
+    if (!form.campusId) {
+      errs.campusId = 'Debes seleccionar o crear una sede antes de registrar la carrera.';
+    }
+    const sem = Number(form.semesters);
+    if (!Number.isFinite(sem) || sem < 1 || sem > 14) {
+      errs.semesters = 'La duración debe estar entre 1 y 14 semestres.';
+    }
+    const cred = Number(form.credits);
+    if (!Number.isFinite(cred) || cred < 10 || cred > 350) {
+      errs.credits = 'Los créditos deben estar entre 10 y 350.';
+    }
     return errs;
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+    setSubmitError('');
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
     }
 
-    const competencies = form.competenciesStr
-      ? form.competenciesStr.split(',').map((c) => c.trim()).filter(Boolean)
-      : [];
+    const selectedFacultyObj = availableFaculties.find((f) => f.id === form.facultyId);
+    const selectedCampusObj = availableCampuses.find((c) => c.id === form.campusId);
 
     const payload = {
-      ...form,
       name: form.name.trim(),
       code: form.code.trim(),
-      description: form.description.trim(),
-      credits: Number(form.credits) || 120,
-      competencies,
+      sniesCode: form.code.trim(),
+      facultyId: form.facultyId,
+      faculty: selectedFacultyObj?.name || '',
+      campusId: form.campusId,
+      campus: selectedCampusObj?.name || '',
+      level: form.level,
+      modality: form.modality,
+      semesters: Number(form.semesters),
+      credits: Number(form.credits),
+      accreditation: form.accreditation.trim() || 'Registro Calificado Vigente',
+      director: form.director.trim(),
+      directorEmail: form.directorEmail.trim(),
     };
 
-    onSave(payload);
-    onClose();
+    setIsSaving(true);
+    try {
+      await onSave(payload);
+      onClose();
+    } catch (err) {
+      setSubmitError(err?.message || 'No se pudo guardar el programa en el servidor.');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   const inputClass =
@@ -139,7 +219,8 @@ export default function ProgramModal({
           <button
             type="button"
             onClick={onClose}
-            className="grid size-8 place-items-center rounded-lg text-secondary hover:bg-cream hover:text-ink transition-colors cursor-pointer"
+            disabled={isSaving}
+            className="grid size-8 place-items-center rounded-lg text-secondary hover:bg-cream hover:text-ink transition-colors cursor-pointer disabled:opacity-50"
             aria-label="Cerrar modal"
           >
             <i className="bx bx-x text-xl" />
@@ -148,6 +229,13 @@ export default function ProgramModal({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4.5 max-h-[calc(85vh-8rem)] overflow-y-auto">
+          {submitError && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-900" role="alert">
+              <strong className="font-bold">No se pudo guardar: </strong>
+              <span>{submitError}</span>
+            </div>
+          )}
+
           {/* Nombre y Código SNIES */}
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="sm:col-span-2">
@@ -162,7 +250,7 @@ export default function ProgramModal({
                   setForm({ ...form, name: e.target.value });
                   if (errors.name) setErrors((prev) => ({ ...prev, name: null }));
                 }}
-                placeholder="Ej: Ingeniería de Sistemas"
+                placeholder="Ej: Tecnología en Producción Industrial"
                 className={`w-full rounded-xl border px-3.5 py-2.5 text-xs text-ink placeholder:text-secondary focus:outline-none transition-colors ${
                   errors.name ? 'border-rose-500 bg-rose-50/20' : 'border-sand-line bg-cream/50 focus:border-terracotta focus:bg-white'
                 }`}
@@ -182,7 +270,7 @@ export default function ProgramModal({
                   setForm({ ...form, code: e.target.value });
                   if (errors.code) setErrors((prev) => ({ ...prev, code: null }));
                 }}
-                placeholder="Ej: SNIES 10452"
+                placeholder="Ej: 10452"
                 className={`w-full rounded-xl border px-3.5 py-2.5 text-xs text-ink placeholder:text-secondary focus:outline-none transition-colors ${
                   errors.code ? 'border-rose-500 bg-rose-50/20' : 'border-sand-line bg-cream/50 focus:border-terracotta focus:bg-white'
                 }`}
@@ -196,7 +284,7 @@ export default function ProgramModal({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label htmlFor="prog-faculty" className="block text-xs font-bold text-ink">
-                  Facultad:
+                  Facultad <span className="text-rose-500">*</span>:
                 </label>
                 {onOpenNewFaculty && (
                   <button
@@ -210,16 +298,29 @@ export default function ProgramModal({
               </div>
               <select
                 id="prog-faculty"
-                value={form.faculty}
-                onChange={(e) => setForm({ ...form, faculty: e.target.value })}
-                className={inputClass}
+                value={form.facultyId}
+                onChange={(e) => {
+                  setForm({ ...form, facultyId: e.target.value });
+                  if (errors.facultyId) setErrors((prev) => ({ ...prev, facultyId: null }));
+                }}
+                className={`${inputClass} ${errors.facultyId ? 'border-rose-500 bg-rose-50/20' : ''}`}
               >
-                {facultyOptions.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
-                ))}
+                {availableFaculties.length === 0 ? (
+                  <option value="">Sin facultades registradas en la institución</option>
+                ) : (
+                  <>
+                    <option value="" disabled>
+                      Selecciona una facultad...
+                    </option>
+                    {availableFaculties.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
+              {errors.facultyId && <p className="m-0 mt-1 text-[0.7rem] text-rose-600 font-medium">{errors.facultyId}</p>}
             </div>
 
             <div>
@@ -241,7 +342,7 @@ export default function ProgramModal({
             </div>
           </div>
 
-          {/* Modalidad, Duración y Créditos */}
+          {/* Modalidad, Semestres y Créditos */}
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <label htmlFor="prog-modality" className="block text-xs font-bold text-ink mb-1">
@@ -262,17 +363,22 @@ export default function ProgramModal({
             </div>
 
             <div>
-              <label htmlFor="prog-duration" className="block text-xs font-bold text-ink mb-1">
-                Duración Estimada:
+              <label htmlFor="prog-semesters" className="block text-xs font-bold text-ink mb-1">
+                Duración (Semestres):
               </label>
               <input
-                id="prog-duration"
-                type="text"
-                value={form.duration}
-                onChange={(e) => setForm({ ...form, duration: e.target.value })}
-                placeholder="Ej: 10 semestres"
+                id="prog-semesters"
+                type="number"
+                min={1}
+                max={14}
+                value={form.semesters}
+                onChange={(e) => {
+                  setForm({ ...form, semesters: e.target.value });
+                  if (errors.semesters) setErrors((prev) => ({ ...prev, semesters: null }));
+                }}
                 className={inputClass}
               />
+              {errors.semesters && <p className="m-0 mt-1 text-[0.7rem] text-rose-600 font-medium">{errors.semesters}</p>}
             </div>
 
             <div>
@@ -282,28 +388,61 @@ export default function ProgramModal({
               <input
                 id="prog-credits"
                 type="number"
+                min={10}
+                max={350}
                 value={form.credits}
-                onChange={(e) => setForm({ ...form, credits: e.target.value })}
-                placeholder="160"
+                onChange={(e) => {
+                  setForm({ ...form, credits: e.target.value });
+                  if (errors.credits) setErrors((prev) => ({ ...prev, credits: null }));
+                }}
                 className={inputClass}
               />
+              {errors.credits && <p className="m-0 mt-1 text-[0.7rem] text-rose-600 font-medium">{errors.credits}</p>}
             </div>
           </div>
 
           {/* Sede y Acreditación */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="prog-campus" className="block text-xs font-bold text-ink mb-1">
-                Sede / Campus de Impartición:
-              </label>
-              <input
+              <div className="flex items-center justify-between mb-1">
+                <label htmlFor="prog-campus" className="block text-xs font-bold text-ink">
+                  Sede / Campus de Impartición <span className="text-rose-500">*</span>:
+                </label>
+                {onOpenNewCampus && (
+                  <button
+                    type="button"
+                    onClick={onOpenNewCampus}
+                    className="text-[0.68rem] font-bold text-terracotta hover:underline cursor-pointer"
+                  >
+                    + Nueva Sede
+                  </button>
+                )}
+              </div>
+              <select
                 id="prog-campus"
-                type="text"
-                value={form.campus}
-                onChange={(e) => setForm({ ...form, campus: e.target.value })}
-                placeholder="Ej: Bucaramanga · Real de Minas"
-                className={inputClass}
-              />
+                value={form.campusId}
+                onChange={(e) => {
+                  setForm({ ...form, campusId: e.target.value });
+                  if (errors.campusId) setErrors((prev) => ({ ...prev, campusId: null }));
+                }}
+                className={`${inputClass} ${errors.campusId ? 'border-rose-500 bg-rose-50/20' : ''}`}
+              >
+                {availableCampuses.length === 0 ? (
+                  <option value="">Sin sedes registradas en la institución</option>
+                ) : (
+                  <>
+                    <option value="" disabled>
+                      Selecciona una sede...
+                    </option>
+                    {availableCampuses.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}{c.city ? ` (${c.city})` : ''}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+              {errors.campusId && <p className="m-0 mt-1 text-[0.7rem] text-rose-600 font-medium">{errors.campusId}</p>}
             </div>
 
             <div>
@@ -321,34 +460,35 @@ export default function ProgramModal({
             </div>
           </div>
 
-          {/* Descripción / Perfil de Egreso */}
-          <div>
-            <label htmlFor="prog-description" className="block text-xs font-bold text-ink mb-1">
-              Perfil Profesional y Descripción del Programa:
-            </label>
-            <textarea
-              id="prog-description"
-              rows={3}
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Describe el perfil de egreso, campos de acción profesional y enfoque del plan de estudios..."
-              className="w-full rounded-xl border border-sand-line bg-cream/50 p-3 text-xs text-ink placeholder:text-secondary focus:border-terracotta focus:bg-white focus:outline-none transition-colors"
-            />
-          </div>
+          {/* Director de Programa (Opcional) */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="prog-director" className="block text-xs font-bold text-ink mb-1">
+                Director o Coordinador del Programa:
+              </label>
+              <input
+                id="prog-director"
+                type="text"
+                value={form.director}
+                onChange={(e) => setForm({ ...form, director: e.target.value })}
+                placeholder="Opcional"
+                className={inputClass}
+              />
+            </div>
 
-          {/* Competencias Clave */}
-          <div>
-            <label htmlFor="prog-competencies" className="block text-xs font-bold text-ink mb-1">
-              Competencias Curriculares Clave (Separadas por coma):
-            </label>
-            <input
-              id="prog-competencies"
-              type="text"
-              value={form.competenciesStr}
-              onChange={(e) => setForm({ ...form, competenciesStr: e.target.value })}
-              placeholder="Ej: Desarrollo Full Stack, Cloud Computing, Metodologías Ágiles"
-              className={inputClass}
-            />
+            <div>
+              <label htmlFor="prog-director-email" className="block text-xs font-bold text-ink mb-1">
+                Correo del Coordinador:
+              </label>
+              <input
+                id="prog-director-email"
+                type="email"
+                value={form.directorEmail}
+                onChange={(e) => setForm({ ...form, directorEmail: e.target.value })}
+                placeholder="Opcional"
+                className={inputClass}
+              />
+            </div>
           </div>
 
           {/* Footer Buttons */}
@@ -356,16 +496,18 @@ export default function ProgramModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-sand-line bg-cream px-4 py-2.5 text-xs font-bold text-secondary hover:text-ink cursor-pointer transition-colors"
+              disabled={isSaving}
+              className="rounded-xl border border-sand-line bg-cream px-4 py-2.5 text-xs font-bold text-secondary hover:text-ink cursor-pointer transition-colors disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-terracotta hover:bg-terracotta-dark px-5 py-2.5 text-xs font-bold text-white shadow-xs cursor-pointer transition-colors flex items-center gap-1.5"
+              disabled={isSaving}
+              className="rounded-xl bg-terracotta hover:bg-terracotta-dark px-5 py-2.5 text-xs font-bold text-white shadow-xs cursor-pointer transition-colors flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <i className="bx bx-save text-base" />
-              <span>{isEditing ? 'Guardar Cambios' : 'Registrar Programa'}</span>
+              <span>{isSaving ? 'Guardando...' : isEditing ? 'Guardar Cambios' : 'Registrar Programa'}</span>
             </button>
           </div>
         </form>
