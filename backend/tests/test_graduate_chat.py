@@ -121,7 +121,7 @@ class ProviderTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, "Mejora tus logros.")
 
     async def test_provider_failures_do_not_leak_details(self):
-        for status, expected in [(429, 429), (401, 502), (500, 502)]:
+        for status, expected in [(429, 429), (401, 503), (403, 503), (404, 503), (400, 502), (500, 502)]:
             with self.assertRaises(chat.HTTPException) as error:
                 await self.reply_with(lambda request, status=status: httpx.Response(status, text="SECRET PROVIDER ERROR"))
             self.assertEqual(error.exception.status_code, expected)

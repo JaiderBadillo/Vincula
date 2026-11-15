@@ -1,6 +1,8 @@
 """Asistente de empleabilidad exclusivo para egresados, sin persistir conversaciones."""
 
 from io import BytesIO
+import logging
+import re
 from typing import Literal
 
 import httpx
@@ -12,6 +14,7 @@ from starlette.concurrency import run_in_threadpool
 from app.core.config import settings
 from app.core.dependencies import require_role
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", dependencies=[Depends(require_role(["egresado"]))])
 MAX_PDF_BYTES = 5 * 1024 * 1024
 MAX_CV_TEXT = 24000
@@ -130,8 +133,21 @@ async def generate_reply(payload: ChatRequest) -> str:
                     "generationConfig": {"temperature": 0.4, "maxOutputTokens": 2048},
                 },
             )
+        if response.status_code >= 400:
+            # Solo el estado y la categoría del proveedor: nunca registrar claves,
+            # preguntas, CV ni la respuesta completa de Google.
+            try:
+                provider_code = response.json().get("error", {}).get("status", "")
+            except (ValueError, TypeError, AttributeError):
+                provider_code = ""
+            safe_code = provider_code if isinstance(provider_code, str) and re.fullmatch(r"[A-Z_]{1,40}", provider_code) else "UNKNOWN"
+            logger.warning("Gemini rechazó la consulta: http_status=%s code=%s", response.status_code, safe_code)
         if response.status_code == 429:
             raise HTTPException(429, "El asistente alcanzó su límite de consultas. Intenta nuevamente más tarde.")
+        if response.status_code in (401, 403):
+            raise HTTPException(503, "El asistente necesita revisar su clave de acceso. Contacta al administrador de Víncula.")
+        if response.status_code == 404:
+            raise HTTPException(503, "El modelo del asistente no está disponible para esta cuenta. Contacta al administrador de Víncula.")
         response.raise_for_status()
         result = response.json()
         candidates = result.get("candidates") or []
@@ -147,8 +163,9 @@ async def generate_reply(payload: ChatRequest) -> str:
         return reply[:6000]
     except httpx.TimeoutException:
         raise HTTPException(504, "El asistente tardó demasiado en responder. Intenta nuevamente.") from None
-    except (httpx.HTTPError, ValueError, TypeError, AttributeError, KeyError):
+    except (httpx.HTTPError, ValueError, TypeError, AttributeError, KeyError) as exc:
         # No devolver errores del proveedor: podrían incluir información de configuración.
+        logger.warning("Error de conexión o formato al consultar Gemini: tipo=%s", type(exc).__name__)
         raise HTTPException(502, "No se pudo conectar con el asistente. Intenta nuevamente más tarde.") from None
 
 
