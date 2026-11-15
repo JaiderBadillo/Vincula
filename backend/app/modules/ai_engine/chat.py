@@ -160,6 +160,7 @@ async def generate_reply(payload: ChatRequest) -> str:
                     "generationConfig": {"temperature": 0.4, "maxOutputTokens": 2048},
                 },
             )
+        provider_hint = "unknown"
         if response.status_code >= 400:
             # Solo el estado y la categoría del proveedor: nunca registrar claves,
             # preguntas, CV ni la respuesta completa de Google.
@@ -170,9 +171,12 @@ async def generate_reply(payload: ChatRequest) -> str:
                 provider_error = {}
                 provider_code = ""
             safe_code = provider_code if isinstance(provider_code, str) and re.fullmatch(r"[A-Z_]{1,40}", provider_code) else "UNKNOWN"
-            logger.warning("Gemini rechazó la consulta: http_status=%s code=%s hint=%s", response.status_code, safe_code, _safe_provider_error_hint(provider_error))
+            provider_hint = _safe_provider_error_hint(provider_error)
+            logger.warning("Gemini rechazó la consulta: http_status=%s code=%s hint=%s", response.status_code, safe_code, provider_hint)
         if response.status_code == 429:
             raise HTTPException(429, "El asistente alcanzó su límite de consultas. Intenta nuevamente más tarde.")
+        if response.status_code == 400 and "api_key" in provider_hint.split(","):
+            raise HTTPException(503, "La clave de Gemini configurada para el asistente fue rechazada. Contacta al administrador de Víncula.")
         if response.status_code in (401, 403):
             raise HTTPException(503, "El asistente necesita revisar su clave de acceso. Contacta al administrador de Víncula.")
         if response.status_code == 404:

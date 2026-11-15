@@ -132,6 +132,15 @@ class ProviderTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(error.exception.status_code, expected)
             self.assertNotIn("SECRET", error.exception.detail)
 
+    async def test_rejected_api_key_reports_configuration_error_without_leaking_key(self):
+        with self.assertRaises(chat.HTTPException) as error:
+            await self.reply_with(lambda request: httpx.Response(400, json={
+                "error": {"status": "INVALID_ARGUMENT", "message": "API key not valid. SECRET PROVIDER ERROR"},
+            }))
+        self.assertEqual(error.exception.status_code, 503)
+        self.assertIn("clave de Gemini", error.exception.detail)
+        self.assertNotIn("SECRET", error.exception.detail)
+
     async def test_empty_blocked_and_timeout_responses(self):
         for data in [{}, {"candidates": []}, {"candidates": [{"finishReason": "SAFETY"}]}]:
             with self.assertRaises(chat.HTTPException) as error:
