@@ -28,6 +28,16 @@
 .graduate-chat__message { max-width: 95%; padding: 12px 14px; border-radius: 15px; font-size: 13px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
 .graduate-chat__message--user { align-self: flex-end; background: #eaf2dc; border-bottom-right-radius: 4px; }
 .graduate-chat__message--assistant { align-self: flex-start; border: 1px solid #e2e9e3; background: #fff; border-bottom-left-radius: 4px; }
+.graduate-chat__message--assistant .graduate-chat__text { white-space: normal; }
+.graduate-chat__text p { margin: 0 0 9px; }
+.graduate-chat__text p:last-child, .graduate-chat__text ul:last-child, .graduate-chat__text ol:last-child { margin-bottom: 0; }
+.graduate-chat__text ul, .graduate-chat__text ol { margin: 0 0 10px; padding-left: 20px; }
+.graduate-chat__text ul { list-style: disc; }
+.graduate-chat__text ol { list-style: decimal; }
+.graduate-chat__text li + li { margin-top: 6px; }
+.graduate-chat__text strong { font-weight: 750; color: #173e30; }
+.graduate-chat__text li strong:first-child { text-transform: uppercase; }
+.graduate-chat__text h4 { margin: 10px 0 6px; font-size: 13px; font-weight: 800; text-transform: uppercase; color: #173e30; }
 .graduate-chat__speaker { display: block; margin-bottom: 5px; color: #586b5f; font-size: 10px; font-weight: 700; }
 .graduate-chat__status { display: flex; align-items: center; gap: 8px; margin: 16px 0 0; color: #647261; font-size: 12px; }
 .graduate-chat__pulse { width: 7px; height: 7px; border-radius: 50%; background: #719c4d; animation: graduate-chat-pulse 1s infinite alternate; }

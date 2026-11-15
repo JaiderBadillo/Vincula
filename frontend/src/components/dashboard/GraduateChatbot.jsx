@@ -25,6 +25,56 @@ function ChatIcon({ name }) {
   return <svg className="graduate-chat__glyph" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>;
 }
 
+function formatInline(text) {
+  return text.split(/(\*\*[^*\n]+\*\*|__[^_\n]+__)/g).map((part, index) =>
+    /^(\*\*|__).+\1$/.test(part)
+      ? <strong key={index}>{part.slice(2, -2)}</strong>
+      : part
+  );
+}
+
+function AssistantMessage({ content }) {
+  const blocks = [];
+  let paragraph = [];
+  let list = [];
+  let listType = '';
+  const flushParagraph = () => {
+    if (paragraph.length) blocks.push(<p key={blocks.length}>{formatInline(paragraph.join(' '))}</p>);
+    paragraph = [];
+  };
+  const flushList = () => {
+    if (!list.length) return;
+    const items = list.map((line, index) => <li key={index}>{formatInline(line)}</li>);
+    blocks.push(listType === 'ol' ? <ol key={blocks.length}>{items}</ol> : <ul key={blocks.length}>{items}</ul>);
+    list = [];
+    listType = '';
+  };
+
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) { flushParagraph(); flushList(); continue; }
+    const heading = line.match(/^#{1,3}\s+(.+)$/);
+    const bullet = line.match(/^[-*]\s+(.+)$/);
+    const numbered = line.match(/^\d+[.)]\s+(.+)$/);
+    if (heading) {
+      flushParagraph(); flushList();
+      blocks.push(<h4 key={blocks.length}>{formatInline(heading[1])}</h4>);
+    } else if (bullet || numbered) {
+      flushParagraph();
+      const nextType = bullet ? 'ul' : 'ol';
+      if (listType && listType !== nextType) flushList();
+      listType = nextType;
+      list.push((bullet || numbered)[1]);
+    } else {
+      flushList();
+      paragraph.push(line);
+    }
+  }
+  flushParagraph();
+  flushList();
+  return <div className="graduate-chat__text">{blocks}</div>;
+}
+
 const SUGGESTIONS = [
   { icon: 'bx-file', title: 'Revisar mi hoja de vida', text: 'Quiero evaluar mi hoja de vida. ¿Cómo podemos empezar?' },
   { icon: 'bx-conversation', title: 'Practicar una entrevista', text: 'Ayúdame a practicar una entrevista laboral. Hazme una pregunta a la vez.' },
@@ -190,7 +240,7 @@ function ChatPanel() {
               {messages.map((item, index) => (
                 <div className={`graduate-chat__message graduate-chat__message--${item.role}`} key={index}>
                   <span className="graduate-chat__speaker">{item.role === 'user' ? 'Tú' : 'Asistente Víncula'}</span>
-                  <div>{item.content}</div>
+                  {item.role === 'assistant' ? <AssistantMessage content={item.content} /> : <div>{item.content}</div>}
                 </div>
               ))}
             </div>
