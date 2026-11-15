@@ -141,6 +141,20 @@ KNOWLEDGE_FAMILIES = {
         "tools": ["PLC", "Arduino", "ESP32", "MATLAB", "Proteus", "LabVIEW", "IoT"],
         "equivalence_group": "electronics_automation",
     },
+    "industrial_production": {
+        "name": "Producción Industrial y Mejora Continua",
+        "canonical_skills": [
+            "Gestión de la Producción",
+            "Estudio de Métodos y Tiempos",
+            "Lean Manufacturing",
+            "Control de Calidad",
+            "Mantenimiento Industrial",
+            "Distribución de Planta",
+            "Investigación de Operaciones",
+        ],
+        "tools": ["Excel", "Minitab", "FlexSim", "ISO 9001", "AutoCAD", "MS Project"],
+        "equivalence_group": "industrial_operations",
+    },
     "cad_civil": {
         "name": "Diseño CAD, Topografía y Modelado Estructural",
         "canonical_skills": ["Topografía", "Dibujo Técnico", "Sistemas de Información Geográfica (SIG)", "Cálculo Estructural"],
@@ -165,13 +179,19 @@ SUBJECT_KEYWORD_RULES = [
     (["internet de las cosas", "iot", "sistemas embebidos", "sistemas digitales"], "industrial_electronics"),
     
     # Contaduría y Finanzas
-    (["contabilidad", "contable", "costos", "presupuestos", "tributaria", "impuestos", "nomina", "seguridad social", "auditoria", "revisoria fiscal", "estados financieros", "niif", "ifrs", "finanzas", "financiero", "analisis financiero", "conciliaciones"], "accounting_erp"),
+    (["contabilidad", "contable", "costos", "costeo", "presupuestos", "presupuestacion", "matematica financiera", "tributaria", "impuestos", "nomina", "seguridad social", "auditoria", "revisoria fiscal", "estados financieros", "niif", "ifrs", "finanzas", "financiero", "analisis financiero", "conciliaciones"], "accounting_erp"),
 
     # Administración de Empresas y Gestión del Talento
-    (["administracion", "gestion empresarial", "talento humano", "recursos humanos", "gestion humana", "planeacion estrategica", "gestion estrategica", "procesos administrativos", "organizacion", "legislacion laboral", "derecho comercial", "emprendimiento", "cultura organizacional", "modelos de negocio", "canvas", "calidad", "gestion por procesos"], "business_admin"),
+    (["administracion", "gerencia", "gestion empresarial", "talento humano", "recursos humanos", "gestion humana", "planeacion estrategica", "gestion estrategica", "procesos administrativos", "organizacion", "legislacion laboral", "derecho comercial", "emprendimiento", "cultura organizacional", "modelos de negocio", "canvas", "calidad", "gestion por procesos"], "business_admin"),
 
     # Logística y Operaciones
-    (["logistica", "cadena de suministro", "supply chain", "inventarios", "almacenamiento", "almacenes", "distribucion fisica", "compras", "comercio exterior", "comercio internacional", "aduanas", "incoterms", "operaciones", "produccion"], "logistics_supply"),
+    (["logistica", "cadena de suministro", "cadena de abastecimiento", "abastecimiento", "supply chain", "inventarios", "almacenamiento", "almacenes", "distribucion fisica", "compras", "comercio exterior", "comercio internacional", "aduanas", "incoterms", "operaciones", "produccion"], "logistics_supply"),
+
+    # Producción industrial y mejora continua
+    (["produccion", "procesos industriales", "proceso industrial", "manufactura", "lean", "mejora continua",
+      "kaizen", "six sigma", "metodos y tiempos", "estudio del trabajo", "analisis de procesos", "mantenimiento industrial",
+      "distribucion de planta", "diseño de planta", "simulacion de procesos", "investigacion de operaciones",
+      "programacion lineal", "ergonomia", "higiene industrial", "metrologia"], "industrial_production"),
 
     # Gestión de Proyectos
     (["proyectos", "formulacion de proyectos", "evaluacion de proyectos", "administracion de proyectos", "pmi", "scrum", "agiles"], "project_management"),
@@ -180,7 +200,7 @@ SUBJECT_KEYWORD_RULES = [
     (["marketing", "mercadeo", "investigacion de mercados", "publicidad", "ventas", "comercial", "comportamiento del consumidor", "e-commerce", "comercio electronico", "redes sociales", "crm", "fidelizacion", "canales de distribucion"], "digital_marketing"),
 
     # Ambiental y SST
-    (["ambiental", "recursos ambientales", "recursos naturales", "impacto ambiental", "residuos", "higiene y seguridad", "seguridad y salud en el trabajo", "sst", "hseq", "ecologia", "desarrollo sostenible", "sostenibilidad"], "environmental_hseq"),
+    (["ambiental", "recursos ambientales", "recursos naturales", "impacto ambiental", "residuos", "higiene y seguridad", "seguridad y salud en el trabajo", "sst", "hseq", "sistema integrado de gestion", "sistemas integrados de gestion", "ecologia", "desarrollo sostenible", "sostenibilidad"], "environmental_hseq"),
     
     # Electrónica / Automatización
     (["circuitos", "electronica analoga", "electronica digital", "microcontroladores"], "industrial_electronics"),
@@ -188,7 +208,7 @@ SUBJECT_KEYWORD_RULES = [
     
     # Topografía / Civil
     (["topografia", "fotogrametria", "geomática", "sig", "sistemas de informacion geografica"], "cad_civil"),
-    (["dibujo asistido", "cad", "autocad", "modelado bim", "estructuras"], "cad_civil"),
+    (["dibujo asistido", "dibujo tecnico", "dibujo industrial", "cad", "autocad", "modelado bim", "estructuras"], "cad_civil"),
 ]
 
 

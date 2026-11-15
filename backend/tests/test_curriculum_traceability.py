@@ -77,6 +77,13 @@ class PertinenceAlgorithmTests(unittest.TestCase):
         self.assertNotIn("cad_civil", families_for_text("Mercadeo"))
         self.assertEqual(families_for_text("Redes Sociales"), ["digital_marketing"])
         self.assertIn("sql_relational", families_for_text("Bases de Datos II"))
+        # Carreras industriales: "Programación Lineal" es investigación de operaciones, no software
+        self.assertEqual(families_for_text("Programacion Lineal"), ["industrial_production"])
+        self.assertIn("industrial_production", families_for_text("Control de Produccion"))
+        self.assertIn("industrial_production", families_for_text("Mantenimiento Industrial"))
+        self.assertIn("logistics_supply", families_for_text("Gestion de la Cadena de Abastecimiento"))
+        self.assertIn("accounting_erp", families_for_text("Costeo y Presupuestacion"))
+        self.assertIn("environmental_hseq", families_for_text("Sistema Integrado de Gestion"))
 
 
 class ProgramAccessTests(unittest.IsolatedAsyncioTestCase):
