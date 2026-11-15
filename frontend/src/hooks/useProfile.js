@@ -12,6 +12,18 @@ function accountId() {
   return user?.id || user?.id_usuario || null;
 }
 
+// Google puede devolver un avatar con la inicial de su cuenta aunque el egresado
+// no haya subido una foto a Vincula. Usar las iniciales de su nombre en ese caso.
+function isGoogleAccountAvatar(value) {
+  if (typeof value !== 'string') return false;
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    return host === 'googleusercontent.com' || host.endsWith('.googleusercontent.com');
+  } catch {
+    return false;
+  }
+}
+
 function fromServer(data) {
   return {
     fullName: data.nombre_completo || '', headline: data.titular_profesional || '',
@@ -20,7 +32,8 @@ function fromServer(data) {
     graduationYear: data.ano_graduacion || '',
     openToWork: Boolean(data.disponible_para_trabajar),
     openToWorkVisibility: data.visibilidad_disponibilidad || 'recruiters',
-    photo: data.url_avatar || null, cover: data.url_portada || null,
+    photo: isGoogleAccountAvatar(data.url_avatar) ? null : (data.url_avatar || null),
+    cover: data.url_portada || null,
     cvs: data.cvs || [],
   };
 }
@@ -33,6 +46,7 @@ function readProfile() {
     const raw = window.localStorage.getItem(`${STORAGE_KEY}.${id}`);
     const draft = raw ? JSON.parse(raw) : {};
     SERVER_FIELDS.forEach((key) => { delete draft[key]; });
+    if (isGoogleAccountAvatar(draft.photo)) delete draft.photo;
     return { ...initialProfile, ...draft };
   } catch {
     return initialProfile;
@@ -69,7 +83,9 @@ export function useProfile() {
     setLoading(true);
     graduateProfileService.get().then((data) => {
       if (!active) return;
-      const merged = { ...readProfile(), ...fromServer(data) };
+      const draft = readProfile();
+      const server = fromServer(data);
+      const merged = { ...draft, ...server, photo: draft.photo || server.photo };
       setProfile(merged);
       window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { profile: merged, accountId: id } }));
       setLoadError('');
