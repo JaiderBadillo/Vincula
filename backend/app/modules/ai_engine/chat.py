@@ -19,6 +19,33 @@ router = APIRouter(prefix="/chat", dependencies=[Depends(require_role(["egresado
 MAX_PDF_BYTES = 5 * 1024 * 1024
 MAX_CV_TEXT = 24000
 
+
+def _safe_provider_error_hint(data: dict) -> str:
+    """Clasifica el error sin escribir preguntas, CV ni mensajes de Google en logs."""
+    error = data.get("error") if isinstance(data, dict) else None
+    if not isinstance(error, dict):
+        return "unknown"
+    message = error.get("message")
+    if not isinstance(message, str):
+        return "unknown"
+    text = message.lower()
+    fields = {
+        "unknown_field": ("unknown name", "unknown field"),
+        "unsupported": ("unsupported", "not supported", "not available"),
+        "invalid_value": ("invalid value", "invalid json", "invalid argument"),
+        "system_instruction": ("systeminstruction", "system instruction"),
+        "generation_config": ("generationconfig", "generation config"),
+        "max_output_tokens": ("maxoutputtokens", "max output tokens"),
+        "temperature": ("temperature",),
+        "thinking": ("thinkingbudget", "thinkinglevel", "thinking budget", "thinking level"),
+        "contents": ("contents",),
+        "model": ("model",),
+        "api_key": ("api key", "apikey"),
+        "billing": ("billing", "payment", "quota", "free tier"),
+    }
+    matches = [name for name, terms in fields.items() if any(term in text for term in terms)]
+    return ",".join(matches) if matches else "unknown"
+
 SYSTEM_PROMPT = """Eres el Asistente Víncula, un orientador de empleabilidad para egresados.
 Responde en español, con calidez, claridad y pasos concretos. Ayuda con hojas de vida,
 perfiles profesionales, búsqueda laboral, cartas de presentación y práctica de entrevistas.
@@ -137,11 +164,13 @@ async def generate_reply(payload: ChatRequest) -> str:
             # Solo el estado y la categoría del proveedor: nunca registrar claves,
             # preguntas, CV ni la respuesta completa de Google.
             try:
-                provider_code = response.json().get("error", {}).get("status", "")
+                provider_error = response.json()
+                provider_code = provider_error.get("error", {}).get("status", "")
             except (ValueError, TypeError, AttributeError):
+                provider_error = {}
                 provider_code = ""
             safe_code = provider_code if isinstance(provider_code, str) and re.fullmatch(r"[A-Z_]{1,40}", provider_code) else "UNKNOWN"
-            logger.warning("Gemini rechazó la consulta: http_status=%s code=%s", response.status_code, safe_code)
+            logger.warning("Gemini rechazó la consulta: http_status=%s code=%s hint=%s", response.status_code, safe_code, _safe_provider_error_hint(provider_error))
         if response.status_code == 429:
             raise HTTPException(429, "El asistente alcanzó su límite de consultas. Intenta nuevamente más tarde.")
         if response.status_code in (401, 403):

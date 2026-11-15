@@ -94,6 +94,11 @@ class GraduateChatTests(unittest.TestCase):
 
 
 class ProviderTests(unittest.IsolatedAsyncioTestCase):
+    def test_diagnostic_hint_never_contains_provider_or_user_text(self):
+        error = {"error": {"message": "Invalid systemInstruction containing private name Alicia and API key"}}
+        self.assertEqual(chat._safe_provider_error_hint(error), "system_instruction,api_key")
+        self.assertNotIn("Alicia", chat._safe_provider_error_hint(error))
+
     async def reply_with(self, handler, payload=None):
         real_client = httpx.AsyncClient
         transport = httpx.MockTransport(handler)
