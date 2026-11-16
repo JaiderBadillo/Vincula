@@ -20,6 +20,22 @@ class AdminService {
     };
   }
 
+  async getPlatformMetrics() {
+    const response = await fetch(`${API_BASE_URL}/admin/metricas-plataforma`, {
+      headers: this.getAuthHeaders(),
+    });
+    if (!response.ok) {
+      let message = 'No se pudieron cargar las métricas de la plataforma.';
+      try {
+        message = extractErrorMessage(await response.json(), message);
+      } catch {
+        // Mantener el mensaje genérico si el servidor no responde con JSON.
+      }
+      throw new Error(message);
+    }
+    return response.json();
+  }
+
   /**
    * Consulta la cola paginada de auditoría de empresas con horas restantes del SLA 72h
    */

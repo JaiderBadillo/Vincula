@@ -29,6 +29,7 @@ router = APIRouter(prefix="/admin", tags=["Super Admin - Auditoría y Aprobacion
 
 @router.get("/metricas-plataforma", response_model=PlatformMetricsResponse)
 async def get_platform_metrics(
+    current_user: Dict[str, Any] = Depends(require_role(["superadmin_vincula", "superadmin"])),
     db: AsyncSession = Depends(get_db)
 ):
     """

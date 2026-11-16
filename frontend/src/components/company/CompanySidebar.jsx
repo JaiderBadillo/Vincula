@@ -258,53 +258,6 @@ export default function CompanySidebar({
             </div>
           ))}
 
-          {/* Selector de rol / cambio de vista (análogo al de la IES) */}
-          <div className="pt-2 space-y-0.5 border-t border-sand-line">
-            {role === 'recruiter' ? (
-              <Link
-                to="/empresa/admin/perfil"
-                className={`flex items-center rounded-xl p-2.5 text-[0.72rem] text-secondary hover:text-terracotta hover:bg-cream no-underline transition-colors ${
-                  collapsed ? 'justify-center' : 'gap-2'
-                }`}
-                title="Ver como administrador de empresa"
-              >
-                <i className="bx bxs-business text-base text-secondary" />
-                <span className={collapsed ? 'sr-only' : ''}>Ver como administrador</span>
-              </Link>
-            ) : (
-              <Link
-                to="/empresa/reclutador/dashboard"
-                className={`flex items-center rounded-xl p-2.5 text-[0.72rem] text-secondary hover:text-terracotta hover:bg-cream no-underline transition-colors ${
-                  collapsed ? 'justify-center' : 'gap-2'
-                }`}
-                title="Ver como reclutador"
-              >
-                <i className="bx bx-user-voice text-base text-secondary" />
-                <span className={collapsed ? 'sr-only' : ''}>Ver como reclutador</span>
-              </Link>
-            )}
-
-            <Link
-              to="/institucion/admin/perfil"
-              className={`flex items-center rounded-xl p-2.5 text-[0.72rem] text-secondary hover:text-terracotta hover:bg-cream no-underline transition-colors ${
-                collapsed ? 'justify-center' : 'gap-2'
-              }`}
-              title="Ver como administrador de la institución"
-            >
-              <i className="bx bx-transfer-alt text-base text-secondary" />
-              <span className={collapsed ? 'sr-only' : ''}>Ver como institución IES</span>
-            </Link>
-            <Link
-              to="/dashboard"
-              className={`flex items-center rounded-xl p-2.5 text-[0.72rem] text-secondary hover:text-terracotta hover:bg-cream no-underline transition-colors ${
-                collapsed ? 'justify-center' : 'gap-2'
-              }`}
-              title="Vista de Egresado"
-            >
-              <i className="bx bx-arrow-back text-base text-secondary" />
-              <span className={collapsed ? 'sr-only' : ''}>Ir a Portal Egresados</span>
-            </Link>
-          </div>
         </nav>
       </aside>
     </>

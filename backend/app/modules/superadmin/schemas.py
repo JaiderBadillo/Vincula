@@ -113,6 +113,15 @@ class PaginatedInstitutionAuditResponse(BaseModel):
     total_pages: int
 
 
+class PlatformMonthlyPeriod(BaseModel):
+    mes: str
+    nuevas_empresas: int
+    nuevas_vacantes: int
+    nuevas_instituciones: int
+    nuevos_egresados: int
+    nuevas_postulaciones: int
+
+
 class PlatformMetricsResponse(BaseModel):
     total_empresas: int
     empresas_activas: int
@@ -126,5 +135,6 @@ class PlatformMetricsResponse(BaseModel):
     total_egresados: int
     total_postulaciones: int
     total_convenios: int
+    periodos_mensuales: List[PlatformMonthlyPeriod]
 
 

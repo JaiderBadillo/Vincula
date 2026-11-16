@@ -375,47 +375,6 @@ export default function InstitutionSidebar({
             </div>
           ))}
 
-          {/* Cambio de vista (mientras no exista el inicio de sesión por rol) */}
-          <div className={`pt-2 space-y-0.5 border-t ${role === 'admin' ? 'border-sand-line' : 'border-line'}`}>
-            <Link
-              to={role === 'admin' ? '/institucion/dashboard' : '/institucion/admin/perfil'}
-              className={`flex items-center rounded-xl p-2.5 text-[0.72rem] text-secondary ${
-                role === 'admin' ? 'hover:text-terracotta hover:bg-cream' : 'hover:text-green-dark hover:bg-page'
-              } no-underline transition-colors ${
-                collapsed ? 'justify-center' : 'gap-2'
-              }`}
-              title={role === 'admin' ? 'Ver como asesor' : 'Ver como administrador'}
-            >
-              <i className="bx bx-transfer-alt text-base text-secondary" />
-              <span className={collapsed ? 'sr-only' : ''}>
-                {role === 'admin' ? 'Ver como asesor' : 'Ver como administrador'}
-              </span>
-            </Link>
-            <Link
-              to="/empresa/admin/perfil"
-              className={`flex items-center rounded-xl p-2.5 text-[0.72rem] text-secondary ${
-                role === 'admin' ? 'hover:text-terracotta hover:bg-cream' : 'hover:text-green-dark hover:bg-page'
-              } no-underline transition-colors ${
-                collapsed ? 'justify-center' : 'gap-2'
-              }`}
-              title="Ver como administrador de empresa"
-            >
-              <i className="bx bxs-business text-base text-secondary" />
-              <span className={collapsed ? 'sr-only' : ''}>Ver como empresa</span>
-            </Link>
-            <Link
-              to="/dashboard"
-              className={`flex items-center rounded-xl p-2.5 text-[0.72rem] text-secondary ${
-                role === 'admin' ? 'hover:text-terracotta hover:bg-cream' : 'hover:text-green-dark hover:bg-page'
-              } no-underline transition-colors ${
-                collapsed ? 'justify-center' : 'gap-2'
-              }`}
-              title="Vista de Egresado"
-            >
-              <i className="bx bx-arrow-back text-base text-secondary" />
-              <span className={collapsed ? 'sr-only' : ''}>Ir a Portal Egresados</span>
-            </Link>
-          </div>
         </nav>
       </aside>
     </>

@@ -1,25 +1,27 @@
 import { useMemo, useState } from 'react';
-import { MONTHLY_PERIODS_DATA, SEMESTRAL_PERIODS_DATA } from '../../data/vinculaAdminData.js';
+import { buildPlatformPeriods } from '../../utils/platformAnalytics.js';
 
-export default function PlatformPeriodicAnalytics() {
-  const [selectedRange, setSelectedRange] = useState('last6m'); // 'last6m' | 'year2026' | 'q4_2026' | 'semestral'
+export default function PlatformPeriodicAnalytics({ metrics }) {
+  const { monthly, semesters } = useMemo(() => buildPlatformPeriods(metrics), [metrics]);
+  const year = new Date().getFullYear();
+  const currentQuarter = `q${Math.floor(new Date().getMonth() / 3) + 1}`;
+  const [selectedRange, setSelectedRange] = useState('last6m');
   const [activeDimension, setActiveDimension] = useState('all'); // 'all' | 'companies' | 'vacancies' | 'institutions' | 'graduates'
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
   // Filtro de serie de datos según el rango seleccionado
   const seriesData = useMemo(() => {
     if (selectedRange === 'semestral') {
-      return SEMESTRAL_PERIODS_DATA;
+      return semesters;
     }
     if (selectedRange === 'last6m') {
-      return MONTHLY_PERIODS_DATA.slice(-6);
+      return monthly.slice(-6);
     }
-    if (selectedRange === 'q4_2026') {
-      return MONTHLY_PERIODS_DATA.filter((m) => m.quarter === 'q4');
+    if (selectedRange === 'quarter') {
+      return monthly.filter((m) => m.key.startsWith(`${year}-`) && m.quarter === currentQuarter);
     }
-    // 'year2026'
-    return MONTHLY_PERIODS_DATA;
-  }, [selectedRange]);
+    return monthly.filter((m) => m.key.startsWith(`${year}-`));
+  }, [selectedRange, monthly, semesters, year, currentQuarter]);
 
   // Totales sumados para el rango activo
   const periodTotals = useMemo(() => {
@@ -43,14 +45,13 @@ export default function PlatformPeriodicAnalytics() {
 
   // Último corte acumulado total en la plataforma
   const latestLifetime = useMemo(() => {
-    const lastItem = seriesData[seriesData.length - 1] || MONTHLY_PERIODS_DATA[0] || {};
     return {
-      cumCompanies: lastItem.cumCompanies || 0,
-      cumVacancies: lastItem.cumVacancies || 0,
-      cumInstitutions: lastItem.cumInstitutions || 1,
-      cumGraduates: lastItem.cumGraduates || 0,
+      cumCompanies: metrics?.total_empresas ?? 0,
+      cumVacancies: metrics?.total_vacantes ?? 0,
+      cumInstitutions: metrics?.instituciones_activas ?? 0,
+      cumGraduates: metrics?.total_egresados ?? 0,
     };
-  }, [seriesData]);
+  }, [metrics]);
 
   // Función de descarga CSV
   function handleDownloadCSV() {
@@ -156,6 +157,10 @@ export default function PlatformPeriodicAnalytics() {
   const tipLeft =
     hoveredIndex !== null ? Math.min(Math.max((xAt(hoveredIndex) / chartWidth) * 100, 16), 84) : 0;
 
+  if (!metrics) {
+    return <p role="status" className="rounded-xl border border-sand-line bg-white p-5 text-sm text-secondary">Cargando métricas de la plataforma…</p>;
+  }
+
   return (
     <section className="space-y-6">
       {/* ─── Encabezado y Control de Rango de Periodo ─── */}
@@ -179,8 +184,8 @@ export default function PlatformPeriodicAnalytics() {
           <div className="flex items-center rounded-xl border border-sand-line bg-cream/60 p-1 shadow-2xs">
             {[
               { id: 'last6m', label: 'Últimos 6 meses' },
-              { id: 'year2026', label: 'Año 2026' },
-              { id: 'q4_2026', label: 'Trimestre Q4' },
+              { id: 'year', label: `Año ${year}` },
+              { id: 'quarter', label: `Trimestre Q${currentQuarter.slice(-1)}` },
               { id: 'semestral', label: 'Semestres' },
             ].map((rng) => (
               <button

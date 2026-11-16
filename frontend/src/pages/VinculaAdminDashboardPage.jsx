@@ -14,6 +14,9 @@ export default function VinculaAdminDashboardPage() {
     companies,
     institutions,
     metrics,
+    platformMetrics,
+    apiError,
+    isLoading,
     approveCompany,
     requestCompanyCorrection,
     rejectCompany,
@@ -40,10 +43,10 @@ export default function VinculaAdminDashboardPage() {
   const pendingInstitutions = institutions.filter((i) => i.status === 'pending');
 
   const heroStats = [
-    { label: 'Empresas Activas', value: String(metrics.activeCompanies) },
-    { label: 'IES en Red', value: String(metrics.activeInstitutions) },
-    { label: 'Solicitudes en Cola', value: String(metrics.totalPendingOverall) },
-    { label: 'Convenios Marco', value: String(metrics.activeAgreements) },
+    { label: 'Empresas activas', value: String(metrics.activeCompanies ?? '—') },
+    { label: 'IES en red', value: String(metrics.activeInstitutions ?? '—') },
+    { label: 'Solicitudes en cola', value: apiError ? '—' : String(metrics.totalPendingOverall) },
+    { label: 'Convenios registrados', value: String(metrics.activeAgreements ?? '—') },
   ];
 
   async function handleApproveCompany(id, notes) {
@@ -122,6 +125,11 @@ export default function VinculaAdminDashboardPage() {
           </div>
 
           {/* Toast Notification */}
+          {apiError && !isLoading && (
+            <div role="alert" className="rounded-xl border border-terracotta/30 bg-white p-4 text-sm text-terracotta-dark">
+              No se pudieron consultar los datos actuales: {apiError}
+            </div>
+          )}
           {toast && (
             <div
               className="flex items-center justify-between rounded-xl border border-sand-line bg-cream px-4 py-2.5 text-xs text-ink shadow-sm animate-in fade-in"
@@ -142,7 +150,7 @@ export default function VinculaAdminDashboardPage() {
           )}
 
           {/* ─── 2. Analítica Periódica y de Crecimiento por Meses / Semestres ─── */}
-          <PlatformPeriodicAnalytics />
+          {platformMetrics ? <PlatformPeriodicAnalytics metrics={platformMetrics} /> : !apiError && <PlatformPeriodicAnalytics metrics={null} />}
 
           {/* ─── 3. Bandeja de Atención Prioritaria (Pendientes de Validación) ─── */}
           <section className="space-y-4">

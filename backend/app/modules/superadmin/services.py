@@ -666,6 +666,47 @@ class SuperAdminService:
         post_tot = (await session.execute(text('SELECT count(*) FROM postulaciones'))).scalar() or 0
         conv_tot = (await session.execute(text('SELECT count(*) FROM convenios_interinstitucionales'))).scalar() or 0
 
+        # Cortes de los últimos cinco años basados en las fechas guardadas en PostgreSQL.
+        monthly_rows = (await session.execute(text("""
+            WITH activity AS (
+                SELECT date_trunc('month', registrado_en) AS mes, count(*) AS empresas,
+                       0::bigint AS vacantes, 0::bigint AS instituciones,
+                       0::bigint AS egresados, 0::bigint AS postulaciones
+                FROM empresas
+                WHERE registrado_en >= date_trunc('month', current_date) - interval '59 months'
+                GROUP BY 1
+                UNION ALL
+                SELECT date_trunc('month', creado_en), 0, count(*), 0, 0, 0
+                FROM vacantes
+                WHERE creado_en >= date_trunc('month', current_date) - interval '59 months'
+                GROUP BY 1
+                UNION ALL
+                SELECT date_trunc('month', coalesce(aprobado_en, registrado_en)), 0, 0, count(*), 0, 0
+                FROM instituciones
+                WHERE estado = 'aprobado'
+                  AND coalesce(aprobado_en, registrado_en) >= date_trunc('month', current_date) - interval '59 months'
+                GROUP BY 1
+                UNION ALL
+                SELECT date_trunc('month', creado_en), 0, 0, 0, count(*), 0
+                FROM egresados
+                WHERE creado_en >= date_trunc('month', current_date) - interval '59 months'
+                GROUP BY 1
+                UNION ALL
+                SELECT date_trunc('month', postulado_en), 0, 0, 0, 0, count(*)
+                FROM postulaciones
+                WHERE postulado_en >= date_trunc('month', current_date) - interval '59 months'
+                GROUP BY 1
+            )
+            SELECT to_char(mes, 'YYYY-MM') AS mes,
+                   sum(empresas)::int AS nuevas_empresas,
+                   sum(vacantes)::int AS nuevas_vacantes,
+                   sum(instituciones)::int AS nuevas_instituciones,
+                   sum(egresados)::int AS nuevos_egresados,
+                   sum(postulaciones)::int AS nuevas_postulaciones
+            FROM activity
+            GROUP BY mes ORDER BY mes
+        """))).mappings().all()
+
         return {
             "total_empresas": emp_tot,
             "empresas_activas": emp_act,
@@ -679,5 +720,6 @@ class SuperAdminService:
             "total_egresados": egr_tot,
             "total_postulaciones": post_tot,
             "total_convenios": conv_tot,
+            "periodos_mensuales": [dict(row) for row in monthly_rows],
         }
 

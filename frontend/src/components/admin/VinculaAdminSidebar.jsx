@@ -71,25 +71,6 @@ export default function VinculaAdminSidebar({
         },
       ],
     },
-    {
-      title: 'Ecosistema Conectado',
-      items: [
-        {
-          id: 'view-empresa',
-          label: 'Ver Portal Empresas',
-          icon: 'bx-briefcase',
-          to: '/empresa/admin/perfil',
-          isExternal: true,
-        },
-        {
-          id: 'view-ies',
-          label: 'Ver Portal IES (UTS/UIS)',
-          icon: 'bx-book-open',
-          to: '/institucion/dashboard',
-          isExternal: true,
-        },
-      ],
-    },
   ];
 
   return (
@@ -171,9 +152,6 @@ export default function VinculaAdminSidebar({
                               >
                                 {item.badge}
                               </span>
-                            )}
-                            {item.isExternal && (
-                              <i className="bx bx-link-external text-[0.7rem] text-secondary group-hover:text-terracotta" />
                             )}
                           </div>
                         )}

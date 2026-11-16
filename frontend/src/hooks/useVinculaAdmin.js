@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { INITIAL_PLATFORM_METRICS } from '../data/vinculaAdminData.js';
 import { adminService } from '../services/adminService.js';
 
 const STORAGE_KEY_COMPANIES = 'vincula.admin.companies.v2';
@@ -185,6 +184,7 @@ export function useVinculaAdmin() {
   );
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
+  const [platformMetrics, setPlatformMetrics] = useState(null);
 
   /**
    * Carga de datos reales desde el Backend FastAPI
@@ -194,7 +194,11 @@ export function useVinculaAdmin() {
     setApiError(null);
     try {
       // 1. Obtener empresas desde /api/v1/admin/auditoria/empresas
-      const compRes = await adminService.getCompaniesAudit({ limit: 50 });
+      const [compRes, iesRes, platformRes] = await Promise.all([
+        adminService.getCompaniesAudit({ limit: 100 }),
+        adminService.getInstitutionsAudit({ limit: 100 }),
+        adminService.getPlatformMetrics(),
+      ]);
       const rawCompList = compRes.items || compRes;
       if (Array.isArray(rawCompList)) {
         const mappedComp = rawCompList.map(mapBackendCompanyToUi);
@@ -203,19 +207,19 @@ export function useVinculaAdmin() {
       }
 
       // 2. Obtener IES desde /api/v1/admin/auditoria/ies
-      const iesRes = await adminService.getInstitutionsAudit({ limit: 50 });
       const rawIesList = iesRes.items || iesRes;
       if (Array.isArray(rawIesList)) {
         const mappedIes = rawIesList.map(mapBackendInstitutionToUi);
         setInstitutions(mappedIes);
         writeStoredData(STORAGE_KEY_INSTITUTIONS, mappedIes);
       }
+      setPlatformMetrics(platformRes);
     } catch (err) {
+      setPlatformMetrics(null);
       setCompanies([]);
       setInstitutions([]);
       writeStoredData(STORAGE_KEY_COMPANIES, []);
       writeStoredData(STORAGE_KEY_INSTITUTIONS, []);
-      // Si no hay sesión de admin o falla la red, conserva el fallback
       setApiError(err.message);
     } finally {
       setIsLoading(false);
@@ -239,6 +243,7 @@ export function useVinculaAdmin() {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(SYNC_EVENT));
     }
+    adminService.getPlatformMetrics().then(setPlatformMetrics).catch((err) => setApiError(err.message));
   }, []);
 
   // ─── Acciones sobre Empresas ───
@@ -451,26 +456,34 @@ export function useVinculaAdmin() {
 
   // Métricas calculadas en vivo
   const metrics = {
-    ...INITIAL_PLATFORM_METRICS,
-    pendingCompanies: companies.filter((c) => c.status === 'pending').length,
+    totalCompanies: platformMetrics?.total_empresas ?? null,
+    activeCompanies: platformMetrics?.empresas_activas ?? null,
+    activeInstitutions: platformMetrics?.instituciones_activas ?? null,
+    activeAgreements: platformMetrics?.total_convenios ?? null,
+    activeVacancies: platformMetrics?.vacantes_activas ?? null,
+    totalVacancies: platformMetrics?.total_vacantes ?? null,
+    graduatesConnected: platformMetrics?.total_egresados ?? null,
+    totalApplications: platformMetrics?.total_postulaciones ?? null,
+    pendingCompanies: platformMetrics?.empresas_pendientes ?? companies.filter((c) => c.status === 'pending').length,
     correctionCompanies: companies.filter((c) => c.status === 'in_correction').length,
     approvedCompanies: companies.filter((c) => c.status === 'approved').length,
-    totalCompaniesCount: companies.length,
+    totalCompaniesCount: platformMetrics?.total_empresas ?? companies.length,
 
-    pendingInstitutions: institutions.filter((i) => i.status === 'pending').length,
+    pendingInstitutions: platformMetrics?.instituciones_pendientes ?? institutions.filter((i) => i.status === 'pending').length,
     correctionInstitutions: institutions.filter((i) => i.status === 'in_correction').length,
-    approvedInstitutions: institutions.filter((i) => i.status === 'approved').length,
-    totalInstitutionsCount: institutions.length,
+    approvedInstitutions: platformMetrics?.instituciones_activas ?? institutions.filter((i) => i.status === 'approved').length,
+    totalInstitutionsCount: platformMetrics?.total_instituciones ?? institutions.length,
 
     totalPendingOverall:
-      companies.filter((c) => c.status === 'pending').length +
-      institutions.filter((i) => i.status === 'pending').length,
+      (platformMetrics?.empresas_pendientes ?? companies.filter((c) => c.status === 'pending').length) +
+      (platformMetrics?.instituciones_pendientes ?? institutions.filter((i) => i.status === 'pending').length),
   };
 
   return {
     companies,
     institutions,
     metrics,
+    platformMetrics,
     isLoading,
     apiError,
     refreshData: loadBackendData,

@@ -78,7 +78,6 @@ const navItems = [
   { id: 'verification', label: 'Verificación de mi cuenta', icon: 'bx-shield-quarter', to: '/dashboard/verificacion', isLink: true },
   { id: 'vacancies', label: 'Explorar Vacantes', icon: 'bx-search-alt', to: '/dashboard/vacantes', isLink: true },
   { id: 'applications', label: 'Mis Postulaciones', icon: 'bx-list-check', to: '/dashboard/postulaciones', isLink: true },
-  { id: 'institution', label: 'Portal Institución (IES)', icon: 'bxs-institution', to: '/institucion/dashboard', isLink: true, badge: 'Asesor' },
 ];
 
 function NavigationItems({ activePage, onNavigate, collapsed = false }) {
