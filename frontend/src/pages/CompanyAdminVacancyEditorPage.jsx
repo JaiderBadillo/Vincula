@@ -5,13 +5,13 @@ import CompanyLogo from '../components/company/CompanyLogo.jsx';
 import { useCompanyProfile } from '../hooks/useCompanyProfile.js';
 import { useCompanyRecruiters } from '../hooks/useCompanyRecruiters.js';
 import { authService } from '../services/authService.js';
+import { suggestTechnicalSkills } from '../utils/vacancySkillSuggestions.js';
 import { useCompanyVacancies } from '../hooks/useCompanyVacancies.js';
 import { useCompanySites } from '../hooks/useCompanySites.js';
 import {
   CUSTOM_CATEGORY_VALUE,
   LANGUAGE_OPTIONS,
   SOFT_SKILL_SUGGESTIONS,
-  TECH_SKILL_SUGGESTIONS,
   VACANCY_BENEFIT_SUGGESTIONS,
   VACANCY_CATEGORIES,
   VACANCY_CONTRACTS,
@@ -87,7 +87,7 @@ function buildInitialForm(vacancy, recruiters, isRecruiter = false) {
 
   return {
     title: '',
-    category: VACANCY_CATEGORIES[0],
+    category: '',
     customCategory: '',
     experienceLevel: 'sin-experiencia',
     customExperience: '',
@@ -114,6 +114,7 @@ function validateStep(stepIndex, form) {
   const e = {};
   if (stepIndex === 0) {
     if (!form.title.trim()) e.title = 'Escribe el cargo o título de la vacante.';
+    if (!form.category) e.category = 'Selecciona el área de la vacante.';
     if (form.category === CUSTOM_CATEGORY_VALUE) {
       const customCat = (form.customCategory || '').trim();
       if (customCat.length < 2) e.customCategory = 'Escribe el área de la vacante (mínimo 2 caracteres).';
@@ -277,8 +278,8 @@ function GraduatePreview({ form, companyProfile, site }) {
           {form.skillsTech.length > 0 && (
             <div>
               <span className="text-[0.65rem] font-bold uppercase tracking-wider text-secondary block mb-1.5 flex items-center gap-1">
-                <i className="bx bx-code-alt text-terracotta" />
-                Habilidades Técnicas:
+                <i className="bx bx-wrench text-terracotta" />
+                Conocimientos y herramientas:
               </span>
               <ul className="m-0 flex list-none flex-wrap gap-1 p-0">
                 {form.skillsTech.map((s) => (
@@ -366,6 +367,10 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
   const isEditing = Boolean(vacancyId);
 
   const [form, setForm] = useState(() => buildInitialForm(editing, recruiters, isRecruiter));
+  const technicalSuggestions = useMemo(
+    () => suggestTechnicalSkills(form.title, form.category === CUSTOM_CATEGORY_VALUE ? form.customCategory : form.category),
+    [form.title, form.category, form.customCategory]
+  );
   const [step, setStep] = useState(0);
 
   useEffect(() => {
@@ -761,13 +766,14 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
                   </Field>
 
                   <div className="grid gap-5 sm:grid-cols-3">
-                    <Field id="vac-category" label="Área de la vacante" error={errors.customCategory}>
+                    <Field id="vac-category" label="Área de la vacante" error={errors.category || errors.customCategory}>
                       <select
                         id="vac-category"
                         className={`${inputClass} cursor-pointer`}
                         value={form.category}
                         onChange={(e) => update('category', e.target.value)}
                       >
+                        <option value="" disabled>Selecciona un área</option>
                         {VACANCY_CATEGORIES.map((c) => (
                           <option key={c} value={c}>
                             {c}
@@ -1023,11 +1029,11 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
                     <div className="flex items-center justify-between gap-2">
                       <div>
                         <label htmlFor="vac-tech-skill" className="block text-sm font-bold text-ink flex items-center gap-1.5">
-                          <i className="bx bx-code-alt text-base text-terracotta" />
-                          <span>Habilidades Técnicas y Herramientas</span>
+                          <i className="bx bx-wrench text-base text-terracotta" aria-hidden="true" />
+                          <span>Conocimientos y herramientas del cargo</span>
                         </label>
                         <p className="m-0 mt-0.5 text-xs text-secondary">
-                          Software, lenguajes, frameworks o tecnologías requeridas.
+                          Indica conocimientos, procesos, equipos o herramientas necesarios para el puesto.
                         </p>
                       </div>
                       <span className="text-[0.68rem] font-bold text-secondary">
@@ -1066,7 +1072,9 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
                             addTechSkill(techInput);
                           }
                         }}
-                        placeholder="Ej: SQL, Power BI, Python, AutoCAD, Siigo..."
+                        placeholder={technicalSuggestions.suggestions.length
+                          ? `Ej.: ${technicalSuggestions.suggestions.slice(0, 3).join(", ")}`
+                          : "Escribe una habilidad, proceso, equipo o herramienta"}
                       />
                       <button
                         type="button"
@@ -1079,8 +1087,13 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
                     </div>
                     {errors.skillsTech && <p className="m-0 mt-1 text-xs text-rose-600">{errors.skillsTech}</p>}
 
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {TECH_SKILL_SUGGESTIONS.filter((s) => !form.skillsTech.includes(s)).slice(0, 8).map((s) => (
+                    <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Sugerencias opcionales para este cargo">
+                      {technicalSuggestions.suggestions.length > 0 && (
+                        <p className="m-0 w-full text-xs text-secondary">
+                          Sugerencias según {technicalSuggestions.source === "cargo" ? "el cargo" : "el área"}; elige solo las que apliquen.
+                        </p>
+                      )}
+                      {technicalSuggestions.suggestions.filter((s) => !form.skillsTech.some((selected) => selected.toLowerCase() === s.toLowerCase())).slice(0, 8).map((s) => (
                         <button
                           key={s}
                           type="button"

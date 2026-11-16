@@ -198,7 +198,7 @@ export default function VacancyDetailDrawer({
               )}
 
               {/* Habilidades Técnicas */}
-              <Section title="Habilidades Técnicas y Herramientas" icon="bx-code-alt">
+              <Section title="Conocimientos y herramientas" icon="bx-wrench">
                 {techSkills.length > 0 ? (
                   <ul className="m-0 flex list-none flex-wrap gap-1.5 p-0">
                     {techSkills.map((skill) => (
@@ -212,7 +212,7 @@ export default function VacancyDetailDrawer({
                     ))}
                   </ul>
                 ) : (
-                  <p className="m-0 text-sm text-secondary">Sin habilidades técnicas especificadas.</p>
+                  <p className="m-0 text-sm text-secondary">Sin conocimientos o herramientas especificados.</p>
                 )}
               </Section>
 
