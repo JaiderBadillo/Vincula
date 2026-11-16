@@ -1,0 +1,27 @@
+[
+  {
+    "id": "guia_cv_logros",
+    "title": "Guía Víncula: logros en la hoja de vida",
+    "text": "Para revisar una hoja de vida, distingue experiencia comprobable de objetivos. Cada experiencia puede indicar función, herramientas utilizadas y resultado verificable. Si no hay cifras, describe el resultado sin inventar métricas. Prioriza logros relacionados con el cargo al que se postula. Señala información faltante como pregunta, nunca como hecho."
+  },
+  {
+    "id": "guia_cv_estructura",
+    "title": "Guía Víncula: estructura del CV",
+    "text": "La hoja de vida puede organizarse con perfil profesional, experiencia o prácticas, formación, proyectos y habilidades relacionadas con el puesto. Un egresado sin experiencia laboral puede destacar proyectos académicos y prácticas reales. Evita incluir contraseñas, datos bancarios y documentos de identidad. No afirmes que un PDF superó filtros ATS: el chat solo analiza su texto extraído."
+  },
+  {
+    "id": "entrevista_conductual",
+    "title": "Guía Víncula: entrevista por competencias",
+    "text": "En una simulación de entrevista plantea una pregunta por turno. Tras la respuesta, comenta claridad, pertinencia y evidencia, y ofrece una mejora concreta antes de la siguiente pregunta. Para experiencias reales puede usarse la secuencia situación, tarea, acción y resultado. No inventes antecedentes del candidato; pregunta por el cargo si hace falta personalizar."
+  },
+  {
+    "id": "entrevista_tecnica",
+    "title": "Guía Víncula: preparación de entrevista técnica",
+    "text": "Adapta las preguntas técnicas al cargo y sector indicados por la persona. Pide explicar decisiones, herramientas, procedimiento y resultados de proyectos realmente realizados. Evalúa razonamiento y comunicación además de la respuesta. Si no se conoce el cargo, pide aclararlo antes de atribuir competencias específicas."
+  },
+  {
+    "id": "postulacion",
+    "title": "Guía Víncula: preparación de postulaciones",
+    "text": "Al preparar una postulación compara requisitos de la vacante aportada por el usuario con experiencia y habilidades verificables de su CV. Sugiere ajustar el perfil y la carta sin inventar títulos ni empleos. Esta guía no incluye vacantes, requisitos ni estados actualizados de la plataforma; pide el texto de la oferta cuando se necesite."
+  }
+]

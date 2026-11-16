@@ -31,8 +31,24 @@ Referencia del proveedor: https://ai.google.dev/api/generate-content
 - El PDF se procesa en el backend con `pypdf`. Se rechazan archivos inválidos,
   protegidos, sin texto y documentos cuyo texto exceda 24.000 caracteres.
 - Al enviar se comparte con Gemini el mensaje, los últimos seis pares de conversación
-  (hasta 24.000 caracteres) y el texto del PDF adjunto. La interfaz informa de ello.
+  (hasta 24.000 caracteres) y los fragmentos del PDF recuperados. La interfaz informa de ello.
 - La revisión evalúa el contenido textual, no el diseño visual ni una puntuación ATS real.
+
+## Recuperación aumentada (RAG)
+
+El módulo `career_retrieval.py` recupera por BM25 hasta cinco fragmentos relevantes
+para cada pregunta. La base curada `career_knowledge.json` contiene guías internas
+Víncula sobre CV, entrevistas y postulaciones; no son normas oficiales ni vacantes
+actualizadas. Si se adjunta un CV, se divide en fragmentos de hasta 1.300 caracteres
+con solapamiento y se recuperan los pertinentes a la pregunta. La recuperación se
+efectúa en memoria durante la petición y no indexa CV de otros usuarios.
+
+El backend envía solamente los fragmentos recuperados a Gemini, marcados como datos
+sin autoridad de instrucciones, y devuelve los títulos de las fuentes recuperadas en
+`sources`. La interfaz los muestra debajo de la respuesta. El modelo puede equivocarse
+al citar o interpretar: las fuentes recuperadas permiten verificar la evidencia pero
+no garantizan exactitud. La búsqueda es léxica, sin embeddings ni base vectorial;
+puede omitir sinónimos y partes de un CV largo. No accede a vacantes en tiempo real.
 - No se descarga automáticamente el CV del perfil: `CvManager` actualmente conserva
   metadatos y URL temporal local, no un archivo recuperable en el servidor.
 - No se guardan mensajes ni CV en la base de datos o localStorage del chat. El estado

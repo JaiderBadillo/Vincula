@@ -14,6 +14,7 @@ from reportlab.pdfgen import canvas
 from app.core.dependencies import get_current_user
 
 chat = importlib.import_module("app.modules.ai_engine.chat")
+from app.modules.ai_engine.career_retrieval import retrieve
 
 
 def pdf_bytes(text=None, pages=1, encrypted=False):
@@ -94,6 +95,15 @@ class GraduateChatTests(unittest.TestCase):
 
 
 class ProviderTests(unittest.IsolatedAsyncioTestCase):
+    def test_retrieval_selects_relevant_guide_and_user_cv_only(self):
+        guides = retrieve("simular entrevista por competencias", "")
+        self.assertEqual(guides[0]["id"], "entrevista_conductual")
+        chunks = retrieve("Python Kubernetes", "Experiencia en ventas. " * 90 + " Python Kubernetes en una pasantía. " * 12)
+        self.assertTrue(any("Python Kubernetes" in item["text"] for item in chunks if item["id"].startswith("cv_")))
+        general = retrieve("Evalúa mi hoja de vida", "Experiencia en ventas. " * 160)
+        self.assertTrue(any(item["id"].startswith("cv_") for item in general))
+        self.assertFalse(any(item["id"].startswith("cv_") for item in retrieve("entrevista", "")))
+
     def test_diagnostic_hint_never_contains_provider_or_user_text(self):
         error = {"error": {"message": "Invalid systemInstruction containing private name Alicia and API key"}}
         self.assertEqual(chat._safe_provider_error_hint(error), "system_instruction,api_key")
@@ -116,6 +126,7 @@ class ProviderTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn("systemInstruction", body)
             self.assertEqual([item["role"] for item in body["contents"]], ["user", "model", "user", "model", "user"])
             self.assertIn("Python", body["contents"][0]["parts"][0]["text"])
+            self.assertNotIn("no existente", str(body))
             return httpx.Response(200, json={"candidates": [{"finishReason": "STOP", "content": {"parts": [
                 {"text": "internal thought", "thought": True}, {"text": "Mejora tus logros."},
             ]}}]})

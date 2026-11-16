@@ -159,7 +159,7 @@ function ChatPanel() {
       }, controller.signal);
       if (version !== requestVersion.current) return;
       if (!data.reply?.trim()) throw new Error('No recibimos una respuesta. Intenta nuevamente.');
-      setMessages([...previous, { role: 'user', content: message }, { role: 'assistant', content: data.reply }]);
+      setMessages([...previous, { role: 'user', content: message }, { role: 'assistant', content: data.reply, sources: data.sources || [] }]);
     } catch (err) {
       if (version !== requestVersion.current) return;
       setMessages(previous);
@@ -240,7 +240,9 @@ function ChatPanel() {
               {messages.map((item, index) => (
                 <div className={`graduate-chat__message graduate-chat__message--${item.role}`} key={index}>
                   <span className="graduate-chat__speaker">{item.role === 'user' ? 'Tú' : 'Asistente Víncula'}</span>
-                  {item.role === 'assistant' ? <AssistantMessage content={item.content} /> : <div>{item.content}</div>}
+                  {item.role === 'assistant' ? <><AssistantMessage content={item.content} />
+                    {item.sources?.length > 0 && <small className="graduate-chat__sources">Fuentes recuperadas: {item.sources.join(' · ')}</small>}
+                  </> : <div>{item.content}</div>}
                 </div>
               ))}
             </div>
@@ -274,7 +276,7 @@ function ChatPanel() {
                 <button type="submit" className="graduate-chat__send" disabled={!!busy || !draft.trim()} aria-label="Enviar mensaje"><ChatIcon name="bx-up-arrow-alt" /></button>
               </div>
             </form>
-            <p className="graduate-chat__privacy">Al enviar, tu mensaje y el texto del PDF se comparten con la IA de Google. Puede cometer errores. El chat se borra al recargar o cerrar sesión.</p>
+            <p className="graduate-chat__privacy">Al enviar, tu mensaje y fragmentos pertinentes del PDF se comparten con la IA de Google. Puede cometer errores. El chat se borra al recargar o cerrar sesión.</p>
           </div>
         </section>
       )}
