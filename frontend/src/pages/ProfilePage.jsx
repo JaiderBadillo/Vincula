@@ -122,7 +122,7 @@ function Toast({ toast }) {
 }
 
 export default function ProfilePage() {
-  const { profile, updateProfile, loading, loadError } = useProfile();
+  const { profile, updateProfile, loading, loadError, saveError } = useProfile();
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined' && window.location.hash) {
       return normalizeTab(window.location.hash);
@@ -229,7 +229,7 @@ export default function ProfilePage() {
       <main className="w-full pb-16">
         {loading && <p className="m-5 rounded-xl bg-sky-50 p-4 text-sm" role="status">Cargando tu perfil real…</p>}
         {loadError && <p className="m-5 rounded-xl bg-rose-50 p-4 text-sm text-rose-800" role="alert">No se pudo cargar tu perfil: {loadError}. Comprueba tu conexión antes de editar.</p>}
-        {!loading && !loadError && <p className="mx-5 mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">Habilidades, enlaces, experiencia, fotos y preferencias adicionales se conservan solo en este navegador para esta cuenta. Tus datos básicos y los CV en PDF se guardan en el servidor.</p>}
+        {saveError && <p role="alert" className="mx-5 mt-4 rounded-xl bg-rose-50 p-3 text-xs text-rose-900">{saveError}</p>}
         {/* Profile Hero Header */}
         <ProfileHero
           profile={profile}

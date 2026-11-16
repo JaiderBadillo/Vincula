@@ -7,7 +7,7 @@ Incluye:
 
 import uuid
 from sqlalchemy import Column, String, Boolean, DateTime, Date, Text, Numeric, Integer, ForeignKey, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -30,6 +30,7 @@ class Egresado(Base):
     url_portada = Column(Text, nullable=True)
     titular_profesional = Column(String(255), nullable=True)
     biografia = Column(Text, nullable=True)
+    perfil_adicional = Column(JSONB, nullable=False, default=dict, server_default='{}')
     disponible_para_trabajar = Column(Boolean, default=True, nullable=False)
     visibilidad_disponibilidad = Column(String(50), default="todos_los_reclutadores", nullable=False)
     tipo_disponibilidad = Column(String(50), default="inmediata", nullable=True)

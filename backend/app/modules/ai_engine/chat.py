@@ -160,7 +160,7 @@ async def generate_reply(payload: ChatRequest, sources: list[dict] | None = None
     } for item in payload.history)
     contents.append({"role": "user", "parts": [{"text": payload.message}]})
     try:
-        async with httpx.AsyncClient(timeout=45.0) as client:
+        async with httpx.AsyncClient(timeout=55.0) as client:
             response = await client.post(
                 f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_CHAT_MODEL}:generateContent",
                 headers={"x-goog-api-key": settings.GEMINI_API_KEY},

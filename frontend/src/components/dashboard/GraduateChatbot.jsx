@@ -143,7 +143,7 @@ function ChatPanel() {
     const controller = new AbortController();
     pending.current = controller;
     const version = ++requestVersion.current;
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    const timeout = setTimeout(() => controller.abort(), 75000);
     const previous = messages;
     // Mantener pares completos y limitar el contexto enviado al proveedor.
     let history = previous.slice(-12);

@@ -2,8 +2,8 @@
 Esquemas Pydantic para el Portal de Egresados y Postulaciones.
 """
 
-from typing import Optional, List
-from pydantic import BaseModel, EmailStr
+from typing import Optional, List, Any
+from pydantic import BaseModel, EmailStr, Field
 
 
 class ExperienceItem(BaseModel):
@@ -26,6 +26,7 @@ class GraduateCvSchema(BaseModel):
 
 class GraduateProfileSchema(BaseModel):
     id: str
+    perfil_adicional: dict[str, Any] = Field(default_factory=dict)
     nombre_completo: str
     correo: EmailStr
     telefono: Optional[str] = None
@@ -59,6 +60,7 @@ class GraduateProfileSchema(BaseModel):
 
 
 class GraduateProfileUpdate(BaseModel):
+    perfil_adicional: Optional[dict[str, Any]] = None
     nombre_completo: Optional[str] = None
     correo: Optional[EmailStr] = None
     telefono: Optional[str] = None

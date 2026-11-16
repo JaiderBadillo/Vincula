@@ -5,6 +5,7 @@ Endpoints oficiales bajo prefijo /api/v1/egresados
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from typing import Dict, Any, List
+import json
 import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -68,8 +69,17 @@ async def update_my_profile(
         "aspiracion_salarial_min": "aspiracion_salarial_min",
         "aspiracion_salarial_max": "aspiracion_salarial_max",
         "dispuesto_a_reubicarse": "dispuesto_a_reubicarse",
+        "perfil_adicional": "perfil_adicional",
     }
     for key, value in changes.model_dump(exclude_unset=True).items():
+        if key == "perfil_adicional":
+            allowed = {"photo", "cover", "links", "skills", "languages", "experience", "otherEducation", "preferences", "privacy", "alerts", "thesis"}
+            if value is None or set(value) - allowed or len(json.dumps(value, ensure_ascii=False)) > 750_000:
+                raise HTTPException(status_code=422, detail="El perfil adicional contiene datos no permitidos o supera el tamaño máximo.")
+            for image_key in ("photo", "cover"):
+                image = value.get(image_key)
+                if image is not None and (not isinstance(image, str) or len(image) > 350_000 or not (image.startswith("data:image/jpeg;base64,") or image.startswith("https://"))):
+                    raise HTTPException(status_code=422, detail="La imagen del perfil debe ser JPEG o una URL HTTPS y no superar 350 KB.")
         if key in {"nombre_completo", "telefono", "ciudad"} and not str(value or "").strip():
             raise HTTPException(status_code=422, detail=f"{key} no puede quedar vacío.")
         if key in {"url_avatar", "url_portada"} and value and not value.startswith("https://"):

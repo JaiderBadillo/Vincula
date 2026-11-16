@@ -399,6 +399,7 @@ class GraduateService:
 
         return GraduateProfileSchema(
             id=str(graduate.id), nombre_completo=graduate.nombre_completo,
+            perfil_adicional=getattr(graduate, "perfil_adicional", None) or {},
             correo=graduate.correo_personal, telefono=graduate.telefono,
             departamento=graduate.departamento_residencia,
             ciudad=graduate.ciudad_residencia,

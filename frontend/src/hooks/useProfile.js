@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { initialProfile } from '../data/profile.js';
 import { authService } from '../services/authService.js';
 import { graduateProfileService } from '../services/graduateProfileService.js';
@@ -28,6 +28,8 @@ const SERVER_FIELDS = [
   'certificateActa',
   'cvs',
 ];
+const EXTRA_FIELDS = ['photo', 'cover', 'links', 'skills', 'languages', 'experience', 'otherEducation', 'preferences', 'privacy', 'alerts', 'thesis'];
+const extraFields = (profile) => Object.fromEntries(EXTRA_FIELDS.map((key) => [key, profile[key] ?? initialProfile[key]]));
 
 function accountId() {
   const user = authService.getCurrentUser();
@@ -47,7 +49,9 @@ function isGoogleAccountAvatar(value) {
 }
 
 function fromServer(data) {
+  const extra = data.perfil_adicional || {};
   return {
+    ...extra,
     fullName: data.nombre_completo || '',
     headline: data.titular_profesional || '',
     location: data.ciudad || '',
@@ -66,11 +70,11 @@ function fromServer(data) {
     verificationStatus: data.estado_verificacion || (data.titulo_verificado ? 'aprobado' : 'pendiente'),
     verificationCode: data.sello_digital_resumen || '',
     certificateActa: data.numero_acta_grado || '',
-    thesis: data.proyecto_grado || undefined,
+    thesis: extra.thesis || data.proyecto_grado || undefined,
     openToWork: Boolean(data.disponible_para_trabajar),
     openToWorkVisibility: data.visibilidad_disponibilidad || 'recruiters',
-    photo: isGoogleAccountAvatar(data.url_avatar) ? null : (data.url_avatar || null),
-    cover: data.url_portada || null,
+    photo: extra.photo || (isGoogleAccountAvatar(data.url_avatar) ? null : (data.url_avatar || null)),
+    cover: extra.cover || data.url_portada || null,
     cvs: data.cvs || [],
   };
 }
@@ -88,6 +92,13 @@ function readProfile() {
   } catch {
     return initialProfile;
   }
+}
+
+function hasStoredDraft() {
+  try {
+    const id = accountId();
+    return Boolean(id && window.localStorage.getItem(`${STORAGE_KEY}.${id}`));
+  } catch { return false; }
 }
 
 function writeProfile(profile) {
@@ -112,6 +123,9 @@ export function useProfile() {
   const [profile, setProfile] = useState(readProfile);
   const [loading, setLoading] = useState(Boolean(accountId()));
   const [loadError, setLoadError] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const saveQueue = useRef(Promise.resolve());
+  const saveVersion = useRef(0);
   const id = accountId();
 
   useEffect(() => {
@@ -122,19 +136,23 @@ export function useProfile() {
     setLoadError('');
     if (!id) { setLoading(false); return undefined; }
     setLoading(true);
-    graduateProfileService.get().then((data) => {
+    graduateProfileService.get().then(async (data) => {
       if (!active) return;
       const draft = readProfile();
       const server = fromServer(data);
-      const merged = {
-        ...draft,
-        ...server,
-        thesis: server.thesis || draft.thesis || '',
-        photo: draft.photo || server.photo,
-      };
+      const migrate = hasStoredDraft() && !Object.keys(data.perfil_adicional || {}).length;
+      const merged = migrate ? { ...draft, ...server, ...extraFields(draft), photo: draft.photo || server.photo, cover: draft.cover || server.cover, thesis: draft.thesis || server.thesis || '' } : { ...draft, ...server };
       setProfile(merged);
       window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { profile: merged, accountId: id } }));
       setLoadError('');
+      if (migrate) {
+        try {
+          await graduateProfileService.update({ perfil_adicional: extraFields(merged) });
+          if (active) window.localStorage.removeItem(`${STORAGE_KEY}.${id}`);
+        } catch (error) { if (active) setSaveError(`No se pudo migrar tu perfil anterior: ${error.message}`); }
+      } else if (hasStoredDraft()) {
+        window.localStorage.removeItem(`${STORAGE_KEY}.${id}`);
+      }
     }).catch((error) => { if (active) setLoadError(error.message); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -152,6 +170,23 @@ export function useProfile() {
     setProfile((current) => {
       const next = typeof updater === 'function' ? updater(current) : { ...current, ...updater };
       writeProfile(next);
+      const owner = accountId();
+      if (owner) {
+        const version = ++saveVersion.current;
+        setSaveError('');
+        saveQueue.current = saveQueue.current.catch(() => {}).then(async () => {
+          if (accountId() !== owner) return;
+          try {
+            await graduateProfileService.update({ perfil_adicional: extraFields(next) });
+            if (accountId() === owner && version === saveVersion.current) {
+              window.localStorage.removeItem(`${STORAGE_KEY}.${owner}`);
+              setSaveError('');
+            }
+          } catch (error) {
+            if (accountId() === owner) setSaveError(`No se pudo guardar el perfil en el servidor: ${error.message}`);
+          }
+        });
+      }
       return next;
     });
   }, []);
@@ -162,7 +197,7 @@ export function useProfile() {
     setProfile(initialProfile);
   }, []);
 
-  return { profile, updateProfile, resetProfile, loading, loadError };
+  return { profile, updateProfile, resetProfile, loading, loadError, saveError };
 }
 
 /** Reduce una imagen a un dataURL JPEG liviano para poder guardarla en localStorage. */
