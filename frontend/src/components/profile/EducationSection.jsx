@@ -36,12 +36,12 @@ export default function EducationSection({ profile, updateProfile, notify }) {
 
   // Datos de la formación principal IES
   const [utsDraft, setUtsDraft] = useState({
-    program: profile.program || 'Tecnología en Desarrollo de Sistemas Informáticos',
-    graduationYear: profile.graduationYear || '2025',
-    faculty: profile.faculty || 'Facultad de Ciencias Naturales e Ingenierías',
-    campus: profile.campus || 'Sede Principal Bucaramanga',
-    thesis: profile.thesis || 'Desarrollo de plataforma web para la gestión de prácticas empresariales.',
-    degreeType: profile.degreeType || 'Pregrado Tecnológico',
+    program: profile.program || '',
+    graduationYear: profile.graduationYear || '',
+    faculty: profile.faculty || '',
+    campus: profile.campus || '',
+    thesis: profile.thesis || '',
+    degreeType: profile.degreeType || '',
   });
 
   const [otherDraft, setOtherDraft] = useState({
@@ -117,14 +117,11 @@ export default function EducationSection({ profile, updateProfile, notify }) {
     notify('Registro eliminado de educación.');
   }
 
-  const academicSkills = [
-    'Desarrollo Web Frontend & Backend',
-    'Bases de Datos SQL & NoSQL',
-    'Ingeniería de Software & Arquitectura',
-    'Metodologías Ágiles (Scrum)',
-    'Estructuras de Datos & Algoritmos',
-    'Seguridad Informática & Redes',
-  ];
+  const primaryMetaParts = [
+    profile.faculty,
+    profile.campus,
+    profile.graduationYear ? `Promoción ${profile.graduationYear}` : '',
+  ].filter(Boolean);
 
   const specializations = (profile.otherEducation || []).filter(
     (e) => e.type === 'Especialización' || e.type === 'Posgrado / Maestría' || e.type === 'Diplomado'
@@ -166,16 +163,18 @@ export default function EducationSection({ profile, updateProfile, notify }) {
         {/* ─── Tarjeta Principal de Educación IES ─── */}
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-secondary block mb-2">
-            PREGRADO
+            {(profile.degreeType || 'FORMACIÓN PRINCIPAL').toUpperCase()}
           </span>
           <article className="relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-white via-page/40 to-emerald-50/20 p-5 sm:p-6 shadow-2xs transition-all hover:border-green/50 hover:shadow-card">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div className="flex items-start gap-4">
                 <div className="relative grid size-14 shrink-0 place-items-center rounded-2xl bg-[#051F26] text-white shadow-md border border-white/10">
                   <i className="bx bxs-graduation text-2xl text-lime" />
-                  <span className="absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full bg-green text-white text-xs shadow-xs" title="Institución Acreditada">
-                    <i className="bx bx-check" />
-                  </span>
+                  {profile.isVerified && (
+                    <span className="absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full bg-green text-white text-xs shadow-xs" title="Título verificado por la institución">
+                      <i className="bx bx-check" />
+                    </span>
+                  )}
                 </div>
 
                 <div>
@@ -183,22 +182,32 @@ export default function EducationSection({ profile, updateProfile, notify }) {
                     <h3 className="m-0 font-display text-base sm:text-lg font-bold text-ink">
                       {profile.institution || profile.university || 'Institución de Educación Superior'}
                     </h3>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[0.65rem] font-bold text-emerald-800">
-                      <i className="bx bxs-badge-check text-green text-xs" /> Formación Acreditada
-                    </span>
+                    {profile.isVerified ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[0.65rem] font-bold text-emerald-800">
+                        <i className="bx bxs-badge-check text-green text-xs" /> Formación Acreditada
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2.5 py-0.5 text-[0.65rem] font-bold text-amber-700">
+                        <i className="bx bx-time-five text-amber-600 text-xs" /> En validación institucional
+                      </span>
+                    )}
                   </div>
 
-                  <p className="m-0 mt-1 font-display text-sm sm:text-base font-semibold text-blue-muted">
-                    {profile.program}
-                  </p>
+                  {profile.program && (
+                    <p className="m-0 mt-1 font-display text-sm sm:text-base font-semibold text-blue-muted">
+                      {profile.program}
+                    </p>
+                  )}
 
-                  <p className="m-0 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-secondary">
-                    <span>{profile.faculty || 'Facultad de Ciencias Naturales e Ingenierías'}</span>
-                    <span>•</span>
-                    <span>{profile.campus || 'Sede Bucaramanga'}</span>
-                    <span>•</span>
-                    <span className="font-semibold text-ink">Promoción {profile.graduationYear}</span>
-                  </p>
+                  {primaryMetaParts.length > 0 && (
+                    <p className="m-0 mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-secondary">
+                      {primaryMetaParts.map((part, idx) => (
+                        <span key={part} className={part.startsWith('Promoción ') ? 'font-semibold text-ink' : undefined}>
+                          {idx > 0 ? '• ' : ''}{part}
+                        </span>
+                      ))}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -206,12 +215,12 @@ export default function EducationSection({ profile, updateProfile, notify }) {
                 type="button"
                 onClick={() => {
                   setUtsDraft({
-                    program: profile.program || 'Tecnología en Desarrollo de Sistemas Informáticos',
-                    graduationYear: profile.graduationYear || '2025',
-                    faculty: profile.faculty || 'Facultad de Ciencias Naturales e Ingenierías',
-                    campus: profile.campus || 'Sede Principal Bucaramanga',
-                    thesis: profile.thesis || 'Desarrollo de plataforma web para la gestión de prácticas empresariales.',
-                    degreeType: profile.degreeType || 'Pregrado Tecnológico',
+                    program: profile.program || '',
+                    graduationYear: profile.graduationYear || '',
+                    faculty: profile.faculty || '',
+                    campus: profile.campus || '',
+                    thesis: profile.thesis || '',
+                    degreeType: profile.degreeType || '',
                   });
                   setEditingUts(true);
                 }}
@@ -235,33 +244,26 @@ export default function EducationSection({ profile, updateProfile, notify }) {
               </div>
             )}
 
-            {/* Competencias académicas validadas */}
-            <div className="mt-4">
-              <span className="text-[0.65rem] font-bold uppercase tracking-wider text-secondary block mb-2">
-                Áreas de conocimiento validadas en el plan de estudios:
-              </span>
-              <div className="flex flex-wrap gap-1.5">
-                {academicSkills.map((skill) => (
-                  <span
-                    key={skill}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-page px-2.5 py-1 text-xs font-medium text-ink/85"
-                  >
-                    <span className="size-1.5 rounded-full bg-green" aria-hidden="true" />
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </div>
-
             {/* Sello de verificación institucional */}
-            <div className="mt-4 flex items-center justify-between gap-3 border-t border-line-soft pt-3 text-[0.72rem] text-secondary">
-              <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-800">
-                <i className="bx bx-shield-check text-green text-sm" />
-                Título verificado y registrado en el sistema institucional de graduados
-              </span>
-              <span className="font-mono text-[0.65rem] text-secondary/70 hidden sm:inline">
-                Código Verificación: IES-{profile.graduationYear || '2025'}-VOK
-              </span>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line-soft pt-3 text-[0.72rem] text-secondary">
+              {profile.isVerified ? (
+                <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-800">
+                  <i className="bx bx-shield-check text-green text-sm" />
+                  Título verificado y registrado en el sistema institucional de graduados
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 font-medium text-amber-700">
+                  <i className="bx bx-time-five text-amber-600 text-sm" />
+                  {profile.verificationStatus === 'rechazado'
+                    ? 'La institución solicitó revisar tu documento de grado'
+                    : 'Pendiente de validación por tu institución académica'}
+                </span>
+              )}
+              {profile.isVerified && (profile.certificateActa || profile.verificationCode) && (
+                <span className="font-mono text-[0.65rem] text-secondary/80 hidden sm:inline">
+                  {profile.certificateActa ? `Acta: ${profile.certificateActa}` : `Sello: ${profile.verificationCode}`}
+                </span>
+              )}
             </div>
           </article>
         </div>

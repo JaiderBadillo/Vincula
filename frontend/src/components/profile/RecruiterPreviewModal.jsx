@@ -238,7 +238,7 @@ export default function RecruiterPreviewModal({ profile, onClose }) {
                     </div>
                   </div>
 
-                  {/* Tarjeta de Educación UTS */}
+                  {/* Tarjeta de Educación IES */}
                   <div className="shrink-0 flex items-center sm:items-start gap-2.5 rounded-xl border border-line bg-page p-3 text-xs shadow-2xs max-w-xs">
                     <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-ink text-lime font-display font-bold text-xs shadow-xs">
                       <i className="bx bxs-graduation text-base" />
@@ -248,13 +248,16 @@ export default function RecruiterPreviewModal({ profile, onClose }) {
                         <p className="m-0 font-display font-bold text-ink truncate text-xs">
                           {profile.institution || profile.university || 'Institución Universitaria'}
                         </p>
-                        <i className="bx bxs-badge-check text-green text-sm shrink-0" aria-hidden="true" />
+                        {profile.isVerified && (
+                          <i className="bx bxs-badge-check text-green text-sm shrink-0" aria-hidden="true" />
+                        )}
                       </div>
                       <p className="m-0 text-[0.68rem] font-semibold text-blue-muted truncate">
                         {profile.program}
                       </p>
                       <p className="m-0 mt-0.5 text-[0.65rem] text-secondary">
-                        Graduado {profile.graduationYear} · Título Oficial
+                        {profile.graduationYear ? `Graduado ${profile.graduationYear}` : 'Formación registrada'} ·{' '}
+                        {profile.isVerified ? 'Título Verificado' : 'En verificación'}
                       </p>
                     </div>
                   </div>

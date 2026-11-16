@@ -9,8 +9,10 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
+from sqlalchemy.orm import selectinload
 
 from app.modules.graduates.models import Egresado, AcademicoEgresado, ArchivoHojaVida
+from app.modules.institutions.models import ProgramaAcademico
 from app.integrations.supabase_storage import SupabaseStorageService
 from app.modules.vacancies_ats.models import (
     Postulacion,
@@ -357,8 +359,13 @@ class GraduateService:
             raise HTTPException(status_code=404, detail="Perfil de egresado no encontrado.")
 
         academic = (await session.execute(
-            select(AcademicoEgresado).where(AcademicoEgresado.id_egresado == graduate.id)
-            .order_by(AcademicoEgresado.creado_en.desc())
+            select(AcademicoEgresado)
+            .options(
+                selectinload(AcademicoEgresado.programa).selectinload(ProgramaAcademico.facultad),
+                selectinload(AcademicoEgresado.programa).selectinload(ProgramaAcademico.sede),
+            )
+            .where(AcademicoEgresado.id_egresado == graduate.id)
+            .order_by(AcademicoEgresado.validado_por_ies.desc(), AcademicoEgresado.creado_en.desc())
         )).scalars().first()
         cvs = (await session.execute(
             select(ArchivoHojaVida).where(ArchivoHojaVida.id_egresado == graduate.id)
@@ -375,16 +382,37 @@ class GraduateService:
                 )
             else:
                 cv_urls[item.id] = item.url_archivo
-        approved = bool(academic and academic.estado_verificacion == "aprobado" and academic.validado_por_ies)
+        approved = bool(
+            academic
+            and academic.estado_verificacion == "aprobado"
+            and (
+                academic.validado_por_ies
+                or bool(getattr(academic, "sello_digital", None))
+                or getattr(graduate, "estado", None) == "aprobado"
+            )
+        )
+        programa = getattr(academic, "programa", None) if academic else None
+        institucion = getattr(academic, "institucion", None) if academic else None
+        facultad = getattr(programa, "facultad", None) if programa else None
+        sede = (getattr(academic, "sede", None) or getattr(programa, "sede", None)) if academic else None
+        sello_raw = getattr(academic, "sello_digital", None) if academic else None
+
         return GraduateProfileSchema(
             id=str(graduate.id), nombre_completo=graduate.nombre_completo,
             correo=graduate.correo_personal, telefono=graduate.telefono,
             departamento=graduate.departamento_residencia,
             ciudad=graduate.ciudad_residencia,
-            institucion_nombre=academic.institucion.nombre_oficial if academic else None,
-            carrera=academic.programa.nombre if academic else graduate.titular_profesional,
-            ano_graduacion=str(academic.ano_graduacion) if academic else None,
-            titulo_verificado=approved, sello_digital_activo=bool(approved and academic.sello_digital),
+            institucion_nombre=getattr(institucion, "nombre_oficial", None) if institucion else None,
+            carrera=getattr(programa, "nombre", None) if programa else graduate.titular_profesional,
+            ano_graduacion=str(academic.ano_graduacion) if academic and getattr(academic, "ano_graduacion", None) else None,
+            facultad_nombre=getattr(facultad, "nombre", None) if facultad else None,
+            sede_nombre=getattr(sede, "nombre", None) if sede else None,
+            nivel_formacion=(getattr(academic, "nivel_formacion", None) or getattr(programa, "nivel_formacion", None)) if academic else None,
+            estado_verificacion=getattr(academic, "estado_verificacion", None) if academic else None,
+            numero_acta_grado=getattr(academic, "numero_acta_grado", None) if approved else None,
+            sello_digital_resumen=sello_raw[:16].upper() if (approved and sello_raw) else None,
+            proyecto_grado=getattr(academic, "proyecto_grado", None) if academic else None,
+            titulo_verificado=approved, sello_digital_activo=bool(approved and sello_raw),
             habilidades_tecnicas=[], experiencias=[],
             hoja_de_vida_pdf_url=cv_urls[cv.id] if cv else None,
             cvs=[{

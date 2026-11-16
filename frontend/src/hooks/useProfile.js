@@ -5,7 +5,29 @@ import { graduateProfileService } from '../services/graduateProfileService.js';
 
 const STORAGE_KEY = 'vincula.profile.draft.v2';
 const SYNC_EVENT = 'vincula:profile-updated';
-const SERVER_FIELDS = ['fullName', 'headline', 'location', 'email', 'phone', 'about', 'openToWork', 'openToWorkVisibility', 'graduationYear', 'program', 'cvs'];
+const SERVER_FIELDS = [
+  'fullName',
+  'headline',
+  'location',
+  'department',
+  'email',
+  'phone',
+  'about',
+  'openToWork',
+  'openToWorkVisibility',
+  'graduationYear',
+  'program',
+  'institution',
+  'faculty',
+  'campus',
+  'degreeType',
+  'isVerified',
+  'digitalSealActive',
+  'verificationStatus',
+  'verificationCode',
+  'certificateActa',
+  'cvs',
+];
 
 function accountId() {
   const user = authService.getCurrentUser();
@@ -26,10 +48,25 @@ function isGoogleAccountAvatar(value) {
 
 function fromServer(data) {
   return {
-    fullName: data.nombre_completo || '', headline: data.titular_profesional || '',
-    location: data.ciudad || '', email: data.correo || '', phone: data.telefono || '',
-    about: data.biografia || '', program: data.carrera || '',
+    fullName: data.nombre_completo || '',
+    headline: data.titular_profesional || '',
+    location: data.ciudad || '',
+    department: data.departamento || '',
+    email: data.correo || '',
+    phone: data.telefono || '',
+    about: data.biografia || '',
+    institution: data.institucion_nombre || '',
+    program: data.carrera || '',
     graduationYear: data.ano_graduacion || '',
+    faculty: data.facultad_nombre || '',
+    campus: data.sede_nombre || '',
+    degreeType: data.nivel_formacion || '',
+    isVerified: Boolean(data.titulo_verificado),
+    digitalSealActive: Boolean(data.sello_digital_activo),
+    verificationStatus: data.estado_verificacion || (data.titulo_verificado ? 'aprobado' : 'pendiente'),
+    verificationCode: data.sello_digital_resumen || '',
+    certificateActa: data.numero_acta_grado || '',
+    thesis: data.proyecto_grado || undefined,
     openToWork: Boolean(data.disponible_para_trabajar),
     openToWorkVisibility: data.visibilidad_disponibilidad || 'recruiters',
     photo: isGoogleAccountAvatar(data.url_avatar) ? null : (data.url_avatar || null),
@@ -89,7 +126,12 @@ export function useProfile() {
       if (!active) return;
       const draft = readProfile();
       const server = fromServer(data);
-      const merged = { ...draft, ...server, photo: draft.photo || server.photo };
+      const merged = {
+        ...draft,
+        ...server,
+        thesis: server.thesis || draft.thesis || '',
+        photo: draft.photo || server.photo,
+      };
       setProfile(merged);
       window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { profile: merged, accountId: id } }));
       setLoadError('');

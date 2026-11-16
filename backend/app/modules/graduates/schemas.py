@@ -34,6 +34,13 @@ class GraduateProfileSchema(BaseModel):
     institucion_nombre: Optional[str] = None
     carrera: Optional[str] = None
     ano_graduacion: Optional[str] = None
+    facultad_nombre: Optional[str] = None
+    sede_nombre: Optional[str] = None
+    nivel_formacion: Optional[str] = None
+    estado_verificacion: Optional[str] = None
+    numero_acta_grado: Optional[str] = None
+    sello_digital_resumen: Optional[str] = None
+    proyecto_grado: Optional[str] = None
     titulo_verificado: bool
     sello_digital_activo: bool
     habilidades_tecnicas: List[str]
