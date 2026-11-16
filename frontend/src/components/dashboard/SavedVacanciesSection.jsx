@@ -98,17 +98,23 @@ export default function SavedVacanciesSection({ onOpenJob, onApplyJob, appliedJo
                       {job.salaryFormatted}
                     </span>
 
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-lime/25 px-2.5 py-1 text-[0.72rem] font-extrabold text-ink border border-lime/40">
-                      <i className="bx bxs-bolt text-xs text-green-dark" />
-                      {job.utsMatch}% Match Perfil
-                    </span>
+                    {job.utsMatch != null && (
+                      <span className="inline-flex items-center gap-1 rounded-lg bg-lime/25 px-2.5 py-1 text-[0.72rem] font-extrabold text-ink border border-lime/40">
+                        <i className="bx bxs-bolt text-xs text-green-dark" />
+                        {job.utsMatch}% Match Perfil
+                      </span>
+                    )}
                   </div>
 
                   {/* Días restantes de convocatoria */}
                   <div className="mt-3 pt-3 border-t border-line-soft flex items-center justify-between text-xs text-secondary">
                     <span className="flex items-center gap-1 text-[0.7rem]">
                       <i className="bx bx-time text-xs" />
-                      Cierra en <strong>{job.daysRemaining} días</strong>
+                      {job.daysRemaining != null ? (
+                        <>Cierra en <strong>{Math.max(0, job.daysRemaining)} días</strong></>
+                      ) : (
+                        job.mode
+                      )}
                     </span>
                     <span className="text-[0.68rem] text-secondary">
                       {job.contractType}

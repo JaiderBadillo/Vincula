@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react';
-import { jobs, normalizeText } from '../data/jobs.js';
+import { useEffect, useMemo, useState } from 'react';
+import { normalizeText } from '../data/jobs.js';
+import { vacancyService } from '../services/vacancyService.js';
+import { mapPublicVacancy } from '../utils/publicVacancies.js';
 import { primaryButton, sectionEyebrow, sectionTitle } from '../utils/classes.js';
 
 const sectors = [
@@ -13,8 +15,8 @@ function FeaturedVacancyCard({ job, onOpen }) {
     <article className="relative isolate flex min-h-[340px] flex-col overflow-hidden rounded-card bg-ink p-6 text-white sm:p-8 lg:min-h-[390px]">
       <div className="featured-rings pointer-events-none absolute inset-0" aria-hidden="true"><span /><span /></div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-lime"><span className="size-2 rounded-full bg-lime" aria-hidden="true" />Oportunidad destacada</span>
-        <span className="rounded-md border border-white/15 bg-white/5 px-3 py-1.5 text-[0.65rem] font-bold uppercase tracking-wide text-white/75">Ejemplo ilustrativo</span>
+        <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-lime"><span className="size-2 rounded-full bg-lime" aria-hidden="true" />Vacante activa</span>
+        {job.vacancyCode && <span className="rounded-md border border-white/15 bg-white/5 px-3 py-1.5 font-mono text-[0.65rem] font-bold uppercase tracking-wide text-white/80">{job.vacancyCode}</span>}
       </div>
       <div className="mt-9 max-w-xl">
         <span className="inline-flex rounded-md bg-white/10 px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-wide text-white/85">{job.sectorLabel}</span>
@@ -38,10 +40,10 @@ function SecondaryVacancyCard({ job, icon, onOpen }) {
   return (
     <article className="flex min-h-[13.5rem] flex-col rounded-card border border-line bg-white p-5 sm:p-6">
       <div className="flex items-center justify-between gap-3 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-blue-muted">
-        <span>{job.id === 'gestion-proyectos' ? 'Oportunidad pública' : `${job.category} · ${job.location}`}</span>
+        <span>{job.sector === 'public' ? 'Oportunidad pública' : `${job.category} · ${job.location}`}</span>
         <i className={`bx ${icon} text-xl`} aria-hidden="true" />
       </div>
-      <span className="mt-2 w-fit rounded-md border border-line-soft bg-panel px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-wide text-blue-muted">Ejemplo ilustrativo</span>
+      <span className="mt-2 w-fit rounded-md border border-green/25 bg-green/10 px-2.5 py-1 text-[0.62rem] font-bold uppercase tracking-wide text-green-dark">Vacante activa</span>
       <h3 className="mt-3 font-display text-lg font-semibold leading-snug tracking-tight text-ink">{job.title}</h3>
       <p className="mt-2 text-sm leading-6 text-body-muted">{job.company}</p>
       <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-line-soft pt-4 text-xs text-secondary">
@@ -106,25 +108,41 @@ function AlertPreferences() {
 }
 
 export default function VacanciesSection({ onOpenJob }) {
+  const [vacancies, setVacancies] = useState([]);
   const [sector, setSector] = useState('all');
   const [keyword, setKeyword] = useState('');
   const [location, setLocation] = useState('');
 
+  useEffect(() => {
+    let active = true;
+    vacancyService
+      .getPublicVacancies({ limit: 30 })
+      .then((res) => {
+        if (active) setVacancies((res?.items || []).map(mapPublicVacancy));
+      })
+      .catch(() => {
+        if (active) setVacancies([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const visibleJobs = useMemo(() => {
     const normalizedKeyword = normalizeText(keyword);
     const normalizedLocation = normalizeText(location);
-    return jobs.filter((job) => {
+    return vacancies.filter((job) => {
       const sectorMatches = sector === 'all' || job.sector === sector;
-      const searchIndex = normalizeText(`${job.searchText} ${job.title} ${job.company} ${job.category} ${job.location} ${job.mode}`);
+      const searchIndex = normalizeText(`${job.title} ${job.company} ${job.category} ${job.location} ${job.mode} ${job.description}`);
       const locationIndex = normalizeText(`${job.location} ${job.mode} ${job.company}`);
       const keywordMatches = !normalizedKeyword || searchIndex.includes(normalizedKeyword);
       const locationMatches = !normalizedLocation || locationIndex.includes(normalizedLocation);
       return sectorMatches && keywordMatches && locationMatches;
     });
-  }, [keyword, location, sector]);
+  }, [vacancies, keyword, location, sector]);
 
-  const featuredJob = visibleJobs.find((job) => job.featured);
-  const secondaryJobs = visibleJobs.filter((job) => !job.featured);
+  const featuredJob = visibleJobs[0] ?? null;
+  const secondaryJobs = visibleJobs.slice(1, 3);
 
   function submitSearch(event) {
     event.preventDefault();
@@ -181,7 +199,7 @@ export default function VacanciesSection({ onOpenJob }) {
         ) : (
           <div className="rounded-card border border-dashed border-line bg-white px-5 py-10 text-center text-body-muted" role="status" aria-live="polite">
             <i className="bx bx-search-alt mb-2 text-3xl text-blue-muted" aria-hidden="true" />
-            <p className="mb-4">No encontramos coincidencias en estos ejemplos.</p>
+            <p className="mb-4">No encontramos vacantes activas con esos criterios.</p>
             <button className="rounded-control border border-line px-4 py-2 text-sm font-semibold text-blue-muted hover:bg-panel" type="button" onClick={clearSearch}>Limpiar búsqueda</button>
           </div>
         )}
