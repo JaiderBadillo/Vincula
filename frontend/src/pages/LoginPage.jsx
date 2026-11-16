@@ -311,18 +311,11 @@ export default function LoginPage() {
       {/* ─── Center: Login Box (Centered, slightly larger & comfortable) ─── */}
       <main className="relative z-20 mx-auto my-auto flex w-full max-w-lg flex-col justify-center px-4 py-8 sm:px-6">
         <div className="w-full rounded-3xl border border-line/90 bg-white/95 p-8 shadow-hero backdrop-blur-xl sm:p-10">
-          {/* Alerta de sesión cerrada */}
+          {/* Confirmación de cierre de sesión */}
           {isLogout && (
-            <div className="mb-6 rounded-2xl border border-sand-line bg-sand/40 p-4 text-xs text-cocoa flex items-center gap-3 animate-in fade-in">
-              <span className="grid size-8 shrink-0 place-items-center rounded-xl bg-terracotta text-white text-base">
-                <i className="bx bx-check" />
-              </span>
-              <div>
-                <p className="m-0 font-bold text-ink">Sesión finalizada con éxito</p>
-                <p className="m-0 text-[0.7rem] text-secondary">
-                  Has salido de la plataforma de forma segura. Ingresa de nuevo tus credenciales cuando lo requieras.
-                </p>
-              </div>
+            <div role="status" className="mb-7 flex items-center gap-2.5 border-b border-line pb-5 text-sm text-body-muted">
+              <span className="size-1.5 shrink-0 rounded-full bg-green" aria-hidden="true" />
+              <span>Sesión cerrada. Puedes volver a ingresar cuando quieras.</span>
             </div>
           )}
 
