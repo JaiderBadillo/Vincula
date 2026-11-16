@@ -432,10 +432,10 @@ export default function InstitutionStudentTrackingPage() {
                                     {grad.employmentDetails?.placedViaVincula ? (
                                       <span
                                         className="inline-flex items-center gap-0.5 rounded bg-lime/40 border border-lime/70 px-1.5 py-0.2 text-[0.6rem] font-bold text-ink"
-                                        title="Contratado a través de la Bolsa Institucional Vincula UTS"
+                                        title="Contratado a través del portal institucional Vincula"
                                       >
                                         <i className="bx bxs-bolt text-[0.7rem] text-green-dark" />
-                                        Vincula UTS
+                                        Vincula
                                       </span>
                                     ) : (
                                       <span

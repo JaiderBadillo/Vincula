@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { authService } from '../../services/authService.js';
 
 const INTERACTION_TYPES = [
   { id: 'reunion', label: 'Reunión Bilateral', icon: 'bx-group', color: 'text-green-dark bg-green/10' },
@@ -9,11 +10,12 @@ const INTERACTION_TYPES = [
 ];
 
 export default function CompanyInteractionModal({ company, isOpen, onClose, onSave }) {
+  const currentUser = authService.getCurrentUser();
   const [type, setType] = useState('reunion');
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [nextAction, setNextAction] = useState('');
-  const [advisorName] = useState('Dra. Camila Morales Rey');
+  const [advisorName] = useState(() => currentUser?.nombre || 'Asesor IES');
   const [errors, setErrors] = useState({});
 
   if (!isOpen || !company) return null;

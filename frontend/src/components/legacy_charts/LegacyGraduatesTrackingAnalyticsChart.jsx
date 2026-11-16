@@ -413,12 +413,12 @@ export default function GraduatesTrackingAnalyticsChart({
               </div>
             </div>
 
-            {/* Colocados por Vincula UTS */}
+            {/* Colocados por Vincula */}
             <div className="rounded-xl border border-lime/70 bg-gradient-to-br from-lime/15 via-white to-white p-3.5 flex items-center justify-between shadow-2xs">
               <div>
                 <span className="text-[0.68rem] font-bold uppercase tracking-wider text-green-dark block flex items-center gap-1">
                   <i className="bx bxs-badge-check text-green" />
-                  Vía Vincula UTS
+                  Vía Vincula
                 </span>
                 <span className="text-2xl font-black font-display text-ink block mt-0.5">
                   {stats.vinculaCount}
@@ -455,7 +455,7 @@ export default function GraduatesTrackingAnalyticsChart({
               <span className="font-semibold text-ink text-xs">Convención de colores:</span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="size-3 rounded-sm bg-lime border border-ink/40 shadow-2xs" />
-                <span className="text-ink font-semibold">Conseguido por Vincula UTS</span>
+                <span className="text-ink font-semibold">Conseguido por Vincula</span>
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="size-3 rounded-sm bg-emerald-600" />
@@ -768,7 +768,7 @@ export default function GraduatesTrackingAnalyticsChart({
                 <div className="mt-3 text-center">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-lime/30 border border-lime/70 px-3 py-1 text-xs font-bold text-ink">
                     <i className="bx bxs-award text-sm text-green-dark" />
-                    Bolsa de Empleo UTS Líder
+                    Portal Institucional Líder
                   </span>
                 </div>
               </div>
@@ -782,7 +782,7 @@ export default function GraduatesTrackingAnalyticsChart({
                         Colocación Directa por la Plataforma Vincula
                       </h4>
                       <p className="m-0 text-xs text-body-muted mt-1 leading-relaxed">
-                        <strong>{stats.vinculaCount} egresados</strong> fueron vinculados gracias a convenios marco institucionales y postulaciones dentro de Vincula UTS, representando el <strong>{stats.vinculaShareOfEmployed}%</strong> de todas las contrataciones registradas.
+                        <strong>{stats.vinculaCount} egresados</strong> fueron vinculados gracias a convenios marco institucionales y postulaciones dentro de Vincula, representando el <strong>{stats.vinculaShareOfEmployed}%</strong> de todas las contrataciones registradas.
                       </p>
                     </div>
                     <span className="rounded-xl bg-ink text-lime text-base font-black px-2.5 py-1.5 font-display shrink-0">

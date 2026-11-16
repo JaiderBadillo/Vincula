@@ -661,7 +661,7 @@ export default function CompanyRecruiterCandidatesPage() {
 
                                 {/* Fecha o Cita */}
                                 <div className="flex items-center justify-between pt-1 border-t border-sand-line/50 text-[0.65rem] text-secondary">
-                                  <span>{cand.institution.includes('Santander') ? 'UTS' : 'UIS'}</span>
+                                  <span>{cand.institution || 'Institución por validar'}</span>
                                   {cand.interviewDate ? (
                                     <span className="font-semibold text-terracotta-dark truncate">
                                       {cand.interviewDate.split('(')[0]}

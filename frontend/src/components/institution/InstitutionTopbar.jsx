@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { advisorProfile } from '../../data/institutionData.js';
 import { useInstitutionProfile } from '../../hooks/useInstitutionProfile.js';
 import { authService } from '../../services/authService.js';
+import { institutionService } from '../../services/institutionService.js';
 import UserAccountDropdown from '../common/UserAccountDropdown.jsx';
 
 function formatDashboardDate(date) {
@@ -24,12 +25,34 @@ export default function InstitutionTopbar({
 }) {
   const { institutionProfile } = useInstitutionProfile();
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const [pendingGraduatesCount, setPendingGraduatesCount] = useState(0);
   const [, refreshUser] = useState(0);
   useEffect(() => {
     const onUserUpdated = () => refreshUser(value => value + 1);
     window.addEventListener('vincula:user-updated', onUserUpdated);
     return () => window.removeEventListener('vincula:user-updated', onUserUpdated);
   }, []);
+
+  useEffect(() => {
+    if (role === 'admin') return undefined;
+    let active = true;
+    async function loadPending() {
+      try {
+        const res = await institutionService.getPendingGraduates({ estado: 'pendiente', limit: 1 });
+        if (!active) return;
+        const count = res?.resumen_estados?.pendientes ?? res?.total ?? 0;
+        setPendingGraduatesCount(Number(count) || 0);
+      } catch {
+        if (active) setPendingGraduatesCount(0);
+      }
+    }
+    loadPending();
+    window.addEventListener('vincula:graduate-validated', loadPending);
+    return () => {
+      active = false;
+      window.removeEventListener('vincula:graduate-validated', loadPending);
+    };
+  }, [role]);
   const currentUser = authService.getCurrentUser();
 
   const rawAdvisorName = currentUser?.nombre || advisorProfile.fullName || 'Coordinación IES';
@@ -87,13 +110,19 @@ export default function InstitutionTopbar({
             <div className="relative">
               <span
                 className="grid size-9 place-items-center rounded-xl border border-line bg-white text-ink text-lg shadow-2xs"
-                title="19 solicitudes pendientes en cola"
+                title={
+                  pendingGraduatesCount > 0
+                    ? `${pendingGraduatesCount} solicitud${pendingGraduatesCount === 1 ? '' : 'es'} pendiente${pendingGraduatesCount === 1 ? '' : 's'} de validación`
+                    : 'Sin solicitudes pendientes'
+                }
               >
                 <i className="bx bx-bell" />
               </span>
-              <span className="absolute -top-1 -right-1 grid size-4 place-items-center rounded-full bg-green text-[0.6rem] font-bold text-white ring-2 ring-page">
-                19
-              </span>
+              {pendingGraduatesCount > 0 && (
+                <span className="absolute -top-1 -right-1 grid min-w-4 h-4 px-1 place-items-center rounded-full bg-green text-[0.6rem] font-bold text-white ring-2 ring-page">
+                  {pendingGraduatesCount}
+                </span>
+              )}
             </div>
           )}
 

@@ -18,16 +18,13 @@ export default function AgreementRequestModal({
   const [institutionId, setInstitutionId] = useState('uts');
   const [typeKey, setTypeKey] = useState('alianza_preferente');
   const [durationYears, setDurationYears] = useState(2);
-  const [estimatedVacancies, setEstimatedVacancies] = useState(4);
-  const [selectedPrograms, setSelectedPrograms] = useState([
-    'Ingeniería de Sistemas',
-    'Tecnología en Desarrollo de Sistemas Informáticos',
-  ]);
+  const [estimatedVacancies, setEstimatedVacancies] = useState(1);
+  const [selectedPrograms, setSelectedPrograms] = useState([]);
   const [description, setDescription] = useState('');
-  const [contactName, setContactName] = useState('Carlos Andrés Rueda');
-  const [contactRole, setContactRole] = useState('Gerente General');
-  const [contactEmail, setContactEmail] = useState('talento@cenit-transporte.com');
-  const [contactPhone, setContactPhone] = useState('+57 (607) 633 4000');
+  const [contactName, setContactName] = useState('');
+  const [contactRole, setContactRole] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
 
   // Documentos adjuntos por defecto
   const [docCamara, setDocCamara] = useState(true);
@@ -63,15 +60,10 @@ export default function AgreementRequestModal({
       setSelectedCity('Bucaramanga');
       setInstitutionId('uts');
       setTypeKey('alianza_preferente');
-      setSelectedPrograms([
-        'Ingeniería de Sistemas',
-        'Tecnología en Desarrollo de Sistemas Informáticos',
-      ]);
+      setSelectedPrograms([]);
       setDurationYears(2);
-      setEstimatedVacancies(4);
-      setDescription(
-        'Buscamos consolidar una alianza para la captación preferencial de estudiantes de últimos semestres y egresados en proyectos de tecnología y logística de hidrocarburos.'
-      );
+      setEstimatedVacancies(1);
+      setDescription('');
     }
   }, [renewalAgreement, isOpen]);
 
@@ -115,9 +107,9 @@ export default function AgreementRequestModal({
           ...(docCamara
             ? [
                 {
-                  title: 'Cámara de Comercio de Bucaramanga (<30 días)',
+                  title: 'Cámara de Comercio (<30 días)',
                   type: 'Soporte Legal',
-                  fileName: 'Camara_Comercio_Cenit_Actualizada.pdf',
+                  fileName: 'Camara_Comercio_Actualizada.pdf',
                   fileSize: '2.8 MB',
                 },
               ]
@@ -125,9 +117,9 @@ export default function AgreementRequestModal({
           ...(docRut
             ? [
                 {
-                  title: 'Registro Único Tributario (RUT 2026)',
+                  title: 'Registro Único Tributario (RUT)',
                   type: 'Tributario',
-                  fileName: 'RUT_Cenit_2026.pdf',
+                  fileName: 'RUT_Empresa.pdf',
                   fileSize: '1.2 MB',
                 },
               ]
@@ -140,15 +132,15 @@ export default function AgreementRequestModal({
         docs.push({
           title: 'Certificado de Existencia y Representación Legal (<30 días)',
           type: 'Soporte Legal',
-          fileName: 'Certificado_Camara_Comercio_Cenit_2026.pdf',
+          fileName: 'Certificado_Camara_Comercio.pdf',
           fileSize: '3.1 MB',
         });
       }
       if (docRut) {
         docs.push({
-          title: 'Registro Único Tributario (RUT 2026)',
+          title: 'Registro Único Tributario (RUT)',
           type: 'Tributario',
-          fileName: 'RUT_Cenit_Actualizado_2026.pdf',
+          fileName: 'RUT_Actualizado.pdf',
           fileSize: '1.4 MB',
         });
       }
@@ -156,7 +148,7 @@ export default function AgreementRequestModal({
         docs.push({
           title: 'Cédula de Ciudadanía del Representante Legal',
           type: 'Identificación',
-          fileName: 'Cedula_Representante_Legal_Cenit.pdf',
+          fileName: 'Cedula_Representante_Legal.pdf',
           fileSize: '890 KB',
         });
       }
@@ -164,7 +156,7 @@ export default function AgreementRequestModal({
         docs.push({
           title: 'Propuesta Institucional y Justificación del Convenio',
           type: 'Propuesta',
-          fileName: 'Propuesta_Convenio_IES_Cenit.pdf',
+          fileName: 'Propuesta_Convenio_IES.pdf',
           fileSize: '2.4 MB',
         });
       }
@@ -472,7 +464,7 @@ export default function AgreementRequestModal({
                         className="size-4 rounded border-sand-line text-terracotta accent-terracotta"
                       />
                       <span>
-                        <strong>Cédula del Representante Legal</strong> (Carlos Andrés Rueda)
+                        <strong>Cédula del Representante Legal</strong>
                       </span>
                     </label>
 

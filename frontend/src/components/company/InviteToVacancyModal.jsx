@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useCompanyProfile } from '../../hooks/useCompanyProfile.js';
 
 export default function InviteToVacancyModal({
   isOpen,
@@ -7,6 +8,8 @@ export default function InviteToVacancyModal({
   onClose,
   onInvite,
 }) {
+  const { companyProfile } = useCompanyProfile();
+  const companyName = companyProfile?.name || 'nuestra empresa';
   const [selectedVacancyId, setSelectedVacancyId] = useState('');
   const [customMessage, setCustomMessage] = useState('');
 
@@ -18,9 +21,9 @@ export default function InviteToVacancyModal({
     const targetVac = vacancies.find((v) => v.id === defaultVacId);
     const vacTitle = targetVac ? targetVac.title : 'nuestra vacante activa';
     setCustomMessage(
-      `Hola ${talent.fullName.split(' ')[0]}, en Cenit Transporte hemos revisado tu perfil académico y competencias en ${talent.institutionShort} y consideramos que tu formación en ${talent.program} encaja de forma sobresaliente con nuestra convocatoria de «${vacTitle}». Te invitamos a postularte para iniciar el proceso de selección.`
+      `Hola ${talent.fullName.split(' ')[0]}, en ${companyName} hemos revisado tu perfil académico y competencias en ${talent.institutionShort || talent.institution || 'tu institución'} y consideramos que tu formación en ${talent.program} encaja con nuestra convocatoria de «${vacTitle}». Te invitamos a postularte para iniciar el proceso de selección.`
     );
-  }, [isOpen, talent, vacancies]);
+  }, [isOpen, talent, vacancies, companyName]);
 
   if (!isOpen || !talent) return null;
 
@@ -29,7 +32,7 @@ export default function InviteToVacancyModal({
     const targetVac = vacancies.find((v) => v.id === newId);
     const vacTitle = targetVac ? targetVac.title : 'nuestra vacante activa';
     setCustomMessage(
-      `Hola ${talent.fullName.split(' ')[0]}, en Cenit Transporte hemos revisado tu perfil académico y competencias en ${talent.institutionShort} y consideramos que tu formación en ${talent.program} encaja de forma sobresaliente con nuestra convocatoria de «${vacTitle}». Te invitamos a postularte para iniciar el proceso de selección.`
+      `Hola ${talent.fullName.split(' ')[0]}, en ${companyName} hemos revisado tu perfil académico y competencias en ${talent.institutionShort || talent.institution || 'tu institución'} y consideramos que tu formación en ${talent.program} encaja con nuestra convocatoria de «${vacTitle}». Te invitamos a postularte para iniciar el proceso de selección.`
     );
   }
 
@@ -122,7 +125,7 @@ export default function InviteToVacancyModal({
           <div className="rounded-xl border border-sand-line/70 bg-cream/30 p-3 flex items-start gap-2.5 text-[0.7rem] text-secondary">
             <i className="bx bx-info-circle text-base text-terracotta shrink-0 mt-0.5" />
             <p className="m-0 leading-relaxed">
-              El egresado recibirá una invitación prioritaria en su panel de egresado con el distintivo de <strong>Cenit Transporte</strong> y acceso directo para postularse en 1 clic.
+              El egresado recibirá una invitación prioritaria en su panel de egresado con el distintivo de <strong>{companyName}</strong> y acceso directo para postularse en 1 clic.
             </p>
           </div>
 

@@ -50,7 +50,7 @@ export function useCompanyAgreements() {
     const inst = REGIONAL_INSTITUTIONS.find((i) => i.id === formData.institutionId) || REGIONAL_INSTITUTIONS[0];
     const typeObj = AGREEMENT_TYPES.find((t) => t.id === formData.typeKey) || AGREEMENT_TYPES[0];
     const today = new Date().toISOString().slice(0, 10);
-    const id = `agr-cenit-${Date.now().toString().slice(-4)}`;
+    const id = `agr-${Date.now().toString().slice(-6)}`;
     const randomCode = Math.floor(100 + Math.random() * 900);
     const agreementCode = `SOL-${inst.shortName}-${new Date().getFullYear()}-${randomCode}`;
 
@@ -70,20 +70,16 @@ export function useCompanyAgreements() {
       requestedAt: today,
       requestedDurationYears: Number(formData.durationYears) || 2,
       estimatedVacancies: Number(formData.estimatedVacancies) || 4,
-      legalRepresentative: formData.legalRepresentative || 'Carlos Andrés Rueda (Cenit)',
+      legalRepresentative: formData.legalRepresentative || formData.contactName || '',
       coordinatorIES: inst.coordinator,
       contactCompany: {
-        name: formData.contactName || 'Carlos Andrés Rueda',
-        role: formData.contactRole || 'Gerente General',
-        email: formData.contactEmail || 'talento@cenit-transporte.com',
-        phone: formData.contactPhone || '+57 (607) 633 4000',
+        name: formData.contactName || '',
+        role: formData.contactRole || '',
+        email: formData.contactEmail || '',
+        phone: formData.contactPhone || '',
       },
-      targetFaculties: formData.targetFaculties?.length
-        ? formData.targetFaculties
-        : ['Facultad de Ciencias Naturales e Ingenierías'],
-      targetPrograms: formData.targetPrograms?.length
-        ? formData.targetPrograms
-        : ['Ingeniería de Sistemas', 'Tecnología en Desarrollo de Sistemas Informáticos'],
+      targetFaculties: formData.targetFaculties?.length ? formData.targetFaculties : [],
+      targetPrograms: formData.targetPrograms?.length ? formData.targetPrograms : [],
       metrics: {
         hiredGraduates: 0,
         activeVacancies: 0,

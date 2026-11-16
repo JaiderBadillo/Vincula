@@ -14,7 +14,7 @@ export const phaseDefinitions = [
     id: 'fase-2',
     label: 'Fase 2',
     name: 'Revisión curricular y requisitos',
-    shortDescription: 'Validación de títulos UTS, competencias y experiencia',
+    shortDescription: 'Validación de títulos académicos, competencias y experiencia',
     badgeColor: 'bg-sky-100 text-sky-800 border-sky-300',
     dotColor: 'bg-sky-500',
     icon: 'bx-search-alt',

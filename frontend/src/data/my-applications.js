@@ -7,7 +7,7 @@ export const phaseDefinitions = [
   {
     number: '2',
     name: 'Revisión curricular y requisitos',
-    shortDescription: 'Validación de títulos UTS, competencias y experiencia',
+    shortDescription: 'Validación de títulos académicos, competencias y experiencia',
   },
   {
     number: '3',

@@ -218,7 +218,7 @@ export default function TalentDetailDrawer({
                 <div className="rounded-xl border border-sand-line bg-cream/40 p-4 space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-cocoa">
                     <i className="bx bx-mail-send text-terracotta text-sm" />
-                    <span>Invitaciones emitidas por Cenit Transporte</span>
+                    <span>Invitaciones emitidas por tu empresa</span>
                   </div>
                   <p className="m-0 text-xs text-secondary">
                     Ya has invitado a este egresado a {talent.invitedVacancies.length} convocatoria(s) activa(s).

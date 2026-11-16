@@ -1,14 +1,14 @@
 export const advisorProfile = {
-  id: 'adv-001',
-  fullName: 'Coordinación de Egresados UTS',
+  id: '',
+  fullName: 'Asesoría de Empleabilidad',
   role: 'Asesoría de Vinculación y Empleabilidad',
-  institution: 'Unidades Tecnológicas de Santander',
-  faculty: 'Dirección de Extensión y Graduados',
-  campus: 'Bucaramanga · Sede Principal',
-  email: 'ies@uts.edu.co',
+  institution: '',
+  faculty: '',
+  campus: '',
+  email: '',
   avatar: null,
-  mfaVerified: true,
-  lastAccess: 'Hoy, 08:15 AM',
+  mfaVerified: false,
+  lastAccess: '',
 };
 
 export const institutionMetrics = {

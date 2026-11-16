@@ -52,7 +52,7 @@ export default function AgreementDetailDrawer({
     onUploadDocument(agreement.id, {
       title: docTitle.trim(),
       type: docType,
-      fileName: `${docTitle.trim().replace(/\s+/g, '_')}_Cenit.pdf`,
+      fileName: `${docTitle.trim().replace(/\s+/g, '_')}.pdf`,
       fileSize: '1.9 MB',
     });
     setDocTitle('');

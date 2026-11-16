@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { authService } from '../../services/authService.js';
 
 function getInitials(name) {
   return name
@@ -106,9 +107,10 @@ export default function StudentTrackingDrawer({ isOpen, onClose, student }) {
     e.preventDefault();
     if (!advisorNote.trim()) return;
 
+    const currentUser = authService.getCurrentUser();
     const newNote = {
       id: `note-${Date.now()}`,
-      author: 'Dra. Claudia Gómez (Asesora IES)',
+      author: `${currentUser?.nombre || 'Asesor IES'}`,
       date: new Intl.DateTimeFormat('es-CO', {
         dateStyle: 'medium',
         timeStyle: 'short',

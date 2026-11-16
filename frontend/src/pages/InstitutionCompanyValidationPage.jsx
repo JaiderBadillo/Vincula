@@ -6,6 +6,7 @@ import CompanyObservationModal from '../components/institution/CompanyObservatio
 import CompanyValidationDrawer from '../components/institution/CompanyValidationDrawer.jsx';
 import { companyValidationRequests } from '../data/institutionCompanyValidationData.js';
 import { advisorPhotos } from '../data/institutionImages.js';
+import { authService } from '../services/authService.js';
 
 const tabs = [
   { id: 'pending', label: 'Pendientes de Validación' },
@@ -85,6 +86,7 @@ export default function InstitutionCompanyValidationPage() {
 
   function handleApprove(id) {
     const target = requests.find((r) => r.id === id);
+    const reviewerName = authService.getCurrentUser()?.nombre || 'Asesor IES';
     setRequests((prev) =>
       prev.map((r) =>
         r.id === id
@@ -92,7 +94,7 @@ export default function InstitutionCompanyValidationPage() {
               ...r,
               status: 'approved',
               approvedAt: 'Hoy, ' + new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
-              reviewedBy: 'Dra. Camila Morales Rey',
+              reviewedBy: reviewerName,
             }
           : r
       )
@@ -103,6 +105,7 @@ export default function InstitutionCompanyValidationPage() {
 
   function handleObservation(id, { reason, notes }) {
     const target = requests.find((r) => r.id === id);
+    const reviewerName = authService.getCurrentUser()?.nombre || 'Asesor IES';
     setRequests((prev) =>
       prev.map((r) =>
         r.id === id
@@ -112,7 +115,7 @@ export default function InstitutionCompanyValidationPage() {
               observationReason: reason,
               observationNotes: notes,
               reviewedAt: 'Hoy, ' + new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
-              reviewedBy: 'Dra. Camila Morales Rey',
+              reviewedBy: reviewerName,
             }
           : r
       )
