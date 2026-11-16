@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException, status
 
+from app.core.text_similarity import TfidfIndex, UMBRAL_SEMANTICO
 from app.core.skills_taxonomy import (
     KNOWLEDGE_FAMILIES,
     SUBJECT_KEYWORD_RULES,
@@ -142,6 +143,16 @@ class TalentMatcherService:
         """
         egr_tokens, egr_display_skills, carrera_nombre, tiene_sello = cls._extract_egresado_skills(egresado)
         obligatorios, deseables, prog_afines_ids = cls._extract_vacancy_requirements(vacante)
+        # Representación vectorial (TF-IDF) de las competencias del egresado, para resolver por
+        # similitud coseno los requisitos técnicos que el léxico y las equivalencias no reconocen.
+        indice_egresado = TfidfIndex(egr_display_skills) if egr_display_skills else None
+
+        def similitud_vectorial(req):
+            """(competencia del egresado más parecida, coseno) si supera el umbral; solo técnicas."""
+            if indice_egresado is None or "blanda" in str(req.get("categoria", "")).lower():
+                return None, 0.0
+            hits = indice_egresado.best_matches(req["normalizado"], limit=1, min_similarity=UMBRAL_SEMANTICO)
+            return (egr_display_skills[hits[0][0]], hits[0][1]) if hits else (None, 0.0)
 
         skills_match: List[str] = []
         skills_equivalent: List[str] = []
@@ -181,7 +192,16 @@ class TalentMatcherService:
                         break
 
                 if not found_equiv:
-                    if req_name not in missing_skills:
+                    # Match semántico vectorial (coseno TF-IDF): crédito parcial, explicado
+                    parecido, coseno = similitud_vectorial(req)
+                    if parecido:
+                        score_obligatorio += weight_per_req * 0.6
+                        etiqueta = f"{req_name} (afín a {parecido}, similitud {round(coseno * 100)}%)"
+                        if etiqueta not in skills_equivalent:
+                            skills_equivalent.append(etiqueta)
+                        if req_name not in skills_match:
+                            skills_match.append(req_name)
+                    elif req_name not in missing_skills:
                         missing_skills.append(req_name)
 
         # ----------------------------------------------------------------------
@@ -206,10 +226,14 @@ class TalentMatcherService:
                     if des_name not in skills_match:
                         skills_match.append(des_name)
                 else:
+                    encontrado = False
                     for token in egr_tokens:
                         if find_tool_equivalence(des_norm, token):
                             score_deseable += weight_per_des * 0.75
+                            encontrado = True
                             break
+                    if not encontrado and similitud_vectorial(des)[0]:
+                        score_deseable += weight_per_des * 0.6
 
         # ----------------------------------------------------------------------
         # 3. AFINIDAD ACADÉMICA (25%)

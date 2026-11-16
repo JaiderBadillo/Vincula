@@ -21,6 +21,10 @@ from typing import Dict, List, Sequence, Tuple
 
 from app.core.skills_taxonomy import normalize_text
 
+# Similitud coseno mínima para aceptar un emparejamiento semántico (calibrado con datos
+# reales: los pares correctos puntúan >= 0.44 y los espurios <= 0.38).
+UMBRAL_SEMANTICO = 0.42
+
 # Palabras vacías del español académico: no aportan significado y ensucian el coseno.
 _STOPWORDS = {
     "de", "del", "la", "las", "el", "los", "un", "una", "y", "e", "o", "u",

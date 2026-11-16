@@ -30,7 +30,7 @@ from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.text_similarity import TfidfIndex
+from app.core.text_similarity import TfidfIndex, UMBRAL_SEMANTICO
 from app.core.skills_taxonomy import (
     KNOWLEDGE_FAMILIES,
     contains_term,
@@ -54,9 +54,6 @@ from app.modules.institutions.models import ProgramaAcademico
 from app.modules.vacancies_ats.models import Vacante
 
 PESO_OBLIGATORIA, PESO_DESEABLE = 1.0, 0.5
-# Similitud coseno TF-IDF mínima para aceptar un respaldo semántico (calibrado con mallas reales:
-# los pares correctos puntúan >= 0.44 y los espurios <= 0.38).
-UMBRAL_SEMANTICO = 0.42
 COBERTURA = {"directa": 1.0, "afin": 0.5, "brecha": 0.0}
 UMBRAL_VACANTE_CUBIERTA = 0.7
 SUPERADMIN = ("superadmin_vincula", "superadmin")
