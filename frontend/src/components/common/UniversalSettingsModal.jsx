@@ -115,6 +115,7 @@ export default function UniversalSettingsModal({ isOpen, onClose, role, userName
 
   if (!isOpen) return null;
   return createPortal(<div role="dialog" aria-modal="true" aria-labelledby="universal-settings-title" onClick={onClose}
+    data-ies-theme={role === 'graduate' ? 'verde-oscuro' : undefined}
     className="fixed inset-0 z-[10002] flex items-center justify-center overflow-y-auto bg-ink/70 p-3 backdrop-blur-xs sm:p-5">
     <div onClick={event => event.stopPropagation()} className="my-auto grid w-full max-w-5xl overflow-hidden rounded-3xl border border-sand-line bg-white shadow-2xl md:grid-cols-[minmax(250px,36%)_1fr]">
       <aside className="relative flex flex-col justify-between overflow-hidden bg-cocoa p-4 text-white md:min-h-[590px] md:p-6">
@@ -168,7 +169,7 @@ export default function UniversalSettingsModal({ isOpen, onClose, role, userName
                 <label className="grid gap-1 text-xs font-semibold">Confirmar contraseña<input type="password" required minLength={10} autoComplete="new-password" className={field} value={confirmation} onChange={event => setConfirmation(event.target.value)} /></label></div>
               <div className="flex justify-end"><button type="submit" disabled={busy} className={primary}>Actualizar contraseña</button></div>
             </form>
-            <div className="grid gap-3"><h3 className="text-lg font-bold text-ink">Cuenta de Google</h3><p className="text-sm">Estado: {account.google_vinculado ? 'Vinculada' : 'Sin vincular'}</p>
+            <div className="grid gap-3"><h3 className="text-lg font-bold text-ink">Cuenta de Google</h3><p className="flex items-center gap-2 text-sm">Estado: <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${account.google_vinculado ? 'bg-green/10 text-green-dark' : 'bg-sand text-secondary'}`}>{account.google_vinculado ? 'Vinculada' : 'Sin vincular'}</span></p>
               {account.google_vinculado ? <button type="button" disabled={busy} onClick={unlink} className="w-fit rounded-xl border border-sand-line px-4 py-2 text-xs font-semibold">Desvincular Google</button> : <div ref={googleSlot} aria-label="Vincular cuenta de Google" />}
               <p className="text-xs text-secondary">Escribe tu contraseña actual arriba antes de vincular o desvincular Google.</p>
             </div>

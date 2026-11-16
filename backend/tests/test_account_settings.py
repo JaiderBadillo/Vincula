@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 from app.modules.iam.account_settings import change_password, get_settings
 from app.modules.iam.advisor_settings import PasswordChange
+from app.modules.iam.services import IAMService
 
 
 class AccountSettingsTests(unittest.IsolatedAsyncioTestCase):
@@ -35,6 +36,49 @@ class AccountSettingsTests(unittest.IsolatedAsyncioTestCase):
         data = await get_settings({"sub": str(user_id), "rol": "egresado", "nombre": "Persona real"}, session)
         self.assertEqual(data["correo"], "real@example.com")
         self.assertEqual(data["nombre"], "Persona real")
+
+    async def test_google_login_links_google_sub_for_graduate(self):
+        user_id = uuid.uuid4()
+        grad_id = uuid.uuid4()
+        usuario = SimpleNamespace(
+            id=user_id,
+            rol="egresado",
+            estado="activo",
+            correo_electronico="angie@example.com",
+            google_sub=None,
+            ultimo_acceso_en=None,
+        )
+        egresado = SimpleNamespace(
+            id=grad_id,
+            nombre_completo="Angie Camargo",
+            url_avatar="https://example.com/avatar.png",
+        )
+
+        res_user = MagicMock()
+        res_user.scalar_one_or_none.return_value = usuario
+        res_owner = MagicMock()
+        res_owner.first.return_value = None
+        res_grad = MagicMock()
+        res_grad.scalar_one_or_none.return_value = egresado
+
+        session = SimpleNamespace(
+            execute=AsyncMock(side_effect=[res_user, res_owner, res_grad]),
+            commit=AsyncMock(),
+        )
+
+        with patch(
+            "app.modules.iam.services.id_token.verify_oauth2_token",
+            return_value={
+                "email": "angie@example.com",
+                "name": "Angie Camargo",
+                "sub": "google-sub-12345",
+                "email_verified": True,
+            },
+        ), patch("app.modules.iam.services.IAMService.create_token_for_user", return_value=SimpleNamespace(access_token="tok")):
+            await IAMService.authenticate_google(session, credential="fake-jwt")
+
+        self.assertEqual(usuario.google_sub, "google-sub-12345")
+        session.commit.assert_awaited()
 
 
 if __name__ == "__main__":

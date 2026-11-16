@@ -205,6 +205,15 @@ class IAMService:
         ):
             raise ValueError("Vincula primero tu cuenta de Google desde Configuración, ingresando con tu contraseña.")
 
+        if usuario.rol != "asesor_ies" and google_sub and not usuario.google_sub and idinfo.get("email_verified") is not False:
+            existing_owner = (
+                await session.execute(
+                    select(Usuario.id).where(Usuario.google_sub == google_sub, Usuario.id != usuario.id)
+                )
+            ).first()
+            if not existing_owner:
+                usuario.google_sub = google_sub
+
         usuario.ultimo_acceso_en = datetime.now(timezone.utc)
         await session.commit()
 
