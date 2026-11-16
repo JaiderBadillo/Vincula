@@ -8,6 +8,7 @@ import { authService } from '../services/authService.js';
 import { useCompanyVacancies } from '../hooks/useCompanyVacancies.js';
 import { useCompanySites } from '../hooks/useCompanySites.js';
 import {
+  CUSTOM_CATEGORY_VALUE,
   LANGUAGE_OPTIONS,
   SOFT_SKILL_SUGGESTIONS,
   TECH_SKILL_SUGGESTIONS,
@@ -18,7 +19,9 @@ import {
   VACANCY_MODALITIES,
   WORK_SCHEDULE_SUGGESTIONS,
   experienceLabel,
+  parseCategoryField,
   parseExperienceField,
+  resolveCategoryValue,
   resolveExperienceValue,
 } from '../data/companyVacanciesData.js';
 import { daysUntil, formatApplicationDate } from '../utils/formatters.js';
@@ -57,9 +60,11 @@ function buildInitialForm(vacancy, recruiters, isRecruiter = false) {
         );
 
     const parsedExperience = parseExperienceField(vacancy.experienceLevel);
+    const parsedCategory = parseCategoryField(vacancy.category);
     return {
       title: vacancy.title || '',
-      category: vacancy.category || VACANCY_CATEGORIES[0],
+      category: parsedCategory.category,
+      customCategory: parsedCategory.customCategory,
       experienceLevel: parsedExperience.experienceLevel,
       customExperience: parsedExperience.customExperience,
       siteId: vacancy.siteId || '',
@@ -83,6 +88,7 @@ function buildInitialForm(vacancy, recruiters, isRecruiter = false) {
   return {
     title: '',
     category: VACANCY_CATEGORIES[0],
+    customCategory: '',
     experienceLevel: 'sin-experiencia',
     customExperience: '',
     siteId: '',
@@ -108,6 +114,11 @@ function validateStep(stepIndex, form) {
   const e = {};
   if (stepIndex === 0) {
     if (!form.title.trim()) e.title = 'Escribe el cargo o título de la vacante.';
+    if (form.category === CUSTOM_CATEGORY_VALUE) {
+      const customCat = (form.customCategory || '').trim();
+      if (customCat.length < 2) e.customCategory = 'Escribe el área de la vacante (mínimo 2 caracteres).';
+      else if (customCat.length > 100) e.customCategory = 'Máximo 100 caracteres.';
+    }
     if (form.experienceLevel === 'personalizado') {
       const custom = (form.customExperience || '').trim();
       if (custom.length < 2) e.customExperience = 'Especifica el tiempo o requisito (mínimo 2 caracteres).';
@@ -597,6 +608,7 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
     const combinedSkills = [...new Set([...form.skillsTech, ...form.skillsSoft])];
     return {
       ...form,
+      category: resolveCategoryValue(form.category, form.customCategory),
       experienceLevel: resolveExperienceValue(form.experienceLevel, form.customExperience),
       title: form.title.trim(),
       openSpots: Number(form.openSpots) || 1,
@@ -749,7 +761,7 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
                   </Field>
 
                   <div className="grid gap-5 sm:grid-cols-3">
-                    <Field id="vac-category" label="Área de la vacante">
+                    <Field id="vac-category" label="Área de la vacante" error={errors.customCategory}>
                       <select
                         id="vac-category"
                         className={`${inputClass} cursor-pointer`}
@@ -761,7 +773,20 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
                             {c}
                           </option>
                         ))}
+                        <option value={CUSTOM_CATEGORY_VALUE}>Otra, ¿cuál?</option>
                       </select>
+                      {form.category === CUSTOM_CATEGORY_VALUE && (
+                        <input
+                          id="vac-custom-category"
+                          type="text"
+                          maxLength={100}
+                          className={`${inputClass} mt-2`}
+                          value={form.customCategory}
+                          onChange={(e) => update('customCategory', e.target.value)}
+                          placeholder="¿Cuál área? Ej: Comercio exterior, Turismo..."
+                          aria-label="¿Cuál área de la vacante?"
+                        />
+                      )}
                     </Field>
 
                     <Field id="vac-site" label="Sede">
@@ -1380,6 +1405,11 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
                     <dl className="m-0 mt-3 grid grid-cols-[10rem_1fr] gap-y-2 text-xs">
                       <dt className="text-secondary">Cargo</dt>
                       <dd className="m-0 font-semibold text-ink">{form.title || '—'}</dd>
+
+                      <dt className="text-secondary">Área</dt>
+                      <dd className="m-0 text-ink">
+                        {resolveCategoryValue(form.category, form.customCategory) || '—'}
+                      </dd>
 
                       <dt className="text-secondary">Sede & Plazas</dt>
                       <dd className="m-0 text-ink">

@@ -22,14 +22,45 @@ export const VACANCY_CONTRACTS = [
   'Prestación de servicios',
 ];
 
+export const CUSTOM_CATEGORY_VALUE = '__otra__';
+
 export const VACANCY_CATEGORIES = [
-  'Tecnología y datos',
-  'Operación y mantenimiento',
-  'Logística',
-  'Sostenibilidad y seguridad',
-  'Finanzas y administración',
-  'Comercial y servicio',
+  'Administración y finanzas',
+  'Calidad y mejora continua',
+  'Comercial, ventas y servicio al cliente',
+  'Compras y cadena de suministro',
+  'Contabilidad y auditoría',
+  'Diseño, arquitectura y arte',
+  'Educación, docencia e investigación',
+  'Ingeniería y construcción',
+  'Jurídica y cumplimiento',
+  'Logística y transporte',
+  'Marketing y comunicaciones',
+  'Operación, producción y mantenimiento',
+  'Salud y bienestar',
+  'Sostenibilidad, medio ambiente y SST',
+  'Talento humano y bienestar laboral',
+  'Tecnología, sistemas y datos',
 ];
+
+export function parseCategoryField(rawValue) {
+  const cleaned = String(rawValue || '').trim();
+  if (!cleaned) {
+    return { category: VACANCY_CATEGORIES[0], customCategory: '' };
+  }
+  const matched = VACANCY_CATEGORIES.find((c) => c.toLowerCase() === cleaned.toLowerCase());
+  if (matched) {
+    return { category: matched, customCategory: '' };
+  }
+  return { category: CUSTOM_CATEGORY_VALUE, customCategory: cleaned };
+}
+
+export function resolveCategoryValue(category, customCategory = '') {
+  if (category === CUSTOM_CATEGORY_VALUE) {
+    return String(customCategory || '').trim();
+  }
+  return String(category || '').trim() || VACANCY_CATEGORIES[0];
+}
 
 export const VACANCY_EXPERIENCE_LEVELS = [
   { id: 'sin-experiencia', label: 'Sin experiencia', hint: 'Menos de 1 año de experiencia' },
