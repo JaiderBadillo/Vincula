@@ -36,7 +36,7 @@ export default function LoginPage() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const fieldClasses =
-    'min-h-12 w-full rounded-[0.75rem] border border-line bg-white px-4 py-3.5 text-sm text-ink outline-none placeholder:text-secondary focus:border-green focus:ring-4 focus:ring-green/10 transition-all';
+    'min-h-12 w-full rounded-[0.75rem] border border-line bg-white py-3.5 text-sm text-ink outline-none placeholder:text-secondary focus:border-green focus:ring-4 focus:ring-green/10 transition-all';
 
   function routeForRole(rol, estadoValidacion) {
     switch (rol) {
@@ -349,7 +349,7 @@ export default function LoginPage() {
                   aria-hidden="true"
                 />
                 <input
-                  className={`${fieldClasses} pl-11`}
+                  className={`${fieldClasses} pl-12 pr-4`}
                   id="login-email"
                   type="email"
                   value={email}
@@ -380,7 +380,7 @@ export default function LoginPage() {
                   aria-hidden="true"
                 />
                 <input
-                  className={`${fieldClasses} pl-11 pr-11`}
+                  className={`${fieldClasses} pl-12 pr-12`}
                   id="login-password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
