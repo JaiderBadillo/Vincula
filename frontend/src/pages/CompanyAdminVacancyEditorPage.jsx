@@ -11,7 +11,6 @@ import {
   LANGUAGE_OPTIONS,
   SOFT_SKILL_SUGGESTIONS,
   TECH_SKILL_SUGGESTIONS,
-  ACADEMIC_PROGRAM_SUGGESTIONS,
   VACANCY_BENEFIT_SUGGESTIONS,
   VACANCY_CATEGORIES,
   VACANCY_CONTRACTS,
@@ -386,8 +385,55 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
   const [techInput, setTechInput] = useState('');
   const [softInput, setSoftInput] = useState('');
   const [programInput, setProgramInput] = useState('');
+  const [selectedProgramOption, setSelectedProgramOption] = useState('');
+  const [showCustomProgramInput, setShowCustomProgramInput] = useState(false);
+  const [catalogPrograms, setCatalogPrograms] = useState([]);
+  const [loadingPrograms, setLoadingPrograms] = useState(true);
   const [benefitInput, setBenefitInput] = useState('');
   const [respInput, setRespInput] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    authService
+      .getAcademicCatalog()
+      .then((institutions) => {
+        if (!active) return;
+        const unique = new Map();
+        for (const inst of institutions || []) {
+          for (const prog of inst.programs || []) {
+            const clean = String(prog || '').trim();
+            if (clean && !unique.has(clean.toLowerCase())) {
+              unique.set(clean.toLowerCase(), clean);
+            }
+          }
+        }
+        const sorted = Array.from(unique.values()).sort((a, b) => a.localeCompare(b, 'es'));
+        setCatalogPrograms(sorted);
+      })
+      .catch(() => {
+        if (active) setCatalogPrograms([]);
+      })
+      .finally(() => {
+        if (active) setLoadingPrograms(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const availableProgramOptions = useMemo(
+    () =>
+      catalogPrograms.filter(
+        (prog) => !form.targetPrograms.some((selected) => selected.toLowerCase() === prog.toLowerCase())
+      ),
+    [catalogPrograms, form.targetPrograms]
+  );
+
+  const hasCustomUnregisteredPrograms = useMemo(() => {
+    if (loadingPrograms || form.targetPrograms.length === 0) return false;
+    const registeredKeys = new Set(catalogPrograms.map((p) => p.toLowerCase()));
+    return form.targetPrograms.some((p) => !registeredKeys.has(p.toLowerCase()));
+  }, [loadingPrograms, catalogPrograms, form.targetPrograms]);
 
   const site = useMemo(() => sites.find((s) => s.id === form.siteId), [sites, form.siteId]);
   const owner = recruiters.find((r) => r.id === form.ownerRecruiterId);
@@ -458,20 +504,37 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
   }
 
   // Manejo de programas académicos afines
-  function toggleProgram(programName) {
+  function handleSelectProgramChange(e) {
+    const value = e.target.value;
+    if (!value) return;
+    if (value === '__custom__') {
+      setShowCustomProgramInput(true);
+      setSelectedProgramOption('');
+      return;
+    }
+    setShowCustomProgramInput(false);
+    setSelectedProgramOption('');
+    if (!form.targetPrograms.some((p) => p.toLowerCase() === value.toLowerCase())) {
+      update('targetPrograms', [...form.targetPrograms, value]);
+    }
+  }
+
+  function removeProgram(programName) {
     update(
       'targetPrograms',
-      form.targetPrograms.includes(programName)
-        ? form.targetPrograms.filter((p) => p !== programName)
-        : [...form.targetPrograms, programName]
+      form.targetPrograms.filter((p) => p !== programName)
     );
   }
 
   function addCustomProgram() {
     const clean = programInput.trim();
-    if (!clean || form.targetPrograms.some((p) => p.toLowerCase() === clean.toLowerCase())) return;
-    update('targetPrograms', [...form.targetPrograms, clean]);
+    if (!clean) return;
+    if (!form.targetPrograms.some((p) => p.toLowerCase() === clean.toLowerCase())) {
+      update('targetPrograms', [...form.targetPrograms, clean]);
+    }
     setProgramInput('');
+    setShowCustomProgramInput(false);
+    setSelectedProgramOption('');
   }
 
   // Manejo de beneficios
@@ -815,55 +878,95 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
 
                   {/* Programas Académicos Afines */}
                   <div>
-                    <label className="block text-sm font-semibold text-ink">
+                    <label htmlFor="vac-program-select" className="block text-sm font-semibold text-ink">
                       Programas académicos afines a los que va dirigida
                     </label>
                     <p className="m-0 mt-0.5 text-xs text-secondary">
-                      Selecciona las carreras o áreas de formación cuyo pensum encaja con el perfil buscado:
+                      Elige carreras de la lista o agrega una opción personalizada:
                     </p>
 
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {ACADEMIC_PROGRAM_SUGGESTIONS.map((prog) => {
-                        const isSelected = form.targetPrograms.includes(prog);
-                        return (
-                          <button
-                            key={prog}
-                            type="button"
-                            onClick={() => toggleProgram(prog)}
-                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
-                              isSelected
-                                ? 'border-green bg-green/10 text-green-dark'
-                                : 'border-sand-line bg-white text-secondary hover:border-sand hover:text-ink'
-                            }`}
-                          >
-                            <i className={`bx ${isSelected ? 'bxs-check-circle text-green' : 'bx-plus'}`} />
-                            <span>{prog}</span>
-                          </button>
-                        );
-                      })}
+                    {form.targetPrograms.length > 0 && (
+                      <ul className="m-0 mt-2.5 flex list-none flex-wrap gap-1.5 p-0">
+                        {form.targetPrograms.map((prog) => (
+                          <li key={prog}>
+                            <button
+                              type="button"
+                              onClick={() => removeProgram(prog)}
+                              className="inline-flex items-center gap-1 rounded-lg bg-cocoa px-2.5 py-1 text-xs font-medium text-white transition-colors hover:bg-cocoa/85 cursor-pointer shadow-2xs"
+                              aria-label={`Quitar ${prog}`}
+                            >
+                              <span>{prog}</span>
+                              <i className="bx bx-x text-sm text-white/70" aria-hidden="true" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    <div className="mt-2.5">
+                      <select
+                        id="vac-program-select"
+                        className={`${inputClass} cursor-pointer`}
+                        value={selectedProgramOption}
+                        onChange={handleSelectProgramChange}
+                      >
+                        <option value="">
+                          {loadingPrograms
+                            ? 'Cargando programas académicos registrados...'
+                            : availableProgramOptions.length > 0
+                              ? 'Selecciona un programa académico de la lista...'
+                              : 'Sin más opciones en catálogo — agrega uno personalizado'}
+                        </option>
+                        {availableProgramOptions.map((prog) => (
+                          <option key={prog} value={prog}>
+                            {prog}
+                          </option>
+                        ))}
+                        <option value="__custom__">+ Agregar otro programa personalizado...</option>
+                      </select>
                     </div>
 
-                    <div className="mt-2.5 flex gap-2">
-                      <input
-                        className={inputClass}
-                        value={programInput}
-                        onChange={(e) => setProgramInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            addCustomProgram();
-                          }
-                        }}
-                        placeholder="Otro programa académico o especialización..."
-                      />
-                      <button
-                        type="button"
-                        onClick={addCustomProgram}
-                        className="shrink-0 rounded-lg border border-sand-line bg-cream px-3 text-xs font-bold text-ink transition-colors hover:bg-sand cursor-pointer"
-                      >
-                        Agregar
-                      </button>
-                    </div>
+                    {showCustomProgramInput && (
+                      <div className="mt-2.5 flex gap-2">
+                        <input
+                          id="vac-custom-program"
+                          className={inputClass}
+                          value={programInput}
+                          onChange={(e) => setProgramInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              addCustomProgram();
+                            }
+                          }}
+                          placeholder="Escribe el nombre del programa o especialización..."
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={addCustomProgram}
+                          className="shrink-0 rounded-lg bg-cocoa px-4 text-xs font-bold text-white transition-colors hover:bg-cocoa/85 cursor-pointer"
+                        >
+                          Agregar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowCustomProgramInput(false);
+                            setProgramInput('');
+                          }}
+                          className="shrink-0 rounded-lg border border-sand-line bg-cream px-3 text-xs font-semibold text-secondary transition-colors hover:bg-sand hover:text-ink cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    )}
+
+                    {hasCustomUnregisteredPrograms && (
+                      <p className="m-0 mt-1.5 text-xs text-secondary">
+                        Nota: solo los programas registrados por instituciones en la plataforma se vinculan al cálculo automático de afinidad curricular.
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

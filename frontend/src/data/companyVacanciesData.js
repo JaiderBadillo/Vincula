@@ -95,19 +95,8 @@ export const SOFT_SKILL_SUGGESTIONS = [
   'Capacidad de análisis',
 ];
 
-/** Programas académicos sugeridos a los que va dirigida la oferta */
-export const ACADEMIC_PROGRAM_SUGGESTIONS = [
-  'Ingeniería de Sistemas',
-  'Tecnología en Desarrollo de Sistemas Informáticos',
-  'Ingeniería Electrónica',
-  'Tecnología en Electricidad Industrial',
-  'Ingeniería Electromecánica',
-  'Tecnología en Gestión Empresarial',
-  'Contaduría Pública',
-  'Tecnología en Manejo de Recursos Ambientales',
-  'Tecnología en Gestión de la Moda y el Diseño',
-  'Tecnología en Topografía',
-];
+/** Los programas académicos disponibles se consultan desde /api/v1/auth/catalogo-academico */
+export const ACADEMIC_PROGRAM_SUGGESTIONS = [];
 
 export const UTS_PROGRAM_SUGGESTIONS = ACADEMIC_PROGRAM_SUGGESTIONS;
 
