@@ -78,7 +78,7 @@ export default function InstitutionAdminAdvisorsPage() {
   const { campuses, addCampus, updateCampus, deleteCampus } = useInstitutionCampuses();
 
   // Advisors state
-  const [advisors, setAdvisors] = useState(readStoredAdvisors);
+  const [advisors, setAdvisors] = useState([]);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'inactive'
   const [campusFilter, setCampusFilter] = useState('all');
@@ -112,6 +112,8 @@ export default function InstitutionAdminAdvisorsPage() {
     password: '',
   });
   const [errors, setErrors] = useState({});
+  const [isSavingAdvisor, setIsSavingAdvisor] = useState(false);
+  const [advisorSaveError, setAdvisorSaveError] = useState('');
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -135,7 +137,7 @@ export default function InstitutionAdminAdvisorsPage() {
       if (!authService.isAuthenticated()) return;
       try {
         const data = await institutionService.getAsesores();
-        if (isMounted && Array.isArray(data) && data.length > 0) {
+        if (isMounted && Array.isArray(data)) {
           const mapped = data.map((item) => {
             const backendCampusIds = (Array.isArray(item.sedes_ids) && item.sedes_ids.length > 0)
               ? item.sedes_ids
@@ -260,6 +262,7 @@ export default function InstitutionAdminAdvisorsPage() {
 
   // Advisor Modal Handlers
   function openCreateAdvisorModal() {
+    setAdvisorSaveError('');
     setEditingAdvisor(null);
     setForm({
       fullName: '',
@@ -275,6 +278,7 @@ export default function InstitutionAdminAdvisorsPage() {
   }
 
   function openEditAdvisorModal(advisor) {
+    setAdvisorSaveError('');
     setEditingAdvisor(advisor);
     setForm({
       fullName: advisor.fullName,
@@ -283,6 +287,7 @@ export default function InstitutionAdminAdvisorsPage() {
       position: advisor.position,
       campusIds: getAdvisorCampusIds(advisor),
       status: advisor.status,
+      password: '',
     });
     setErrors({});
     setModalOpen(true);
@@ -315,6 +320,9 @@ export default function InstitutionAdminAdvisorsPage() {
     const next = {};
     if (!form.fullName.trim()) next.fullName = 'Escribe el nombre completo del asesor.';
     if (!EMAIL_PATTERN.test(form.email.trim())) next.email = 'Escribe un correo electrónico válido.';
+    if ((!editingAdvisor || form.password) && form.password.length < 8) {
+      next.password = 'La contraseña debe tener al menos 8 caracteres.';
+    }
     if (!form.campusIds || form.campusIds.length === 0) {
       next.campusIds = 'Selecciona al menos una sede o campus para el asesor.';
     }
@@ -324,47 +332,45 @@ export default function InstitutionAdminAdvisorsPage() {
 
   async function handleSaveAdvisor(e) {
     e.preventDefault();
-    if (!validateAdvisor()) return;
+    if (isSavingAdvisor || !validateAdvisor()) return;
+    setIsSavingAdvisor(true);
+    setAdvisorSaveError('');
 
-    if (editingAdvisor) {
-      if (authService.isAuthenticated() && editingAdvisor.id && !editingAdvisor.id.startsWith('adv-init')) {
-        try {
-          institutionService.updateAsesor(editingAdvisor.id, {
+    try {
+      if (editingAdvisor) {
+        if (!authService.isAuthenticated() || !editingAdvisor.id || editingAdvisor.id.startsWith('adv-init')) {
+          throw new Error('No se puede actualizar una cuenta que no está registrada en la institución.');
+        }
+        const saved = await institutionService.updateAsesor(editingAdvisor.id, {
             nombre_completo: form.fullName.trim(),
+            correo_institucional: form.email.trim().toLowerCase(),
+            ...(form.password ? { password_nueva: form.password } : {}),
             telefono: form.phone.trim() || null,
             cargo: form.position.trim(),
-            estado: form.status,
+            estado: form.status === 'active' ? 'activo' : 'inactivo',
             sedes_ids: form.campusIds || [],
             id_sede: form.campusIds?.[0]?.startsWith('sede-') ? null : form.campusIds?.[0],
-          }).catch((err) => console.warn('Actualización en backend diferida:', err));
-        } catch {
-          // safe fallback
-        }
-      }
+        });
 
-      const updated = advisors.map((a) =>
-        a.id === editingAdvisor.id
-          ? {
+        const updated = advisors.map((a) =>
+          a.id === editingAdvisor.id ? {
               ...a,
-              fullName: form.fullName.trim(),
-              email: form.email.trim(),
-              phone: form.phone.trim(),
-              position: form.position.trim(),
-              campusIds: form.campusIds,
-              status: form.status,
-            }
-          : a
-      );
-      setAdvisors(updated);
-      writeStoredAdvisors(updated);
-      notify(`Se actualizaron los datos y cobertura de ${form.fullName.trim()}.`);
-    } else {
-      let createdId = `adv-${Date.now().toString().slice(-4)}`;
-      if (authService.isAuthenticated()) {
-        try {
+              fullName: saved.nombre_completo,
+              email: saved.correo_institucional,
+              phone: saved.telefono || '',
+              position: saved.cargo,
+              campusIds: saved.sedes_ids || form.campusIds,
+              status: saved.estado === 'activo' ? 'active' : 'inactive',
+            } : a
+        );
+        setAdvisors(updated);
+        writeStoredAdvisors(updated);
+        notify(`Se actualizaron los datos de acceso de ${saved.nombre_completo}.`);
+      } else {
+        if (!authService.isAuthenticated()) throw new Error('Inicia sesión para registrar asesores.');
           const payload = {
             correo: form.email.trim().toLowerCase(),
-            password: form.password?.trim() || 'Asesor2026*', // Contraseña inicial de cuenta IAM para el asesor
+            password: form.password,
             nombre_completo: form.fullName.trim(),
             telefono: form.phone.trim() || null,
             cargo: form.position.trim() || 'Asesor de Enlace y Prácticas',
@@ -372,26 +378,16 @@ export default function InstitutionAdminAdvisorsPage() {
             id_sede: form.campusIds?.[0]?.startsWith('sede-') ? null : form.campusIds?.[0],
           };
           const backendResult = await institutionService.createAsesor(payload);
-          if (backendResult?.id) {
-            createdId = backendResult.id;
-          }
-        } catch (err) {
-          console.warn('Registro en backend no completado, operando en fallback:', err);
-          if (err?.message?.toLowerCase().includes('ya tiene una cuenta') || err?.message?.toLowerCase().includes('registrado')) {
-            setErrors((p) => ({ ...p, email: err.message }));
-            return;
-          }
-        }
-      }
+          if (!backendResult?.id) throw new Error('No se pudo confirmar el registro del asesor.');
 
       const newAdv = {
-        id: createdId,
-        fullName: form.fullName.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim(),
-        position: form.position.trim(),
-        campusIds: form.campusIds,
-        status: form.status,
+        id: backendResult.id,
+        fullName: backendResult.nombre_completo,
+        email: backendResult.correo_institucional,
+        phone: backendResult.telefono || '',
+        position: backendResult.cargo,
+        campusIds: backendResult.sedes_ids || form.campusIds,
+        status: backendResult.estado === 'activo' ? 'active' : 'inactive',
         lastAccess: 'Sin accesos registrados',
         avatar: null,
       };
@@ -399,9 +395,13 @@ export default function InstitutionAdminAdvisorsPage() {
       setAdvisors(updated);
       writeStoredAdvisors(updated);
       notify(`Se vinculó a ${newAdv.fullName} con cobertura en ${form.campusIds.length} sede(s).`);
+      }
+      setModalOpen(false);
+    } catch (err) {
+      setAdvisorSaveError(err.message || 'No se pudieron guardar los datos del asesor.');
+    } finally {
+      setIsSavingAdvisor(false);
     }
-
-    setModalOpen(false);
   }
 
   function handleToggleAdvisorStatus(advisor) {
@@ -1113,27 +1113,32 @@ export default function InstitutionAdminAdvisorsPage() {
                   </div>
                 </div>
 
-                {!editingAdvisor && (
-                  <div>
+                <div>
                     <label htmlFor="adv-password" className="block text-xs font-bold text-ink mb-1">
-                      Contraseña Provisional de Acceso:
+                      {editingAdvisor ? 'Nueva contraseña (opcional):' : 'Contraseña inicial de acceso:'}
                     </label>
                     <input
                       id="adv-password"
-                      type="text"
+                      type="password"
                       value={form.password}
-                      onChange={(e) => setForm({ ...form, password: e.target.value })}
-                      placeholder="Asesor2026* (por defecto)"
-                      className="w-full rounded-xl border border-sand-line bg-cream/50 px-3.5 py-2.5 text-xs text-ink placeholder:text-secondary focus:border-terracotta focus:bg-white focus:outline-none transition-colors"
+                      onChange={(e) => {
+                        setForm({ ...form, password: e.target.value });
+                        if (errors.password) setErrors((p) => ({ ...p, password: undefined }));
+                      }}
+                      placeholder={editingAdvisor ? 'Dejar en blanco para conservar la actual' : 'Mínimo 8 caracteres'}
+                      autoComplete="new-password"
+                      minLength={8}
+                      className={`w-full rounded-xl border bg-cream/50 px-3.5 py-2.5 text-xs text-ink placeholder:text-secondary focus:outline-none transition-colors ${errors.password ? 'border-rose-500' : 'border-sand-line focus:border-terracotta focus:bg-white'}`}
                     />
                     <p className="m-0 mt-1 text-[0.68rem] text-secondary">
-                      Si lo dejas vacío, se usará la contraseña inicial <span className="font-mono font-bold text-ink">Asesor2026*</span>. El asesor podrá actualizarla al entrar.
+                      {editingAdvisor ? 'Si queda en blanco, la contraseña actual se conserva. Si la cambias, el asesor deberá usar la nueva al entrar.' : 'El asesor usará esta contraseña para su primer ingreso.'}
                     </p>
-                  </div>
-                )}
+                    {errors.password && <p className="m-0 mt-1 text-xs text-rose-600">{errors.password}</p>}
+                </div>
               </div>
 
               {/* Footer */}
+              {advisorSaveError && <p role="alert" className="mx-5 mt-3 text-xs text-rose-700">{advisorSaveError}</p>}
               <div className="flex items-center justify-end gap-2.5 p-4.5 border-t border-sand-line bg-cream/40">
                 <button
                   type="button"
@@ -1144,9 +1149,10 @@ export default function InstitutionAdminAdvisorsPage() {
                 </button>
                 <button
                   type="submit"
+                  disabled={isSavingAdvisor}
                   className="rounded-xl bg-terracotta hover:bg-terracotta-dark px-5 py-2 text-xs font-bold text-white transition-colors cursor-pointer shadow-xs"
                 >
-                  {editingAdvisor ? 'Guardar Cambios' : 'Vincular Asesor'}
+                  {isSavingAdvisor ? 'Guardando…' : editingAdvisor ? 'Guardar Cambios' : 'Vincular Asesor'}
                 </button>
               </div>
             </form>

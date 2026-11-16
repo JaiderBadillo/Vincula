@@ -903,6 +903,33 @@ class InstitutionService:
                 detail={"codigo": "ASESOR_NO_ENCONTRADO", "mensaje": f"Asesor con ID {asesor_id} no encontrado en tu institución."}
             )
 
+        new_email = str(payload.correo_institucional).strip().lower() if payload.correo_institucional is not None else None
+        if new_email and new_email != asesor.correo_institucional.lower():
+            existing_user = (await session.execute(
+                select(Usuario).where(func.lower(Usuario.correo_electronico) == new_email)
+            )).scalar_one_or_none()
+            if existing_user and existing_user.id != asesor.id_usuario:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={"codigo": "CORREO_YA_REGISTRADO", "mensaje": "Ese correo ya pertenece a otra cuenta."}
+                )
+
+        if new_email or payload.password_nueva is not None or payload.estado is not None:
+            user = (await session.execute(select(Usuario).where(Usuario.id == asesor.id_usuario))).scalar_one_or_none()
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={"codigo": "CUENTA_ASESOR_NO_ENCONTRADA", "mensaje": "No se encontró la cuenta de acceso del asesor."}
+                )
+            if new_email and new_email != user.correo_electronico.lower():
+                # El vínculo de Google pertenece al correo anterior.
+                user.google_sub = None
+            if new_email:
+                user.correo_electronico = new_email
+                asesor.correo_institucional = new_email
+            if payload.password_nueva is not None:
+                user.contrasena_hash = get_password_hash(payload.password_nueva)
+
         if payload.nombre_completo is not None:
             asesor.nombre_completo = payload.nombre_completo.strip()
         if payload.telefono is not None:
@@ -911,9 +938,7 @@ class InstitutionService:
             asesor.cargo = payload.cargo.strip()
         if payload.estado is not None:
             asesor.estado = payload.estado.strip().lower()
-            user = (await session.execute(select(Usuario).where(Usuario.id == asesor.id_usuario))).scalar_one_or_none()
-            if user:
-                user.estado = "activo" if asesor.estado == "activo" else "suspendido"
+            user.estado = "activo" if asesor.estado == "activo" else "suspendido"
 
         if payload.sedes_ids is not None:
             asesor.sedes_cobertura = ",".join(payload.sedes_ids) if payload.sedes_ids else None

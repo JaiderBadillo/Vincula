@@ -4,7 +4,7 @@ y Asignación de Asesores Institucionales.
 """
 
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 # ----------------------------------------------------------------------
@@ -194,6 +194,8 @@ class AsesorItemResponse(BaseModel):
 
 
 class AsesorUpdateRequest(BaseModel):
+    correo_institucional: Optional[EmailStr] = None
+    password_nueva: Optional[str] = Field(None, min_length=8, max_length=128)
     nombre_completo: Optional[str] = None
     telefono: Optional[str] = None
     cargo: Optional[str] = None
