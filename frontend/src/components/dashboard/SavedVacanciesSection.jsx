@@ -25,7 +25,7 @@ export default function SavedVacanciesSection({ onOpenJob, onApplyJob, appliedJo
             </span>
           </div>
           <p className="m-0 mt-1 text-xs sm:text-sm text-body-muted">
-            Oportunidades de empresas con convenio institucional que has guardado para preparar tu postulación.
+            Oportunidades que has guardado para revisar y preparar tu postulación.
           </p>
         </div>
 
@@ -63,7 +63,9 @@ export default function SavedVacanciesSection({ onOpenJob, onApplyJob, appliedJo
                           <span className="font-display text-sm font-bold text-ink truncate">
                             {job.company}
                           </span>
-                          <i className="bx bxs-badge-check text-green-dark text-xs shrink-0" title="Convenio Verificado" />
+                          {job.companyVerified && (
+                            <i className="bx bxs-badge-check text-green-dark text-xs shrink-0" title="Empresa verificada" />
+                          )}
                         </div>
                         <span className="block text-[0.68rem] text-secondary truncate mt-0.5">
                           {job.city} · <strong className="text-ink font-semibold">{job.mode}</strong>

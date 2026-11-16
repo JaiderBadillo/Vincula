@@ -116,9 +116,11 @@ export default function GridVacancyDetailModal({
 
             {/* Badges superiores flotantes a la izquierda */}
             <div className="absolute top-4 left-5 flex flex-wrap items-center gap-2 pr-32">
-              <span className="rounded-full bg-white/20 backdrop-blur-md px-3 py-1 text-xs font-bold text-white border border-white/25 shadow-xs">
-                {job.partnershipType}
-              </span>
+              {job.partnershipType && (
+                <span className="rounded-full bg-white/20 backdrop-blur-md px-3 py-1 text-xs font-bold text-white border border-white/25 shadow-xs">
+                  {job.partnershipType}
+                </span>
+              )}
               <span className="rounded-full bg-ink/70 backdrop-blur-md px-2.5 py-1 text-[0.7rem] font-semibold text-white/80 border border-white/15">
                 Cód: {job.vacancyCode}
               </span>
@@ -137,10 +139,12 @@ export default function GridVacancyDetailModal({
                     <h3 className="m-0 font-display text-base sm:text-lg font-bold leading-tight truncate">
                       {job.company}
                     </h3>
-                    <span className="inline-flex items-center gap-1 text-[0.68rem] font-bold text-lime bg-lime/15 border border-lime/30 px-2 py-0.5 rounded-full">
-                      <i className="bx bxs-badge-check" />
-                      Convenio Institucional Activo
-                    </span>
+                    {job.companyVerified && (
+                      <span className="inline-flex items-center gap-1 text-[0.68rem] font-bold text-lime bg-lime/15 border border-lime/30 px-2 py-0.5 rounded-full">
+                        <i className="bx bxs-badge-check" />
+                        Empresa Verificada
+                      </span>
+                    )}
                   </div>
                   <h2
                     id="grid-detail-job-title"
@@ -409,14 +413,14 @@ export default function GridVacancyDetailModal({
                   </div>
                 )}
 
-                {/* Garantías del Convenio UTS */}
+                {/* Postulación en Víncula */}
                 <div className="rounded-2xl border border-line bg-page/60 p-5 sm:p-6 space-y-2 text-xs sm:text-sm">
                   <h5 className="m-0 font-display text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1.5">
                     <i className="bx bxs-shield-check text-green-dark text-base" />
-                    Garantías de la Alianza Institucional
+                    Postulación en Víncula
                   </h5>
                   <p className="m-0 text-body-muted leading-relaxed">
-                    Las postulaciones canalizadas a través de la plataforma institucional reciben revisión preferente por la coordinación de talento humano de <strong>{job.company}</strong>, con verificación automática de títulos y expedientes académicos.
+                    Tu postulación llega directamente al equipo de selección de <strong>{job.company}</strong> junto con la información académica registrada en tu perfil.
                   </p>
                 </div>
               </div>
@@ -432,33 +436,43 @@ export default function GridVacancyDetailModal({
                       <h4 className="m-0 font-display text-lg sm:text-xl font-bold text-ink">
                         {job.company}
                       </h4>
-                      <p className="m-0 text-xs sm:text-sm text-secondary mt-0.5">
-                        {job.companySector} · {job.companySize}
-                      </p>
+                      {[job.companySector, job.companySize].filter(Boolean).length > 0 && (
+                        <p className="m-0 text-xs sm:text-sm text-secondary mt-0.5">
+                          {[job.companySector, job.companySize].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
                     </div>
-                    <a
-                      href={job.companyWebsite}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-page px-3.5 py-2 text-xs font-semibold text-ink hover:text-green-dark hover:border-green transition-colors no-underline self-start sm:self-auto"
-                    >
-                      <i className="bx bx-globe text-base text-secondary" />
-                      <span>Sitio Web Oficial</span>
-                    </a>
+                    {job.companyWebsite && (
+                      <a
+                        href={job.companyWebsite}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-page px-3.5 py-2 text-xs font-semibold text-ink hover:text-green-dark hover:border-green transition-colors no-underline self-start sm:self-auto"
+                      >
+                        <i className="bx bx-globe text-base text-secondary" />
+                        <span>Sitio Web Oficial</span>
+                      </a>
+                    )}
                   </div>
 
-                  <p className="m-0 text-xs sm:text-sm text-body-muted leading-relaxed">
-                    {job.companyAbout}
-                  </p>
+                  {job.companyAbout && (
+                    <p className="m-0 text-xs sm:text-sm text-body-muted leading-relaxed">
+                      {job.companyAbout}
+                    </p>
+                  )}
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2 text-xs">
+                    {job.companyFounded && (
+                      <div className="rounded-xl border border-line-soft bg-page/40 p-3.5">
+                        <span className="text-[0.68rem] text-secondary font-bold uppercase block">Trayectoria</span>
+                        <span className="font-semibold text-ink mt-0.5 block">{job.companyFounded}</span>
+                      </div>
+                    )}
                     <div className="rounded-xl border border-line-soft bg-page/40 p-3.5">
-                      <span className="text-[0.68rem] text-secondary font-bold uppercase block">Trayectoria</span>
-                      <span className="font-semibold text-ink mt-0.5 block">{job.companyFounded}</span>
-                    </div>
-                    <div className="rounded-xl border border-line-soft bg-page/40 p-3.5">
-                      <span className="text-[0.68rem] text-secondary font-bold uppercase block">Convenio Institucional</span>
-                      <span className="font-semibold text-green-dark mt-0.5 block">{job.partnershipType}</span>
+                      <span className="text-[0.68rem] text-secondary font-bold uppercase block">Estado en Víncula</span>
+                      <span className="font-semibold text-green-dark mt-0.5 block">
+                        {job.companyVerified ? 'Empresa verificada' : 'En revisión'}
+                      </span>
                     </div>
                     <div className="col-span-2 sm:col-span-1 rounded-xl border border-line-soft bg-page/40 p-3.5">
                       <span className="text-[0.68rem] text-secondary font-bold uppercase block">Vacantes Abiertas</span>

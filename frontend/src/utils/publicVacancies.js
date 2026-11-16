@@ -44,6 +44,7 @@ export function mapPublicVacancy(v) {
     company: companyName,
     companyName,
     companyShort: companyName,
+    companyVerified: v.empresa_verificada === true,
     companyLogo: v.empresa?.url_logo || v.empresa_logo || null,
     companyInitials:
       companyName

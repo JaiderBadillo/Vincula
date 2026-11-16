@@ -841,11 +841,13 @@ export default function VacanciesPage() {
                         <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-transparent" />
 
                         {/* Badges on image */}
-                        <div className="absolute top-2.5 left-3 flex items-center gap-2">
-                          <span className="rounded-full bg-ink/75 backdrop-blur-md px-2.5 py-0.5 text-[0.62rem] font-bold text-white border border-white/20">
-                            {job.partnershipType}
-                          </span>
-                        </div>
+                        {job.partnershipType && (
+                          <div className="absolute top-2.5 left-3 flex items-center gap-2">
+                            <span className="rounded-full bg-ink/75 backdrop-blur-md px-2.5 py-0.5 text-[0.62rem] font-bold text-white border border-white/20">
+                              {job.partnershipType}
+                            </span>
+                          </div>
+                        )}
 
                         <div className="absolute top-2.5 right-3 flex items-center gap-1.5">
                           <span className="rounded-full bg-lime text-ink px-2.5 py-0.5 text-[0.65rem] font-bold shadow-xs">
@@ -970,9 +972,11 @@ export default function VacanciesPage() {
 
                       {/* Header Overlays */}
                       <div className="absolute top-4 left-4 flex items-center gap-2">
-                        <span className="rounded-full bg-ink/80 backdrop-blur-md px-3 py-1 text-xs font-bold text-lime border border-white/20">
-                          {selectedJob.partnershipType}
-                        </span>
+                        {selectedJob.partnershipType && (
+                          <span className="rounded-full bg-ink/80 backdrop-blur-md px-3 py-1 text-xs font-bold text-lime border border-white/20">
+                            {selectedJob.partnershipType}
+                          </span>
+                        )}
                         <span className="rounded-full bg-white/20 backdrop-blur-md px-2.5 py-1 text-xs font-semibold text-white">
                           Cód: {selectedJob.vacancyCode}
                         </span>
@@ -1420,7 +1424,7 @@ export default function VacanciesPage() {
                               Etapas del Proceso de Selección
                             </h4>
                             <p className="m-0 text-xs text-body-muted mt-1">
-                              Proceso 100% transparente y directo, coordinado a través del convenio de la Bolsa de Empleo Institucional.
+                              Proceso de selección gestionado directamente por el equipo de la empresa en Víncula.
                             </p>
                           </div>
 
@@ -1484,11 +1488,13 @@ export default function VacanciesPage() {
                         />}
                         <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-transparent" />
 
-                        <div className="absolute top-3 left-3 flex items-center gap-2">
-                          <span className="rounded-full bg-ink/75 backdrop-blur-md px-2.5 py-0.5 text-[0.62rem] font-bold text-white border border-white/20">
-                            {job.partnershipType}
-                          </span>
-                        </div>
+                        {job.partnershipType && (
+                          <div className="absolute top-3 left-3 flex items-center gap-2">
+                            <span className="rounded-full bg-ink/75 backdrop-blur-md px-2.5 py-0.5 text-[0.62rem] font-bold text-white border border-white/20">
+                              {job.partnershipType}
+                            </span>
+                          </div>
+                        )}
 
                         <div className="absolute top-3 right-3 flex items-center gap-1.5">
                           <button
@@ -1619,9 +1625,17 @@ export default function VacanciesPage() {
               <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-xs">
                 <span className="font-bold text-emerald-900 block flex items-center gap-1.5 mb-1">
                   <i className="bx bxs-badge-check text-green text-sm" />
-                  Convenio Institucional de Egresados
+                  Postulación directa en Víncula
                 </span>
-                Tu postulación se enviará directamente con tu perfil verificado de <strong>{profile.fullName}</strong> y tu código de egresado.
+                {profile.isVerified ? (
+                  <>
+                    Tu postulación se enviará con el perfil verificado de <strong>{profile.fullName}</strong>.
+                  </>
+                ) : (
+                  <>
+                    Tu postulación se enviará con el perfil registrado de <strong>{profile.fullName}</strong>.
+                  </>
+                )}
               </div>
 
               <div>

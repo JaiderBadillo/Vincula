@@ -456,15 +456,27 @@ export default function ProfilePage() {
                         <i className="bx bxs-institution" aria-hidden="true" />
                       </div>
                       <div>
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[0.65rem] font-bold text-emerald-800 uppercase tracking-wide">
-                          <i className="bx bxs-badge-check text-green text-sm" />
-                          Convenio Empresarial Institucional
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide ${
+                            profile.isVerified
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          <i
+                            className={`bx ${
+                              profile.isVerified ? 'bxs-badge-check text-green' : 'bx-time-five text-amber-700'
+                            } text-sm`}
+                          />
+                          {profile.isVerified ? 'Título Verificado por la Institución' : 'Validación Institucional Pendiente'}
                         </span>
                         <h3 className="m-0 font-display text-base sm:text-lg font-bold text-ink mt-1">
-                          Acreditación y Verificación Oficial
+                          {profile.isVerified ? 'Acreditación y Respaldo Oficial' : 'Visibilidad ante Empresas'}
                         </h3>
                         <p className="m-0 mt-1 text-xs text-body-muted leading-relaxed max-w-xl">
-                          Las empresas aliadas consultan directamente tu número de acta y competencias curriculares validadas por el sistema académico institucional.
+                          {profile.isVerified
+                            ? 'Las empresas pueden consultar el respaldo oficial de tu título y acta validada por tu institución en cada postulación.'
+                            : 'Cuando tu institución valide tu título académico, tu perfil mostrará el respaldo oficial en tus postulaciones.'}
                         </p>
                       </div>
                     </div>
