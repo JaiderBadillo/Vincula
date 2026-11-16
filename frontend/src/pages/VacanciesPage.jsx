@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import GraduatePortalLayout from '../components/dashboard/GraduatePortalLayout.jsx';
 import GridVacancyDetailModal from '../components/dashboard/GridVacancyDetailModal.jsx';
+import { experienceLabel } from '../data/companyVacanciesData.js';
 import { COLOMBIAN_LOCATIONS } from '../data/profile.js';
 import { useProfile } from '../hooks/useProfile.js';
 import { useSavedJobs } from '../hooks/useSavedJobs.js';
@@ -55,9 +56,12 @@ function mapApiToProposalJob(v) {
     salaryNotes: '',
     contractType: v.tipo_contrato || '',
     workSchedule: v.jornada_laboral || '',
-    seniority: v.nivel_experiencia || '',
-    experienceYears: '',
-    experienceEquivalence: '',
+    seniority: experienceLabel(v.nivel_experiencia) === 'Sin definir' ? '' : experienceLabel(v.nivel_experiencia),
+    experienceYears: experienceLabel(v.nivel_experiencia),
+    experienceEquivalence:
+      experienceLabel(v.nivel_experiencia) === 'Practicante / En formación'
+        ? 'Aplica para etapa productiva / prácticas'
+        : 'Según experiencia indicada por la empresa',
     summary: v.descripcion ? v.descripcion.slice(0, 160) : '',
     mission: v.descripcion || '',
     whatYouWillDo: v.responsabilidades || [],
@@ -1162,7 +1166,7 @@ export default function VacanciesPage() {
                                   </p>
                                 </div>
                                 <p className="m-0 text-xs text-body-muted leading-relaxed">
-                                  Nivel {selectedJob.seniority}
+                                  {selectedJob.seniority ? `Experiencia: ${selectedJob.seniority}` : 'Experiencia según perfil'}
                                 </p>
                               </div>
 

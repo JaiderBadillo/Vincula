@@ -19,6 +19,8 @@ import {
   VACANCY_MODALITIES,
   WORK_SCHEDULE_SUGGESTIONS,
   experienceLabel,
+  parseExperienceField,
+  resolveExperienceValue,
 } from '../data/companyVacanciesData.js';
 import { daysUntil, formatApplicationDate } from '../utils/formatters.js';
 
@@ -55,10 +57,12 @@ function buildInitialForm(vacancy, recruiters, isRecruiter = false) {
           ['Trabajo en equipo', 'Comunicación asertiva', 'Liderazgo', 'Pensamiento crítico', 'Resolución de problemas', 'Adaptabilidad'].includes(s)
         );
 
+    const parsedExperience = parseExperienceField(vacancy.experienceLevel);
     return {
       title: vacancy.title || '',
       category: vacancy.category || VACANCY_CATEGORIES[0],
-      experienceLevel: vacancy.experienceLevel || 'recien-egresado',
+      experienceLevel: parsedExperience.experienceLevel,
+      customExperience: parsedExperience.customExperience,
       siteId: vacancy.siteId || '',
       modality: vacancy.modality || VACANCY_MODALITIES[0],
       contractType: vacancy.contractType || VACANCY_CONTRACTS[0],
@@ -80,7 +84,8 @@ function buildInitialForm(vacancy, recruiters, isRecruiter = false) {
   return {
     title: '',
     category: VACANCY_CATEGORIES[0],
-    experienceLevel: 'recien-egresado',
+    experienceLevel: 'sin-experiencia',
+    customExperience: '',
     siteId: '',
     modality: VACANCY_MODALITIES[0],
     contractType: VACANCY_CONTRACTS[0],
@@ -104,6 +109,11 @@ function validateStep(stepIndex, form) {
   const e = {};
   if (stepIndex === 0) {
     if (!form.title.trim()) e.title = 'Escribe el cargo o título de la vacante.';
+    if (form.experienceLevel === 'personalizado') {
+      const custom = (form.customExperience || '').trim();
+      if (custom.length < 2) e.customExperience = 'Especifica el tiempo o requisito (mínimo 2 caracteres).';
+      else if (custom.length > 60) e.customExperience = 'Máximo 60 caracteres.';
+    }
     if (!form.openSpots || Number(form.openSpots) < 1) e.openSpots = 'Indica al menos 1 plaza disponible.';
   }
   if (stepIndex === 1) {
@@ -224,7 +234,9 @@ function GraduatePreview({ form, companyProfile, site }) {
           </div>
           <div>
             <dt className="text-secondary">Experiencia</dt>
-            <dd className="m-0 mt-0.5 font-semibold text-ink">{experienceLabel(form.experienceLevel)}</dd>
+            <dd className="m-0 mt-0.5 font-semibold text-ink">
+              {experienceLabel(form.experienceLevel, form.customExperience)}
+            </dd>
           </div>
           <div>
             <dt className="text-secondary">Contrato</dt>
@@ -522,6 +534,7 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
     const combinedSkills = [...new Set([...form.skillsTech, ...form.skillsSoft])];
     return {
       ...form,
+      experienceLevel: resolveExperienceValue(form.experienceLevel, form.customExperience),
       title: form.title.trim(),
       openSpots: Number(form.openSpots) || 1,
       description: form.description.trim(),
@@ -742,6 +755,33 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
                         );
                       })}
                     </div>
+                    {form.experienceLevel === 'personalizado' && (
+                      <div className="mt-3">
+                        <label htmlFor="vacancy-custom-experience" className="block text-xs font-semibold text-ink">
+                          Especifica la experiencia requerida
+                        </label>
+                        <input
+                          id="vacancy-custom-experience"
+                          type="text"
+                          maxLength={60}
+                          value={form.customExperience}
+                          onChange={(e) => update('customExperience', e.target.value)}
+                          placeholder="Ej. 6 meses en planta, 2 a 3 años en ventas, 1 año mínimo..."
+                          className={`mt-1 w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-gray-400 focus:outline-none focus:ring-2 ${
+                            errors.customExperience
+                              ? 'border-red-400 focus:ring-red-200'
+                              : 'border-sand-line focus:border-terracotta focus:ring-terracotta/15'
+                          }`}
+                        />
+                        {errors.customExperience ? (
+                          <p className="m-0 mt-1 text-xs text-red-600">{errors.customExperience}</p>
+                        ) : (
+                          <p className="m-0 mt-1 text-xs text-secondary">
+                            Máximo 60 caracteres ({(form.customExperience || '').length}/60).
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid gap-5 sm:grid-cols-2">

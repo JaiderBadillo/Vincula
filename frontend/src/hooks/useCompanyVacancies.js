@@ -158,7 +158,7 @@ export function useCompanyVacancies() {
         categoria: data.category || 'Tecnología',
         modalidad: modalityApi,
         tipo_contrato: data.contractType || 'Término Indefinido',
-        nivel_experiencia: data.experienceLevel || 'Junior',
+        nivel_experiencia: data.experienceLevel?.trim() || 'Sin experiencia',
         salario_minimo: data.salaryMin ? Number(data.salaryMin) : null,
         salario_maximo: data.salaryMax ? Number(data.salaryMax) : null,
         salario_es_confidencial: Boolean(data.salary === 'Confidencial'),

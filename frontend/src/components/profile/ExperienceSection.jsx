@@ -50,7 +50,7 @@ function ExperienceModal({ item, onSave, onClose }) {
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Cargo / Rol desempeñado">
-          <input className={inputClass} placeholder="Ej. Desarrollador Junior, Practicante de Sistemas..." value={draft.role} onChange={set('role')} />
+          <input className={inputClass} placeholder="Ej. Auxiliar de Producción, Analista Contable, Practicante..." value={draft.role} onChange={set('role')} />
         </Field>
         <Field label="Empresa u Organización">
           <input className={inputClass} placeholder="Ej. Tech Solutions S.A.S., Ecopetrol..." value={draft.company} onChange={set('company')} />

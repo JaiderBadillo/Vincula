@@ -427,7 +427,7 @@ class TalentMatcherService:
                 salario_es_confidencial=vac.salario_es_confidencial,
                 salario_formateado=salario_str,
                 tipo_contrato=vac.tipo_contrato or "Término Indefinido",
-                nivel_experiencia=vac.nivel_experiencia or "Junior",
+                nivel_experiencia=vac.nivel_experiencia or "Sin experiencia",
                 categoria=vac.categoria or "General",
                 requisitos=vac.requisitos if isinstance(vac.requisitos, list) else ([str(vac.requisitos)] if vac.requisitos else []),
                 fecha_publicacion=vac.publicado_en.strftime("%Y-%m-%d") if vac.publicado_en else "2026-01-01",

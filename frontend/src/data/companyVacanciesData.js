@@ -32,12 +32,34 @@ export const VACANCY_CATEGORIES = [
 ];
 
 export const VACANCY_EXPERIENCE_LEVELS = [
-  { id: 'practicante', label: 'Practicante', hint: 'Estudiantes en etapa productiva' },
-  { id: 'recien-egresado', label: 'Recién egresado', hint: 'Menos de 1 año de experiencia' },
-  { id: 'junior', label: 'Junior', hint: '1 a 2 años de experiencia' },
-  { id: 'semi-senior', label: 'Semi senior', hint: '3 a 5 años de experiencia' },
-  { id: 'senior', label: 'Senior', hint: 'Más de 5 años de experiencia' },
+  { id: 'sin-experiencia', label: 'Sin experiencia', hint: 'Menos de 1 año de experiencia' },
+  { id: '1-2-anos', label: '1 a 2 años', hint: 'Experiencia inicial en el área' },
+  { id: '3-5-anos', label: '3 a 5 años', hint: 'Experiencia intermedia consolidada' },
+  { id: 'mas-5-anos', label: 'Más de 5 años', hint: 'Amplia trayectoria en el cargo' },
+  { id: 'practicante', label: 'Practicante / En formación', hint: 'Estudiantes en etapa productiva' },
+  { id: 'personalizado', label: 'Personalizado', hint: 'Escribe los años o requisito exacto' },
 ];
+
+const EXPERIENCE_ALIAS_TO_ID = {
+  'sin-experiencia': 'sin-experiencia',
+  'sin experiencia': 'sin-experiencia',
+  'sin experiencia (menos de 1 año)': 'sin-experiencia',
+  'recien-egresado': 'sin-experiencia',
+  'recién egresado': 'sin-experiencia',
+  '1-2-anos': '1-2-anos',
+  '1 a 2 años': '1-2-anos',
+  junior: '1-2-anos',
+  '3-5-anos': '3-5-anos',
+  '3 a 5 años': '3-5-anos',
+  'semi-senior': '3-5-anos',
+  'semi senior': '3-5-anos',
+  'mas-5-anos': 'mas-5-anos',
+  'más de 5 años': 'mas-5-anos',
+  'mas de 5 años': 'mas-5-anos',
+  senior: 'mas-5-anos',
+  practicante: 'practicante',
+  'practicante / en formación': 'practicante',
+};
 
 /** Habilidades técnicas (herramientas, lenguajes, frameworks) */
 export const TECH_SKILL_SUGGESTIONS = [
@@ -118,8 +140,42 @@ export const VACANCY_BENEFIT_SUGGESTIONS = [
   'Seguro de vida',
 ];
 
-export function experienceLabel(id) {
-  return VACANCY_EXPERIENCE_LEVELS.find((l) => l.id === id)?.label || 'Sin definir';
+export function parseExperienceField(rawValue) {
+  const cleaned = String(rawValue || '').trim();
+  if (!cleaned) {
+    return { experienceLevel: 'sin-experiencia', customExperience: '' };
+  }
+  const normalized = cleaned.toLowerCase();
+  if (normalized === 'personalizado') {
+    return { experienceLevel: 'personalizado', customExperience: '' };
+  }
+  const matchedId = EXPERIENCE_ALIAS_TO_ID[normalized];
+  if (matchedId) {
+    return { experienceLevel: matchedId, customExperience: '' };
+  }
+  return { experienceLevel: 'personalizado', customExperience: cleaned };
+}
+
+export function resolveExperienceValue(experienceLevel, customExperience = '') {
+  if (experienceLevel === 'personalizado') {
+    return String(customExperience || '').trim();
+  }
+  const preset = VACANCY_EXPERIENCE_LEVELS.find((l) => l.id === experienceLevel);
+  if (preset) return preset.label;
+  return experienceLabel(experienceLevel);
+}
+
+export function experienceLabel(value, customValue = '') {
+  const cleaned = String(value || '').trim();
+  if (!cleaned) return 'Sin definir';
+  if (cleaned === 'personalizado') {
+    return String(customValue || '').trim() || 'Personalizado';
+  }
+  const matchedId = EXPERIENCE_ALIAS_TO_ID[cleaned.toLowerCase()];
+  if (matchedId) {
+    return VACANCY_EXPERIENCE_LEVELS.find((l) => l.id === matchedId)?.label || cleaned;
+  }
+  return cleaned;
 }
 
 export const initialVacancies = [];

@@ -466,7 +466,7 @@ export function SalaryDistributionBarChart({ salaryData }) {
       rangeCOP: '$ 3.50M - $ 7.00M',
       percentage: 46,
       count: 2673,
-      typicalProfile: 'Profesionales junior y tecnólogos consolidados',
+      typicalProfile: 'Profesionales recién egresados (0-2 años) y tecnólogos consolidados',
       highlight: true,
     },
     {

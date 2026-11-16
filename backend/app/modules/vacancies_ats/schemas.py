@@ -48,7 +48,7 @@ class VacanteCreateRequest(BaseModel):
     categoria: str = Field("Tecnología", min_length=2, max_length=100)
     modalidad: str = Field("Presencial", description="'Presencial', 'Remoto' o 'Híbrido'")
     tipo_contrato: str = Field("Término Indefinido", min_length=2, max_length=100)
-    nivel_experiencia: str = Field("Junior", min_length=2, max_length=60)
+    nivel_experiencia: str = Field("Sin experiencia", min_length=2, max_length=60)
     salario_minimo: Optional[float] = Field(None, ge=0)
     salario_maximo: Optional[float] = Field(None, ge=0)
     salario_es_confidencial: bool = False
