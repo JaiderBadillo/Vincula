@@ -79,19 +79,33 @@ export default function UserAccountDropdown({
         aria-label={`Menú de usuario para ${effectiveUserName}`}
       >
         {/* Avatar / Logo */}
-        {userAvatar ? (
-          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white p-1 border border-sand-line shadow-2xs overflow-hidden">
-            <img
-              src={userAvatar}
-              alt=""
-              className="size-full object-contain"
-            />
-          </span>
-        ) : (
-          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-cocoa text-ochre font-display text-xs font-bold shadow-2xs">
-            {effectiveInitials}
-          </span>
-        )}
+        {(() => {
+          const isEntityLogo = role === 'company_admin' || role === 'institution_admin';
+          if (userAvatar) {
+            return (
+              <span
+                className={`grid size-10 shrink-0 place-items-center rounded-full bg-white border border-sand-line shadow-2xs overflow-hidden ${
+                  isEntityLogo ? 'p-1' : ''
+                }`}
+              >
+                <img
+                  src={userAvatar}
+                  alt=""
+                  className={`size-full ${isEntityLogo ? 'object-contain' : 'object-cover object-center'}`}
+                />
+              </span>
+            );
+          }
+          return (
+            <span
+              className={`grid size-10 shrink-0 place-items-center rounded-full font-display text-xs font-bold shadow-2xs ${
+                role === 'graduate' ? 'bg-green-dark text-lime' : 'bg-cocoa text-ochre'
+              }`}
+            >
+              {effectiveInitials}
+            </span>
+          );
+        })()}
 
         {/* Nombre y Rol / NIT */}
         <div className="hidden lg:block text-left min-w-0">

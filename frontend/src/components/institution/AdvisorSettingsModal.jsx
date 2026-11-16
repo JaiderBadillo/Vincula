@@ -157,7 +157,17 @@ export default function AdvisorSettingsModal({ isOpen, onClose, userName, userAv
       <div className="flex min-h-[480px] flex-col md:min-h-[560px]">
         <header className="flex items-center justify-between gap-3 border-b border-sand-line bg-cream/50 px-6 py-5">
           <div className="flex items-center gap-3">
-            {userAvatar ? <img src={userAvatar} alt="" className="size-10 rounded-xl border border-sand-line object-contain" /> : <span className="grid size-10 place-items-center rounded-xl bg-cocoa text-xs font-bold text-ochre">{userInitials || 'IES'}</span>}
+            {userAvatar ? (
+              <img
+                src={userAvatar}
+                alt=""
+                className="size-10 rounded-full border border-sand-line object-cover object-center"
+              />
+            ) : (
+              <span className="grid size-10 place-items-center rounded-full bg-cocoa text-xs font-bold text-ochre">
+                {userInitials || 'IES'}
+              </span>
+            )}
             <div><h2 id="advisor-settings-title" className="m-0 font-display text-base font-bold text-ink">Configuración de cuenta</h2><p className="m-0 text-xs text-secondary">Asesor IES · {sections.find(item => item.id === section)?.title}</p></div>
           </div>
           <button type="button" onClick={onClose} aria-label="Cerrar configuración" className="grid size-9 place-items-center rounded-xl text-2xl text-secondary hover:bg-sand/50"><i className="bx bx-x" /></button>
