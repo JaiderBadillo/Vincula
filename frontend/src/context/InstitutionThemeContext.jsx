@@ -1,14 +1,15 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 
-const STORAGE_KEY = 'vincula.ies.admin.theme.v2';
+const STORAGE_KEY = 'vincula.portal.theme.v1';
+const IES_KEY = 'vincula.ies.admin.theme.v2';
 const LEGACY_KEY = 'vincula.institution.admin.theme';
 
-export const INSTITUTION_THEMES = [
+export const PORTAL_THEMES = [
   {
     id: 'verde-oscuro',
-    name: 'Verde Institucional UTS',
+    name: 'Verde Institucional',
     badge: 'Por defecto',
-    description: 'Verde bosque y verde claro UTS, formal y académico.',
+    description: 'Verde bosque y verde claro institucional, identidad base de Víncula.',
     primary: '#1b4d2e',
     accent: '#b1cc74',
     bg: '#fbfcf9',
@@ -44,7 +45,7 @@ export const INSTITUTION_THEMES = [
   {
     id: 'burdeos-academico',
     name: 'Burdeos y Caoba',
-    description: 'Tradición doctoral clásica, sobria y distintiva.',
+    description: 'Tradición clásica, sobria y distintiva.',
     primary: '#7a2336',
     accent: '#fbcfe8',
     bg: '#fbf5f6',
@@ -61,31 +62,34 @@ export const INSTITUTION_THEMES = [
   },
 ];
 
+export const INSTITUTION_THEMES = PORTAL_THEMES;
 const DEFAULT_THEME = 'verde-oscuro';
 
 function readStoredTheme() {
   if (typeof window === 'undefined') return DEFAULT_THEME;
   try {
-    // Limpiar claves legacy que pudieran tener terracota guardado
     if (window.localStorage.getItem(LEGACY_KEY)) {
       window.localStorage.removeItem(LEGACY_KEY);
     }
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    const exists = INSTITUTION_THEMES.some((t) => t.id === saved);
+    const saved =
+      window.localStorage.getItem(STORAGE_KEY) ||
+      window.localStorage.getItem(IES_KEY);
+    const exists = PORTAL_THEMES.some((t) => t.id === saved);
     return exists ? saved : DEFAULT_THEME;
   } catch {
     return DEFAULT_THEME;
   }
 }
 
-const InstitutionThemeContext = createContext({
+const PortalThemeContext = createContext({
   theme: DEFAULT_THEME,
+  defaultThemeId: DEFAULT_THEME,
   setTheme: () => {},
-  currentThemeConfig: INSTITUTION_THEMES[0],
-  availableThemes: INSTITUTION_THEMES,
+  currentThemeConfig: PORTAL_THEMES[0],
+  availableThemes: PORTAL_THEMES,
 });
 
-export function InstitutionThemeProvider({ children }) {
+export function PortalThemeProvider({ children }) {
   const [theme, setThemeState] = useState(readStoredTheme);
 
   useEffect(() => {
@@ -95,35 +99,51 @@ export function InstitutionThemeProvider({ children }) {
     };
   }, [theme]);
 
+  useEffect(() => {
+    function handleThemeSync(event) {
+      const next = event?.detail;
+      if (next && PORTAL_THEMES.some((t) => t.id === next)) {
+        setThemeState(next);
+      }
+    }
+    window.addEventListener('vincula:portal-theme-changed', handleThemeSync);
+    return () => window.removeEventListener('vincula:portal-theme-changed', handleThemeSync);
+  }, []);
+
   function setTheme(newThemeId) {
-    if (!INSTITUTION_THEMES.some((t) => t.id === newThemeId)) return;
+    if (!PORTAL_THEMES.some((t) => t.id === newThemeId)) return;
     setThemeState(newThemeId);
     try {
       window.localStorage.setItem(STORAGE_KEY, newThemeId);
+      window.localStorage.setItem(IES_KEY, newThemeId);
     } catch {
       // safe fallback
     }
     document.documentElement.setAttribute('data-ies-theme', newThemeId);
+    window.dispatchEvent(new CustomEvent('vincula:portal-theme-changed', { detail: newThemeId }));
   }
 
   const currentThemeConfig =
-    INSTITUTION_THEMES.find((t) => t.id === theme) || INSTITUTION_THEMES[0];
+    PORTAL_THEMES.find((t) => t.id === theme) || PORTAL_THEMES[0];
 
   return (
-    <InstitutionThemeContext.Provider
+    <PortalThemeContext.Provider
       value={{
         theme,
+        defaultThemeId: DEFAULT_THEME,
         setTheme,
         currentThemeConfig,
-        availableThemes: INSTITUTION_THEMES,
+        availableThemes: PORTAL_THEMES,
       }}
     >
       {children}
-    </InstitutionThemeContext.Provider>
+    </PortalThemeContext.Provider>
   );
 }
 
-export function useInstitutionTheme() {
-  return useContext(InstitutionThemeContext);
+export function usePortalTheme() {
+  return useContext(PortalThemeContext);
 }
 
+export const InstitutionThemeProvider = PortalThemeProvider;
+export const useInstitutionTheme = usePortalTheme;

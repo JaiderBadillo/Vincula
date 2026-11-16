@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import VinculaAdminSidebar from './VinculaAdminSidebar.jsx';
 import VinculaAdminTopbar from './VinculaAdminTopbar.jsx';
+import { PortalThemeProvider, usePortalTheme } from '../../context/InstitutionThemeContext.jsx';
 
 const SIDEBAR_PREFERENCE_KEY = 'vincula.admin.sidebar-collapsed';
 
@@ -13,13 +14,14 @@ function getSavedSidebarPreference() {
   }
 }
 
-export default function VinculaAdminLayout({
+function VinculaAdminContent({
   activePage = 'admin-dashboard',
   children,
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(getSavedSidebarPreference);
   const menuButtonRef = useRef(null);
+  const { theme } = usePortalTheme();
 
   useEffect(() => {
     try {
@@ -43,15 +45,10 @@ export default function VinculaAdminLayout({
     return () => window.removeEventListener('keydown', handleEscape);
   }, [mobileMenuOpen]);
 
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.removeAttribute('data-ies-theme');
-    }
-  }, []);
-
   return (
     <div
       data-portal="vincula-admin"
+      data-ies-theme={theme}
       className="min-h-screen bg-cream text-ink antialiased"
     >
       <VinculaAdminSidebar
@@ -78,3 +75,10 @@ export default function VinculaAdminLayout({
   );
 }
 
+export default function VinculaAdminLayout(props) {
+  return (
+    <PortalThemeProvider>
+      <VinculaAdminContent {...props} />
+    </PortalThemeProvider>
+  );
+}

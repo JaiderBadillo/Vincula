@@ -129,7 +129,7 @@ export default function UserAccountDropdown({
             }}
             className="group flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-ink hover:bg-cream hover:text-green-dark transition-colors cursor-pointer"
           >
-            <span className="grid size-7 place-items-center rounded-lg bg-emerald-50 text-green-dark group-hover:bg-emerald-100 transition-colors">
+            <span className="grid size-7 place-items-center rounded-lg bg-green/10 text-green-dark group-hover:bg-green/20 transition-colors">
               <i className="bx bx-help-circle text-base" />
             </span>
             <span>Ver tutorial guiado</span>

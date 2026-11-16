@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { authService, extractErrorMessage } from '../../services/authService.js';
+import PortalThemePicker from './PortalThemePicker.jsx';
 
 const API = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 const GOOGLE_CLIENT_ID = import.meta.env?.VITE_GOOGLE_CLIENT_ID || '698543862122-050jkphuknmg709207im4lfs39744ef8.apps.googleusercontent.com';
@@ -10,6 +11,7 @@ const tabs = [
   { id: 'seguridad', title: 'Seguridad', detail: 'Contraseña y Google', icon: 'bx-shield-quarter' },
   { id: 'sesiones', title: 'Accesos', detail: 'Sesión y actividad', icon: 'bx-devices' },
 ];
+const themeTab = { id: 'apariencia', title: 'Apariencia', detail: 'Tema y colores', icon: 'bx-palette' };
 const labels = {
   graduate: 'Egresado', institution_admin: 'Administrador IES', company_admin: 'Administrador de empresa',
   company_recruiter: 'Reclutador', vincula_admin: 'Superadministrador',
@@ -109,6 +111,8 @@ export default function UniversalSettingsModal({ isOpen, onClose, role, userName
     finally { setBusy(false); }
   }
 
+  const visibleTabs = role === 'graduate' ? tabs : [...tabs, themeTab];
+
   if (!isOpen) return null;
   return createPortal(<div role="dialog" aria-modal="true" aria-labelledby="universal-settings-title" onClick={onClose}
     className="fixed inset-0 z-[10002] flex items-center justify-center overflow-y-auto bg-ink/70 p-3 backdrop-blur-xs sm:p-5">
@@ -121,7 +125,7 @@ export default function UniversalSettingsModal({ isOpen, onClose, role, userName
           <h3 className="mt-1 font-display text-lg font-bold text-white">{userName || account?.nombre || 'Mi cuenta'}</h3>
           <p className="text-xs font-semibold text-ochre">{labels[role] || 'Cuenta Víncula'}</p>
           <nav aria-label="Secciones de configuración" className="mt-4 grid grid-cols-2 gap-2 md:mt-7 md:grid-cols-1">
-            {tabs.map(item => <button key={item.id} type="button" aria-current={tab === item.id ? 'page' : undefined}
+            {visibleTabs.map(item => <button key={item.id} type="button" aria-current={tab === item.id ? 'page' : undefined}
               onClick={() => { setTab(item.id); setError(''); setSuccess(''); setCurrent(''); passwordRef.current = ''; }}
               className={`flex items-center justify-center gap-3 rounded-xl border px-2 py-2 text-center md:justify-start md:px-3 md:py-3 md:text-left ${tab === item.id ? 'border-lime/60 bg-white/20' : 'border-transparent hover:bg-white/10'}`}>
               <i className={`bx ${item.icon} hidden text-xl text-lime md:block`} aria-hidden="true" />
@@ -135,14 +139,15 @@ export default function UniversalSettingsModal({ isOpen, onClose, role, userName
         <header className="flex items-center justify-between gap-3 border-b border-sand-line bg-cream/50 px-6 py-5">
           <div className="flex items-center gap-3">
             {userAvatar ? <img src={userAvatar} alt="" className="size-10 rounded-xl border border-sand-line object-contain" /> : <span className="grid size-10 place-items-center rounded-xl bg-cocoa text-xs font-bold text-ochre">{userInitials || 'ID'}</span>}
-            <div><h2 id="universal-settings-title" className="m-0 font-display text-base font-bold text-ink">Configuración de cuenta</h2><p className="m-0 text-xs text-secondary">{labels[role] || 'Cuenta'} · {tabs.find(item => item.id === tab)?.title}</p></div>
+            <div><h2 id="universal-settings-title" className="m-0 font-display text-base font-bold text-ink">Configuración de cuenta</h2><p className="m-0 text-xs text-secondary">{labels[role] || 'Cuenta'} · {visibleTabs.find(item => item.id === tab)?.title}</p></div>
           </div>
           <button type="button" onClick={onClose} aria-label="Cerrar configuración" className="grid size-9 place-items-center rounded-xl text-2xl text-secondary hover:bg-sand/50"><i className="bx bx-x" /></button>
         </header>
         <div className="flex-1 space-y-5 overflow-y-auto px-6 py-6">
           {error && <p role="alert" className="rounded-xl border border-terracotta/30 bg-terracotta/10 p-3 text-xs text-terracotta-dark">{error}</p>}
           {success && <p role="status" className="rounded-xl border border-green/20 bg-green/10 p-3 text-xs text-green-dark">{success}</p>}
-          {!account && !error && <p className="text-sm text-secondary">Cargando tu cuenta…</p>}
+          {tab === 'apariencia' && role !== 'graduate' && <PortalThemePicker />}
+          {tab !== 'apariencia' && !account && !error && <p className="text-sm text-secondary">Cargando tu cuenta…</p>}
           {account && tab === 'cuenta' && <form onSubmit={event => save(event, 'email')} className="grid gap-5">
             <div><h3 className="text-lg font-bold text-ink">Correo de inicio de sesión</h3><p className="mt-1 text-xs text-secondary">Este es el correo registrado para entrar a Víncula.</p></div>
             <label className="grid gap-2 text-xs font-semibold text-secondary">Correo electrónico<input type="email" required className={field} value={email} onChange={event => setEmail(event.target.value)} /></label>

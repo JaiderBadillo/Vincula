@@ -47,7 +47,7 @@ function PublicPreview({ form }) {
         Así ven la institución egresados y empresas
       </p>
       <article className="overflow-hidden rounded-card border border-sand-line bg-white shadow-card">
-        <div className="showcase-card relative isolate h-32 bg-[#0e2216]">
+        <div className="showcase-card relative isolate h-32 bg-cocoa">
           <img
             src={coverSrc}
             alt=""
@@ -307,7 +307,7 @@ export default function InstitutionAdminProfilePage() {
                       2. Foto de Portada / Banner Institucional
                     </span>
                     <div className="space-y-3">
-                      <div className="relative isolate h-36 sm:h-44 w-full overflow-hidden rounded-xl border border-sand-line bg-[#0e2216] shadow-2xs">
+                      <div className="relative isolate h-36 sm:h-44 w-full overflow-hidden rounded-xl border border-sand-line bg-cocoa shadow-2xs">
                         <img
                           src={form.coverImage || institutionPhotos.perfilCover.src}
                           alt="Portada institucional"

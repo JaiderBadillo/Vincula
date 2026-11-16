@@ -13,7 +13,7 @@ export default function InstitutionPageHero({
 }) {
   return (
     <section
-      className="showcase-card relative isolate flex min-h-[15rem] w-full items-end overflow-hidden rounded-card bg-[#0e2216] text-white sm:min-h-[17rem]"
+      className="showcase-card relative isolate flex min-h-[15rem] w-full items-end overflow-hidden rounded-card bg-cocoa text-white sm:min-h-[17rem]"
       aria-label={title}
     >
       <img

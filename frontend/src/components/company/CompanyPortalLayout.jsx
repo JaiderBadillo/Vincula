@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import CompanySidebar from './CompanySidebar.jsx';
 import CompanyTopbar from './CompanyTopbar.jsx';
+import { PortalThemeProvider, usePortalTheme } from '../../context/InstitutionThemeContext.jsx';
 
 const SIDEBAR_PREFERENCE_KEY = 'vincula.company.sidebar-collapsed';
 
@@ -13,7 +14,7 @@ function getSavedSidebarPreference() {
   }
 }
 
-export default function CompanyPortalLayout({
+function CompanyPortalContent({
   activePage = 'admin-perfil',
   role = 'admin',
   children,
@@ -21,6 +22,7 @@ export default function CompanyPortalLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(getSavedSidebarPreference);
   const menuButtonRef = useRef(null);
+  const { theme } = usePortalTheme();
 
   useEffect(() => {
     try {
@@ -44,16 +46,11 @@ export default function CompanyPortalLayout({
     return () => window.removeEventListener('keydown', handleEscape);
   }, [mobileMenuOpen]);
 
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.removeAttribute('data-ies-theme');
-    }
-  }, []);
-
   return (
     <div
       data-portal="company"
       data-company-role={role}
+      data-ies-theme={theme}
       className="min-h-screen bg-cream text-ink antialiased"
     >
       <CompanySidebar
@@ -79,5 +76,13 @@ export default function CompanyPortalLayout({
         {children}
       </div>
     </div>
+  );
+}
+
+export default function CompanyPortalLayout(props) {
+  return (
+    <PortalThemeProvider>
+      <CompanyPortalContent {...props} />
+    </PortalThemeProvider>
   );
 }

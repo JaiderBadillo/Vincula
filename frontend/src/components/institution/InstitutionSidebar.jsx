@@ -358,7 +358,7 @@ export default function InstitutionSidebar({
                           let badgeStyle = item.badgeColor || 'bg-panel text-ink border border-line';
                           if (item.id === 'estudiantes-solicitudes') {
                             badgeVal = pendingGraduatesCount && pendingGraduatesCount > 0 ? String(pendingGraduatesCount) : null;
-                            badgeStyle = 'bg-emerald-700 text-white font-bold';
+                            badgeStyle = 'bg-green text-white font-bold';
                           }
                           if (collapsed || !badgeVal) return null;
                           return (

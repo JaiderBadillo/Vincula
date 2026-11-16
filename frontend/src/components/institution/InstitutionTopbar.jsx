@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { advisorProfile } from '../../data/institutionData.js';
 import { useInstitutionProfile } from '../../hooks/useInstitutionProfile.js';
 import { authService } from '../../services/authService.js';
-import InstitutionThemeSelector from './InstitutionThemeSelector.jsx';
 import UserAccountDropdown from '../common/UserAccountDropdown.jsx';
 
 function formatDashboardDate(date) {
@@ -83,9 +82,6 @@ export default function InstitutionTopbar({
 
         {/* Right: Institutional Badge & Info */}
         <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-          {/* Selector interactivo de tema institucional (Admin y Asesor IES) */}
-          <InstitutionThemeSelector />
-
           {/* Quick Alert Bell (solo asesor) */}
           {role !== 'admin' && (
             <div className="relative">
@@ -95,7 +91,7 @@ export default function InstitutionTopbar({
               >
                 <i className="bx bx-bell" />
               </span>
-              <span className="absolute -top-1 -right-1 grid size-4 place-items-center rounded-full bg-emerald-700 text-[0.6rem] font-bold text-white ring-2 ring-page">
+              <span className="absolute -top-1 -right-1 grid size-4 place-items-center rounded-full bg-green text-[0.6rem] font-bold text-white ring-2 ring-page">
                 19
               </span>
             </div>

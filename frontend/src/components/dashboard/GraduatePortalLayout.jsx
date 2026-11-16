@@ -46,8 +46,14 @@ export default function GraduatePortalLayout({ activePage = 'home', children }) 
     return () => window.removeEventListener('keydown', handleEscape);
   }, [mobileMenuOpen]);
 
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.removeAttribute('data-ies-theme');
+    }
+  }, []);
+
   return (
-    <div className="min-h-screen bg-page text-ink">
+    <div data-portal="graduate" className="min-h-screen bg-page text-ink">
       <DashboardSidebar
         activePage={activePage}
         mobileOpen={mobileMenuOpen}

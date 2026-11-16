@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { authService, extractErrorMessage } from '../../services/authService.js';
+import PortalThemePicker from '../common/PortalThemePicker.jsx';
 
 const API = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 const GOOGLE_CLIENT_ID = import.meta.env?.VITE_GOOGLE_CLIENT_ID || '698543862122-050jkphuknmg709207im4lfs39744ef8.apps.googleusercontent.com';
@@ -21,6 +22,7 @@ const sections = [
   { id: 'seguridad', icon: 'bx-shield-quarter', title: 'Seguridad', detail: 'Contraseña y Google' },
   { id: 'notificaciones', icon: 'bx-bell', title: 'Notificaciones', detail: 'Avisos por correo' },
   { id: 'sesiones', icon: 'bx-devices', title: 'Accesos', detail: 'Historial y sesión' },
+  { id: 'apariencia', icon: 'bx-palette', title: 'Apariencia', detail: 'Tema y colores' },
 ];
 
 export default function AdvisorSettingsModal({ isOpen, onClose, userName, userAvatar, userInitials }) {
@@ -160,10 +162,11 @@ export default function AdvisorSettingsModal({ isOpen, onClose, userName, userAv
           </div>
           <button type="button" onClick={onClose} aria-label="Cerrar configuración" className="grid size-9 place-items-center rounded-xl text-2xl text-secondary hover:bg-sand/50"><i className="bx bx-x" /></button>
         </header>
-        <div className="flex-1 space-y-5 px-6 py-6">
+        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-6">
           {error && <p role="alert" className="rounded-xl border border-terracotta/30 bg-terracotta/10 p-3 text-xs text-terracotta-dark">{error}</p>}
           {success && <p role="status" className="rounded-xl border border-green/20 bg-green/10 p-3 text-xs text-green-dark">{success}</p>}
-          {!account && !error && <p className="text-sm text-secondary">Cargando tu cuenta…</p>}
+          {section === 'apariencia' && <PortalThemePicker />}
+          {section !== 'apariencia' && !account && !error && <p className="text-sm text-secondary">Cargando tu cuenta…</p>}
           {account && section === 'cuenta' && <form onSubmit={event => save(event, 'email')} className="grid gap-5">
             <div><h3 className="m-0 text-lg font-bold text-ink">Correo de inicio de sesión</h3><p className="mt-1 text-xs text-secondary">Usa este correo para entrar y recibir avisos de Víncula.</p></div>
             <label className="grid gap-2 text-xs font-semibold uppercase tracking-wide text-secondary">Correo electrónico<input type="email" required className={input} value={email} onChange={event => setEmail(event.target.value)} /></label>
