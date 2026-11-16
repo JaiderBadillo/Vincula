@@ -123,6 +123,32 @@ class PropaedeuticCycleTests(unittest.TestCase):
         self.assertEqual((r.programa_previo_nombre, r.total_asignaturas), ("Tecnología", 2))
         self.assertEqual([s.programa_origen for s in r.semestres], ["Tecnología", None])
 
+    def test_capa_semantica_cubre_redacciones_fuera_de_la_taxonomia(self):
+        """'Mantenimiento preventivo' no está en la taxonomía, pero la malla enseña
+        'Mantenimiento Industrial': el TF-IDF debe reconocerlo como respaldo afín."""
+        data = {"program_name": "Tecnología en Producción Industrial", "registered": True, "semesters": [
+            {"semester_number": 5, "subjects": [
+                {"code": "MAN-501", "name": "Mantenimiento Industrial", "credits": 3, "tools": []},
+                {"code": "CAL-601", "name": "Electromagnetismo", "credits": 3, "tools": []},
+            ]},
+        ]}
+        v = vacante([("Mantenimiento preventivo", "tecnica", True), ("Marketing Digital", "tecnica", True)])
+        r = Service.calculate_pertinence_report(data, [v], PROGRAMA)
+        por_skill = {d.skill: d for d in r.demanda}
+        afin = por_skill["Mantenimiento preventivo"]
+        self.assertEqual(afin.cobertura, "afin")
+        self.assertEqual([a.nombre for a in afin.asignaturas], ["Mantenimiento Industrial"])
+        # sin parecido real sigue siendo brecha: el umbral evita falsos positivos
+        self.assertEqual(por_skill["Marketing Digital"].cobertura, "brecha")
+
+    def test_capa_semantica_no_aplica_a_competencias_blandas(self):
+        data = {"program_name": "X", "registered": True, "semesters": [
+            {"semester_number": 3, "subjects": [{"code": "RED-301", "name": "Redes de Comunicaciones", "credits": 3, "tools": []}]},
+        ]}
+        v = vacante([("Comunicación Asertiva", "blanda", True)])
+        r = Service.calculate_pertinence_report(data, [v], PROGRAMA)
+        self.assertEqual(r.demanda[0].cobertura, "brecha")
+
     def test_los_semestres_propios_continuan_tras_el_ciclo_previo(self):
         sem = lambda n, prog=None: {"semester_number": n, "program": prog, "subjects": []}
         previos = [sem(n, "Tecnología") for n in range(1, 7)]

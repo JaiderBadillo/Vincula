@@ -30,6 +30,7 @@ from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.text_similarity import TfidfIndex
 from app.core.skills_taxonomy import (
     KNOWLEDGE_FAMILIES,
     contains_term,
@@ -53,6 +54,9 @@ from app.modules.institutions.models import ProgramaAcademico
 from app.modules.vacancies_ats.models import Vacante
 
 PESO_OBLIGATORIA, PESO_DESEABLE = 1.0, 0.5
+# Similitud coseno TF-IDF mínima para aceptar un respaldo semántico (calibrado con mallas reales:
+# los pares correctos puntúan >= 0.44 y los espurios <= 0.38).
+UMBRAL_SEMANTICO = 0.42
 COBERTURA = {"directa": 1.0, "afin": 0.5, "brecha": 0.0}
 UMBRAL_VACANTE_CUBIERTA = 0.7
 SUPERADMIN = ("superadmin_vincula", "superadmin")
@@ -105,10 +109,12 @@ def _index_pensum(semesters: List[Dict[str, Any]]):
             for tool in sub.get("tools", []):
                 if _key(tool):
                     declared.setdefault(_key(tool), []).append(ref)
-    return terms, declared, fams
+    subjects = list({(r.codigo, r.nombre): r for rs in terms.values() for r in rs}.values())
+    return terms, declared, fams, subjects, TfidfIndex([s.nombre for s in subjects])
 
 
-def _coverage(term_key: str, terms, declared, fams) -> Tuple[str, List[CurriculumSubjectRef], Optional[str]]:
+def _coverage(term_key: str, terms, declared, fams, subjects=None,
+              sem_index: Optional[TfidfIndex] = None) -> Tuple[str, List[CurriculumSubjectRef], Optional[str]]:
     """Devuelve (cobertura, asignaturas que la respaldan, familia usada)."""
     demand_fams = _families_of(term_key)
     refs: List[CurriculumSubjectRef] = []
@@ -125,6 +131,14 @@ def _coverage(term_key: str, terms, declared, fams) -> Tuple[str, List[Curriculu
     for fam in demand_fams:
         if fam in fams:
             return "afin", fams[fam][:4], fam
+    # Capa semántica (NLP): TF-IDF + coseno contra los nombres de las asignaturas, para
+    # redacciones que la taxonomía no reconoce ("Mantenimiento preventivo" ~ "Mantenimiento Industrial").
+    if sem_index and subjects:
+        hits = sem_index.best_matches(term_key, limit=3, min_similarity=UMBRAL_SEMANTICO)
+        if hits:
+            mejor = hits[0][1]
+            respaldo = [subjects[i] for i, s in hits if s >= 0.8 * mejor]
+            return "afin", respaldo[:4], demand_fams[0] if demand_fams else None
     return "brecha", [], demand_fams[0] if demand_fams else None
 
 
@@ -175,7 +189,7 @@ class CurriculumTraceabilityService:
         semesters = pensum_data.get("semesters", [])
         total_subjects = sum(len(s.get("subjects", [])) for s in semesters)
         propias = sum(len(s.get("subjects", [])) for s in semesters if not s.get("program"))
-        terms, declared, fams = _index_pensum(semesters)
+        terms, declared, fams, subjects, sem_index = _index_pensum(semesters)
 
         relevantes = [v for v in vacantes if _is_for_program(v, id_programa, _key(prog_name))]
         demandas = [d for d in (_vacancy_demand(v) for v in relevantes) if d]
@@ -187,7 +201,11 @@ class CurriculumTraceabilityService:
                 a = agg.setdefault(k, {"skill": nombre, "categoria": cat, "vacantes": 0, "obligatoria_en": 0})
                 a["vacantes"] += 1
                 a["obligatoria_en"] += int(oblig)
-        cover = {k: _coverage(k, terms, declared, fams) for k in agg}
+        # La capa semántica solo aplica a competencias técnicas: una blanda ("Comunicación Asertiva")
+        # no debe emparejarse con asignaturas de nombre parecido ("Redes de Comunicaciones").
+        cover = {k: _coverage(k, terms, declared, fams, subjects,
+                              sem_index if a["categoria"] != "blanda" else None)
+                 for k, a in agg.items()}
 
         peso_total = peso_cubierto = 0.0
         vacantes_alta = 0
