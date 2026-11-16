@@ -39,7 +39,6 @@ import VacanciesProposalPage from './pages/VacanciesProposalPage.jsx';
 import VinculaAdminDashboardPage from './pages/VinculaAdminDashboardPage.jsx';
 import VinculaAdminCompaniesPage from './pages/VinculaAdminCompaniesPage.jsx';
 import VinculaAdminInstitutionsPage from './pages/VinculaAdminInstitutionsPage.jsx';
-import OnboardingTour from './components/common/OnboardingTour.jsx';
 import AccountVerificationPage from './pages/AccountVerificationPage.jsx';
 
 export default function App() {
@@ -153,7 +152,6 @@ export default function App() {
         {/* ─── Redirección global para rutas no existentes ─── */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <OnboardingTour />
     </BrowserRouter>
   );
 }
