@@ -436,13 +436,19 @@ class TalentMatcherService:
             ciudad = vac.sede.ciudad if vac.sede else "Bucaramanga"
             departamento = vac.sede.departamento if vac.sede else "Santander"
 
+            competencias_list = [
+                c.competencia.nombre
+                for c in (getattr(vac, "competencias", None) or [])
+                if getattr(c, "competencia", None)
+            ]
+
             item = RecommendedVacancyItem(
                 id=str(vac.id),
                 codigo_vacante=vac.codigo_vacante,
                 titulo=vac.titulo,
                 empresa_nombre=vac.empresa.nombre_comercial or vac.empresa.razon_social if vac.empresa else "Empresa",
                 empresa_logo=vac.empresa.url_logo if vac.empresa else None,
-                empresa_verificada=True,
+                empresa_verificada=(vac.empresa.estado == "aprobado") if vac.empresa else False,
                 departamento=departamento,
                 ciudad=ciudad,
                 modalidad=vac.modalidad or "Presencial",
@@ -455,6 +461,15 @@ class TalentMatcherService:
                 categoria=vac.categoria or "General",
                 requisitos=vac.requisitos if isinstance(vac.requisitos, list) else ([str(vac.requisitos)] if vac.requisitos else []),
                 fecha_publicacion=vac.publicado_en.strftime("%Y-%m-%d") if vac.publicado_en else "2026-01-01",
+                publicado_en=vac.publicado_en.isoformat() if vac.publicado_en else None,
+                fecha_cierre=vac.fecha_cierre.isoformat() if getattr(vac, "fecha_cierre", None) else None,
+                descripcion=vac.descripcion or "",
+                responsabilidades=vac.responsabilidades if isinstance(vac.responsabilidades, list) else [],
+                beneficios=vac.beneficios if isinstance(vac.beneficios, list) else [],
+                jornada_laboral=vac.jornada_laboral or "",
+                cupos_disponibles=vac.cupos_disponibles or 1,
+                total_postulantes=vac.total_postulantes or 0,
+                habilidades_requeridas=competencias_list,
                 match_score=match_res.match_score,
                 porcentaje_afinidad=match_res.porcentaje_afinidad,
                 nivel_afinidad=match_res.nivel_afinidad,

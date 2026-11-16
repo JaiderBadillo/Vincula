@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useSavedJobs } from '../../hooks/useSavedJobs.js';
+import { formatClosingLabel } from '../../utils/formatters.js';
 
 export default function SavedVacanciesSection({ onOpenJob, onApplyJob, appliedJobIds = new Set() }) {
   const { savedJobs, savedCount, removeSaved } = useSavedJobs();
@@ -113,7 +114,7 @@ export default function SavedVacanciesSection({ onOpenJob, onApplyJob, appliedJo
                     <span className="flex items-center gap-1 text-[0.7rem]">
                       <i className="bx bx-time text-xs" />
                       {job.daysRemaining != null ? (
-                        <>Cierra en <strong>{Math.max(0, job.daysRemaining)} días</strong></>
+                        <strong>{formatClosingLabel(job.daysRemaining)}</strong>
                       ) : (
                         job.mode
                       )}

@@ -15,9 +15,18 @@ export function formatApplicationDate(date) {
 /** Días que faltan hasta una fecha `YYYY-MM-DD` (negativo si ya pasó, null si no hay fecha). */
 export function daysUntil(date) {
   if (!date) return null;
-  const target = new Date(`${date}T23:59:59`);
+  const target = new Date(`${String(date).slice(0, 10)}T23:59:59`);
+  if (Number.isNaN(target.getTime())) return null;
   const diff = target.getTime() - Date.now();
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+export function formatClosingLabel(daysRemaining) {
+  if (daysRemaining == null || Number.isNaN(daysRemaining)) return 'Cierre por definir';
+  if (daysRemaining < 0) return 'Convocatoria cerrada';
+  if (daysRemaining === 0) return 'Cierra hoy';
+  if (daysRemaining === 1) return 'Cierra en 1 día';
+  return `Cierra en ${daysRemaining} días`;
 }
 
 export function formatInterviewDate(dateTime) {

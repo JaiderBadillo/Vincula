@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatClosingLabel } from '../../utils/formatters.js';
 
 export default function GridVacancyDetailModal({
   job,
@@ -191,7 +192,7 @@ export default function GridVacancyDetailModal({
 
             <span className="text-[0.72rem] text-secondary flex items-center gap-1">
               <i className="bx bx-time text-sm" />
-              Cierra en <strong>{job.daysRemaining} días</strong> ({job.applicantsCount} postulados)
+              <strong>{formatClosingLabel(job.daysRemaining)}</strong> ({job.applicantsCount} postulados)
             </span>
           </div>
 

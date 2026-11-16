@@ -49,6 +49,15 @@ class RecommendedVacancyItem(BaseModel):
     categoria: str
     requisitos: List[str] = []
     fecha_publicacion: str
+    publicado_en: Optional[str] = None
+    fecha_cierre: Optional[str] = None
+    descripcion: Optional[str] = None
+    responsabilidades: List[str] = []
+    beneficios: List[str] = []
+    jornada_laboral: Optional[str] = None
+    cupos_disponibles: int = 1
+    total_postulantes: int = 0
+    habilidades_requeridas: List[str] = []
     match_score: float
     porcentaje_afinidad: int
     nivel_afinidad: str

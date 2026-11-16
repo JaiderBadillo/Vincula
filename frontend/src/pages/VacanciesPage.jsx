@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import GraduatePortalLayout from '../components/dashboard/GraduatePortalLayout.jsx';
 import GridVacancyDetailModal from '../components/dashboard/GridVacancyDetailModal.jsx';
 import { experienceLabel } from '../data/companyVacanciesData.js';
+import { daysUntil, formatClosingLabel } from '../utils/formatters.js';
 import { COLOMBIAN_LOCATIONS } from '../data/profile.js';
 import { useProfile } from '../hooks/useProfile.js';
 import { useSavedJobs } from '../hooks/useSavedJobs.js';
@@ -11,7 +12,9 @@ import { aiService } from '../services/aiService.js';
 import { authService } from '../services/authService.js';
 
 function mapApiToProposalJob(v) {
-  const stack = (v.competencias || []).map((c) => c.nombre);
+  const stack = Array.isArray(v.competencias) && v.competencias.length > 0
+    ? v.competencias.map((c) => c.nombre)
+    : (Array.isArray(v.habilidades_requeridas) ? v.habilidades_requeridas : []);
   const matchScore = v.porcentaje_afinidad ?? v.match_score ?? null;
   const matchReasons = [];
 
@@ -76,7 +79,7 @@ function mapApiToProposalJob(v) {
     openPositions: v.cupos_disponibles || 1,
     closingDate: v.fecha_cierre || '',
     applicantsCount: v.total_postulantes || 0,
-    daysRemaining: v.fecha_cierre ? Math.max(0, Math.ceil((new Date(v.fecha_cierre).getTime() - Date.now()) / 86400000)) : null,
+    daysRemaining: v.fecha_cierre ? daysUntil(v.fecha_cierre) : null,
     postedTime: v.publicado_en ? new Date(v.publicado_en).toLocaleDateString('es-CO') : '',
     publishedDate: v.publicado_en ? v.publicado_en.slice(0, 10) : (v.fecha_publicacion || ''),
     publishedAt: v.publicado_en ? v.publicado_en.slice(0, 10) : (v.fecha_publicacion || ''),
@@ -934,7 +937,7 @@ export default function VacanciesPage() {
                         <div className="mt-4 pt-3 border-t border-line-soft flex items-center justify-between text-xs text-secondary">
                           <span className="inline-flex items-center gap-1">
                             <i className="bx bx-time text-sm" />
-                            Quedan {job.daysRemaining} días
+                            {formatClosingLabel(job.daysRemaining)}
                           </span>
 
                           {isApplied ? (
