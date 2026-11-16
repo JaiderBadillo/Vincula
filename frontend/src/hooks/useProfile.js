@@ -79,6 +79,10 @@ export function useProfile() {
 
   useEffect(() => {
     let active = true;
+    // Al cambiar de cuenta, limpiar inmediatamente el perfil anterior antes de
+    // consultar los datos de la nueva persona.
+    setProfile(readProfile());
+    setLoadError('');
     if (!id) { setLoading(false); return undefined; }
     setLoading(true);
     graduateProfileService.get().then((data) => {
