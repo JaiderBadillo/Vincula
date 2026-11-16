@@ -1,27 +1,52 @@
 [
   {
-    "id": "guia_cv_logros",
-    "title": "Guía Víncula: logros en la hoja de vida",
-    "text": "Para revisar una hoja de vida, distingue experiencia comprobable de objetivos. Cada experiencia puede indicar función, herramientas utilizadas y resultado verificable. Si no hay cifras, describe el resultado sin inventar métricas. Prioriza logros relacionados con el cargo al que se postula. Señala información faltante como pregunta, nunca como hecho."
-  },
-  {
     "id": "guia_cv_estructura",
     "title": "Guía Víncula: estructura del CV",
-    "text": "La hoja de vida puede organizarse con perfil profesional, experiencia o prácticas, formación, proyectos y habilidades relacionadas con el puesto. Un egresado sin experiencia laboral puede destacar proyectos académicos y prácticas reales. Evita incluir contraseñas, datos bancarios y documentos de identidad. No afirmes que un PDF superó filtros ATS: el chat solo analiza su texto extraído."
+    "text": "Un CV de recién egresado funciona mejor en una sola página con este orden: 1) Encabezado: nombre, ciudad, teléfono, correo profesional y enlace a LinkedIn o portafolio; sin foto, documento de identidad, estado civil ni dirección exacta. 2) Perfil profesional: 3 a 4 líneas que digan título, enfoque y lo que aportas, alineadas con la vacante. 3) Formación académica: título, institución y año; incluye el proyecto de grado si es pertinente al cargo. 4) Experiencia (incluye prácticas, monitorías y semilleros): cargo, organización, fechas y 2 a 4 viñetas de logros, no de funciones. 5) Habilidades técnicas agrupadas (lenguajes, herramientas, normas) y nivel real de idiomas. 6) Certificaciones y cursos relevantes con año. Usa verbos de acción al inicio de cada viñeta, tiempos pasados para lo terminado, una sola tipografía y nada de tablas complejas: los sistemas de selección leen texto plano. Nombra el archivo Nombre-Apellido-CV.pdf."
+  },
+  {
+    "id": "guia_cv_logros",
+    "title": "Guía Víncula: logros cuantificados en la hoja de vida",
+    "text": "Un logro se redacta con la fórmula verbo + qué hiciste + cómo + resultado medible. Compara: 'encargado del inventario' (función) frente a 'Reorganicé el inventario de la bodega con clasificación ABC y reduje las diferencias de conteo de 8% a 2% en cuatro meses' (logro). Si no tienes cifras exactas, usa magnitudes honestas: 'atendí en promedio 20 solicitudes diarias', 'apoyé la certificación ISO 9001 del área'. De la práctica empresarial siempre hay material: procesos que documentaste, tiempos que mejoraste, formatos que creaste, personas que capacitaste, datos que analizaste. Tres viñetas fuertes valen más que ocho débiles. Nunca inventes cifras ni títulos: en la entrevista te pedirán sustentar cada línea, y una inconsistencia descarta el proceso. Prioriza los logros que se parecen a lo que pide la vacante a la que te postulas."
+  },
+  {
+    "id": "guia_cv_errores",
+    "title": "Guía Víncula: errores frecuentes del CV y cómo corregirlos",
+    "text": "Los errores que más descartan candidatos recién egresados: 1) Correo informal; usa nombre.apellido. 2) Un solo CV genérico para todas las vacantes; ajusta el perfil profesional y el orden de las habilidades a cada oferta. 3) Listar funciones en vez de logros. 4) Errores de ortografía y de concordancia: pide a alguien más que lo lea antes de enviarlo. 5) Mentir o exagerar niveles ('inglés avanzado' que no sostienes en una llamada). 6) Incluir datos sensibles: documento completo, fecha de nacimiento, estado civil o foto; en Colombia no son obligatorios y pueden sesgar. 7) Diseños recargados de columnas e íconos que los sistemas de selección no pueden leer. 8) Dejar huecos sin explicar: si estudiaste y trabajaste, dilo; los periodos vacíos generan preguntas. 9) Omitir prácticas o trabajos informales que sí demuestran responsabilidad. 10) Enviar el archivo en Word editable o con nombre tipo 'cv_final_v3': siempre PDF con nombre profesional."
+  },
+  {
+    "id": "guia_carta",
+    "title": "Guía Víncula: carta de presentación breve",
+    "text": "La carta o mensaje de presentación acompaña la postulación y no repite el CV: conecta tu perfil con esa vacante concreta en 3 párrafos cortos. Párrafo 1: a qué cargo te postulas y la razón genuina del interés en esa empresa (un producto, su sector, su operación en tu región). Párrafo 2: tus dos o tres fortalezas más pertinentes para los requisitos de la oferta, con un logro que las respalde. Párrafo 3: disponibilidad, agradecimiento y disposición a entrevista. Máximo 250 palabras, tono profesional sin fórmulas arcaicas ('por medio de la presente'), dirigida al área o reclutador si conoces el nombre. Si la postulación es por correo, la carta va en el cuerpo del mensaje y el CV adjunto en PDF; el asunto debe incluir el cargo y tu nombre."
   },
   {
     "id": "entrevista_conductual",
-    "title": "Guía Víncula: entrevista por competencias",
-    "text": "En una simulación de entrevista plantea una pregunta por turno. Tras la respuesta, comenta claridad, pertinencia y evidencia, y ofrece una mejora concreta antes de la siguiente pregunta. Para experiencias reales puede usarse la secuencia situación, tarea, acción y resultado. No inventes antecedentes del candidato; pregunta por el cargo si hace falta personalizar."
+    "title": "Guía Víncula: entrevista por competencias y método STAR",
+    "text": "En la entrevista por competencias te piden ejemplos reales: 'cuéntame de una vez que...'. Responde con el método STAR: Situación (contexto en una o dos frases), Tarea (qué te correspondía), Acción (qué hiciste tú, en primera persona, no 'nosotros'), Resultado (qué pasó, con cifra o consecuencia concreta). Prepara antes 5 o 6 historias de tu práctica, proyectos académicos o trabajos: una de trabajo en equipo, una de conflicto o desacuerdo, una de error y aprendizaje, una de iniciativa, una de presión de tiempo y una de liderazgo. Cada historia debe durar 90 segundos o menos al contarla. Preguntas típicas: '¿por qué quieres trabajar aquí?' (investiga la empresa antes), '¿cuál es tu mayor debilidad?' (una real, con el plan que ya aplicas para mejorarla), '¿dónde te ves en cinco años?' (crecimiento realista en el área). Al final siempre haz una o dos preguntas sobre el equipo, los retos del cargo o los siguientes pasos del proceso."
   },
   {
     "id": "entrevista_tecnica",
     "title": "Guía Víncula: preparación de entrevista técnica",
-    "text": "Adapta las preguntas técnicas al cargo y sector indicados por la persona. Pide explicar decisiones, herramientas, procedimiento y resultados de proyectos realmente realizados. Evalúa razonamiento y comunicación además de la respuesta. Si no se conoce el cargo, pide aclararlo antes de atribuir competencias específicas."
+    "text": "La entrevista técnica evalúa cómo razonas, no solo lo que memorizaste. Prepárala así: 1) Relee la vacante y repasa cada competencia exigida; sobre cada una te pueden pedir definición, un caso aplicado y tu experiencia real. 2) Repasa los fundamentos de tu carrera que el cargo usa a diario, no temas avanzados que no pide. 3) Practica explicando en voz alta: si no puedes explicar un concepto de forma simple, aún no lo dominas. 4) Ante un problema en vivo, piensa en voz alta: aclara el enunciado, propone un enfoque, admite supuestos. Decir 'no lo he usado, pero lo resolvería investigando X' es mejor que inventar. 5) Lleva uno o dos proyectos propios que puedas abrir y explicar a fondo: decisiones, errores y qué mejorarías hoy. 6) Si hay prueba práctica, pregunta antes el formato, la duración y las herramientas permitidas."
+  },
+  {
+    "id": "entrevista_virtual",
+    "title": "Guía Víncula: entrevista virtual y primera impresión",
+    "text": "Para entrevistas por videollamada: prueba cámara, micrófono y conexión 15 minutos antes; ten un plan B con el celular. Fondo neutro y ordenado, luz de frente (nunca una ventana a tu espalda), cámara a la altura de los ojos y mirada a la cámara al hablar. Viste como lo harías en la empresa, cuerpo completo: puede que debas pararte. Ten a mano agua, tu CV impreso o en otra pantalla, la descripción de la vacante y papel para notas; no leas respuestas en pantalla, se nota. Entra 5 minutos antes con el nombre bien configurado en la plataforma. Si la conexión falla, mantén la calma, avisa por el chat o correo y propone reanudar. En entrevistas presenciales: llega 10 minutos antes, saluda a todos por igual y lleva dos copias impresas del CV. En ambos formatos, al despedirte agradece y pregunta cuáles son los siguientes pasos y los tiempos del proceso."
   },
   {
     "id": "postulacion",
-    "title": "Guía Víncula: preparación de postulaciones",
-    "text": "Al preparar una postulación compara requisitos de la vacante aportada por el usuario con experiencia y habilidades verificables de su CV. Sugiere ajustar el perfil y la carta sin inventar títulos ni empleos. Esta guía no incluye vacantes, requisitos ni estados actualizados de la plataforma; pide el texto de la oferta cuando se necesite."
+    "title": "Guía Víncula: estrategia de postulación",
+    "text": "Postularse bien es un proceso, no un volumen: 10 postulaciones ajustadas rinden más que 50 genéricas. Método: 1) Lee la vacante completa y subraya requisitos obligatorios y deseables; si cumples el 70% de los obligatorios, postúlate. 2) Ajusta el perfil profesional del CV y el orden de tus habilidades a esa oferta, usando las mismas palabras clave de la publicación. 3) En Víncula, mantén tu perfil completo y tu CV principal actualizado: las empresas ven tu afinidad con cada vacante. 4) Lleva un registro: vacante, empresa, fecha, estado y contacto; haz seguimiento respetuoso si no hay respuesta en dos semanas. 5) Prepara cada entrevista investigando la empresa: sector, productos, sedes y noticias recientes. 6) Un descarte no es un veredicto sobre ti: pide retroalimentación cuando sea posible, ajusta y continúa. La constancia semanal (horas fijas dedicadas a buscar, postular y preparar) es lo que más acelera la primera contratación."
+  },
+  {
+    "id": "marca_profesional",
+    "title": "Guía Víncula: perfil de LinkedIn y marca profesional",
+    "text": "Tu perfil público complementa el CV y los reclutadores lo revisan antes de llamarte. En LinkedIn: foto sencilla con buena luz y fondo neutro; titular que diga más que 'egresado' (por ejemplo 'Tecnólogo en Producción Industrial | Mejora continua y control de calidad'); extracto en primera persona con tu enfoque, logros de formación y lo que buscas; experiencia y educación consistentes con tu CV, sin contradicciones de fechas o títulos. Activa el aviso de búsqueda de empleo para reclutadores. Sigue empresas de tu sector en tu región y participa con criterio: compartir un proyecto de grado o una certificación con un comentario propio vale más que publicar a diario. Para perfiles técnicos, un repositorio o portafolio ordenado con 2 o 3 proyectos documentados (qué problema resuelven, cómo ejecutarlos) pesa más que una lista larga de cursos."
+  },
+  {
+    "id": "salario_oferta",
+    "title": "Guía Víncula: expectativa salarial y evaluación de ofertas",
+    "text": "Cuando pregunten tu aspiración salarial, responde con un rango informado, no con un número al azar: investiga antes el mercado del cargo en tu región (portales de empleo, egresados de tu programa, el rango que publica la propia vacante). Como recién egresado, un rango razonable y la frase 'abierto a conversarlo según las funciones y el paquete completo' mantienen viva la negociación. Evalúa la oferta completa, no solo el básico: tipo de contrato (término indefinido, fijo, obra o prestación de servicios y sus diferencias en prestaciones), auxilio de transporte, horas extra, ruta, casino, formación y posibilidades de crecimiento. Antes de aceptar, pide la oferta por escrito con cargo, salario, horario y fecha de inicio. Si tienes otra oferta o proceso activo, puedes decirlo con honestidad y sin presionar: los tiempos de respuesta se pueden negociar."
   }
 ]

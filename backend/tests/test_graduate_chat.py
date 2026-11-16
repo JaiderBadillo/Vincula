@@ -14,7 +14,31 @@ from reportlab.pdfgen import canvas
 from app.core.dependencies import get_current_user
 
 chat = importlib.import_module("app.modules.ai_engine.chat")
-from app.modules.ai_engine.career_retrieval import retrieve
+from app.modules.ai_engine.career_retrieval import knowledge, rank_vacancy_docs, retrieve
+
+
+class VacancyRetrievalTests(unittest.TestCase):
+    DOCS = [
+        {"id": "vac_1", "title": "Vacante en Víncula · Supervisor de Producción Junior",
+         "text": "Vacante abierta: supervisión de línea, control de calidad y métodos y tiempos."},
+        {"id": "vac_2", "title": "Vacante en Víncula · Desarrollador Backend Junior",
+         "text": "Vacante abierta: APIs REST con Python y bases de datos SQL."},
+    ]
+
+    def test_la_consulta_recupera_la_vacante_pertinente(self):
+        docs = rank_vacancy_docs("simula una entrevista para la vacante de supervisor de producción", self.DOCS)
+        self.assertEqual([d["id"] for d in docs][:1], ["vac_1"])
+
+    def test_consulta_ajena_no_arrastra_vacantes(self):
+        self.assertEqual(rank_vacancy_docs("mejora la ortografía de mi hoja de vida", self.DOCS), [])
+
+    def test_corpus_tiene_guias_sustantivas(self):
+        docs = knowledge()
+        self.assertGreaterEqual(len(docs), 9)
+        self.assertTrue(all(len(d["text"]) >= 700 for d in docs))
+        # la recuperación sigue encontrando guías de entrevista
+        titulos = [d["title"] for d in retrieve("cómo preparar una entrevista por competencias")]
+        self.assertTrue(any("entrevista" in t.lower() for t in titulos))
 
 
 def pdf_bytes(text=None, pages=1, encrypted=False):
