@@ -4,6 +4,24 @@ import { SectionCard, inputClass } from './ui.jsx';
 import SoftSkillsRadarChart from './SoftSkillsRadarChart.jsx';
 
 const MAX_SKILLS = 20;
+const COMMON_LANGUAGES = [
+  'Español',
+  'Inglés',
+  'Francés',
+  'Portugués',
+  'Alemán',
+  'Italiano',
+  'Chino Mandarín',
+  'Japonés',
+];
+
+function normalizeLangKey(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
 
 function LevelBars({ level, onChange, name }) {
   return (
@@ -29,8 +47,14 @@ export default function SkillsEditor({ profile, updateProfile, notify }) {
   const [tab, setTab] = useState('soft'); // Por defecto 'soft' para destacar las gráficas solicitadas
   const [name, setName] = useState('');
   const [level, setLevel] = useState(2);
+  const [langSelection, setLangSelection] = useState('');
   const [langName, setLangName] = useState('');
   const [langLevel, setLangLevel] = useState('B1');
+
+  const languages = profile.languages ?? [];
+  const availableLanguages = COMMON_LANGUAGES.filter(
+    (item) => !languages.some((l) => normalizeLangKey(l.name) === normalizeLangKey(item))
+  );
 
   const skills = profile.skills ?? [];
   const visible = skills.filter((s) => s.type === tab);
@@ -65,16 +89,22 @@ export default function SkillsEditor({ profile, updateProfile, notify }) {
       skills: p.skills.filter((s) => s.id !== id),
     }));
 
-  function addLanguage() {
-    const clean = langName.trim();
+  function addLanguage(overrideName) {
+    const raw = typeof overrideName === 'string'
+      ? overrideName
+      : langSelection === '__custom__'
+        ? langName
+        : langSelection;
+    const clean = String(raw || '').trim();
     if (!clean) return;
-    if (profile.languages.some((l) => l.name.toLowerCase() === clean.toLowerCase())) {
+    if (languages.some((l) => normalizeLangKey(l.name) === normalizeLangKey(clean))) {
       return notify ? notify('Ese idioma ya está agregado.', 'error') : null;
     }
     updateProfile((p) => ({
       ...p,
-      languages: [...p.languages, { id: `l-${Date.now()}`, name: clean, level: langLevel }],
+      languages: [...(p.languages ?? []), { id: `l-${Date.now()}`, name: clean, level: langLevel }],
     }));
+    setLangSelection('');
     setLangName('');
   }
 
@@ -272,7 +302,7 @@ export default function SkillsEditor({ profile, updateProfile, notify }) {
           Idiomas y Nivel de Suficiencia
         </h3>
         <ul className="m-0 grid list-none gap-2 p-0 sm:grid-cols-2">
-          {profile.languages.map((l) => (
+          {languages.map((l) => (
             <li
               key={l.id}
               className="flex items-center justify-between gap-2 rounded-xl border border-line bg-page px-3 py-2 shadow-2xs"
@@ -285,7 +315,7 @@ export default function SkillsEditor({ profile, updateProfile, notify }) {
                   onChange={(e) =>
                     updateProfile((p) => ({
                       ...p,
-                      languages: p.languages.map((x) => (x.id === l.id ? { ...x, level: e.target.value } : x)),
+                      languages: (p.languages ?? []).map((x) => (x.id === l.id ? { ...x, level: e.target.value } : x)),
                     }))
                   }
                   aria-label={`Nivel de ${l.name}`}
@@ -296,11 +326,11 @@ export default function SkillsEditor({ profile, updateProfile, notify }) {
                 </select>
                 <button
                   type="button"
-                  className="grid size-7 place-items-center rounded-md text-secondary hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                  className="grid size-7 place-items-center rounded-md text-secondary hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
                   onClick={() =>
                     updateProfile((p) => ({
                       ...p,
-                      languages: p.languages.filter((x) => x.id !== l.id),
+                      languages: (p.languages ?? []).filter((x) => x.id !== l.id),
                     }))
                   }
                   aria-label={`Eliminar ${l.name}`}
@@ -313,36 +343,58 @@ export default function SkillsEditor({ profile, updateProfile, notify }) {
         </ul>
 
         <form
-          className="mt-3 flex gap-2"
+          className="mt-3 space-y-2.5"
           onSubmit={(e) => {
             e.preventDefault();
             addLanguage();
           }}
         >
-          <input
-            className={`${inputClass} flex-1`}
-            placeholder="Agregar nuevo idioma (Ej.: Inglés, Francés, Alemán…)"
-            value={langName}
-            onChange={(e) => setLangName(e.target.value)}
-            aria-label="Nuevo idioma"
-          />
-          <select
-            className={`${inputClass} w-28`}
-            value={langLevel}
-            onChange={(e) => setLangLevel(e.target.value)}
-            aria-label="Nivel del idioma"
-          >
-            {languageLevels.map((lv) => (
-              <option key={lv}>{lv}</option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            className="grid w-11 place-items-center rounded-control bg-[#051F26] text-lg text-white hover:bg-[#0b2b34] shadow-xs transition-colors"
-            aria-label="Agregar idioma"
-          >
-            <i className="bx bx-plus" aria-hidden="true" />
-          </button>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_8.5rem_auto]">
+            <select
+              className={`${inputClass} min-w-0 cursor-pointer`}
+              value={langSelection}
+              onChange={(e) => setLangSelection(e.target.value)}
+              aria-label="Seleccionar idioma"
+            >
+              <option value="">Selecciona un idioma para agregar...</option>
+              {availableLanguages.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+              <option value="__custom__">Otro idioma, ¿cuál?</option>
+            </select>
+            <select
+              className={`${inputClass} min-w-0 cursor-pointer`}
+              value={langLevel}
+              onChange={(e) => setLangLevel(e.target.value)}
+              aria-label="Nivel del idioma"
+            >
+              {languageLevels.map((lv) => (
+                <option key={lv}>{lv}</option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              disabled={!langSelection || (langSelection === '__custom__' && !langName.trim())}
+              className="inline-flex h-[2.75rem] items-center justify-center gap-1.5 rounded-control bg-[#051F26] px-4 text-xs font-bold text-white hover:bg-[#0b2b34] disabled:opacity-45 shadow-xs transition-colors cursor-pointer"
+              aria-label="Agregar idioma"
+            >
+              <i className="bx bx-plus text-base" aria-hidden="true" />
+              <span>Agregar</span>
+            </button>
+          </div>
+
+          {langSelection === '__custom__' && (
+            <input
+              className={inputClass}
+              placeholder="¿Cuál idioma? Ej.: Ruso, Coreano, Lengua de señas..."
+              value={langName}
+              onChange={(e) => setLangName(e.target.value)}
+              aria-label="Nombre del otro idioma"
+              autoFocus
+            />
+          )}
         </form>
       </div>
     </SectionCard>
