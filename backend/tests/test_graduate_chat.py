@@ -152,6 +152,21 @@ class ProviderTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("clave de Gemini", error.exception.detail)
         self.assertNotIn("SECRET", error.exception.detail)
 
+    async def test_slow_primary_uses_faster_model_with_minimal_thinking(self):
+        import json
+        calls = []
+        def handler(request):
+            calls.append(str(request.url))
+            body = json.loads(request.content)
+            self.assertEqual(body["generationConfig"]["thinkingConfig"]["thinkingLevel"], "minimal")
+            if len(calls) == 1:
+                raise httpx.ReadTimeout("primary stalled", request=request)
+            return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": "Respuesta basada en fuentes."}]}}]})
+        with patch.object(chat.settings, "GEMINI_CHAT_MODEL", "gemini-3.5-flash"):
+            reply = await self.reply_with(handler)
+        self.assertEqual(reply, "Respuesta basada en fuentes.")
+        self.assertIn("gemini-3.5-flash-lite", calls[1])
+
     async def test_empty_blocked_and_timeout_responses(self):
         for data in [{}, {"candidates": []}, {"candidates": [{"finishReason": "SAFETY"}]}]:
             with self.assertRaises(chat.HTTPException) as error:

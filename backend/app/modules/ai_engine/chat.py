@@ -160,16 +160,31 @@ async def generate_reply(payload: ChatRequest, sources: list[dict] | None = None
     } for item in payload.history)
     contents.append({"role": "user", "parts": [{"text": payload.message}]})
     try:
-        async with httpx.AsyncClient(timeout=55.0) as client:
-            response = await client.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_CHAT_MODEL}:generateContent",
-                headers={"x-goog-api-key": settings.GEMINI_API_KEY},
-                json={
-                    "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-                    "contents": contents,
-                    "generationConfig": {"temperature": 0.4, "maxOutputTokens": 2048},
-                },
-            )
+        async def ask_model(model: str, timeout: float) -> httpx.Response:
+            config = {"temperature": 0.4, "maxOutputTokens": 1200}
+            if model.startswith("gemini-3.5-flash"):
+                config["thinkingConfig"] = {"thinkingLevel": "minimal"}
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                return await client.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                    headers={"x-goog-api-key": settings.GEMINI_API_KEY},
+                    json={
+                        "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+                        "contents": contents,
+                        "generationConfig": config,
+                    },
+                )
+
+        try:
+            response = await ask_model(settings.GEMINI_CHAT_MODEL, 25.0)
+        except httpx.TimeoutException:
+            if settings.GEMINI_CHAT_MODEL == "gemini-3.5-flash-lite":
+                raise
+            logger.warning("Gemini agotó el tiempo de espera del modelo principal; intentando Flash-Lite")
+            response = await ask_model("gemini-3.5-flash-lite", 24.0)
+        if response.status_code in (500, 502, 503) and settings.GEMINI_CHAT_MODEL != "gemini-3.5-flash-lite":
+            logger.warning("Gemini devolvió %s en el modelo principal; intentando Flash-Lite", response.status_code)
+            response = await ask_model("gemini-3.5-flash-lite", 24.0)
         provider_hint = "unknown"
         if response.status_code >= 400:
             # Solo el estado y la categoría del proveedor: nunca registrar claves,
