@@ -31,7 +31,7 @@ class FakeDB:
 class RecoveryTests(unittest.IsolatedAsyncioTestCase):
     async def test_complete_flow_and_one_time_code(self):
         db = FakeDB()
-        with patch.object(reset.settings, 'N8N_WEBHOOK_BASE_URL', ''), \
+        with patch.object(reset.settings, 'BREVO_API_KEY', ''), \
              patch.object(reset.settings, 'SMTP_USER', 'smtp@example.com'), \
              patch.object(reset.settings, 'SMTP_PASSWORD', 'configured'), \
              patch.object(reset.secrets, 'randbelow', return_value=42), \
@@ -50,7 +50,7 @@ class RecoveryTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_invalid_attempts_and_delivery_failure(self):
         db = FakeDB()
-        with patch.object(reset.settings, 'N8N_WEBHOOK_BASE_URL', ''), \
+        with patch.object(reset.settings, 'BREVO_API_KEY', ''), \
              patch.object(reset.settings, 'SMTP_USER', 'smtp@example.com'), \
              patch.object(reset.settings, 'SMTP_PASSWORD', 'configured'), \
              patch.object(reset.EmailService, 'send_email', new_callable=AsyncMock, return_value={'success': False}):
@@ -99,7 +99,7 @@ class BrevoDeliveryTests(unittest.IsolatedAsyncioTestCase):
             db = FakeDB()
             if not exists:
                 db.user = None
-            with patch.object(reset.settings, 'BREVO_API_KEY', ''), patch.object(reset.settings, 'N8N_WEBHOOK_BASE_URL', ''),                  patch.object(reset.settings, 'SMTP_USER', ''):
+            with patch.object(reset.settings, 'BREVO_API_KEY', ''), patch.object(reset.settings, 'SMTP_USER', ''):
                 with self.assertRaises(HTTPException) as error:
                     await reset.request_code(reset.RequestCode(correo='alguien@example.com'), db)
             self.assertEqual(error.exception.status_code, 503)

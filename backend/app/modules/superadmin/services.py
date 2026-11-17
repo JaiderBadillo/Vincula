@@ -28,7 +28,6 @@ from app.modules.superadmin.schemas import (
     PaginatedInstitutionAuditResponse,
 )
 from app.integrations.supabase_storage import SupabaseStorageService
-from app.integrations.n8n_webhooks import N8nWebhookDispatcher
 from app.integrations.transactional_notifications import send_vincula_email
 
 
@@ -356,18 +355,6 @@ class SuperAdminService:
 
         await session.commit()
 
-        # Disparar webhook hacia n8n y enviar correo oficial de aprobación
-        await N8nWebhookDispatcher.dispatch_event(
-            "empresa-aprobada",
-            {
-                "evento": "empresa.aprobada",
-                "id_empresa": str(emp.id),
-                "razon_social": emp.razon_social,
-                "nit": emp.nit,
-                "correo_contacto": emp.correo_contacto,
-                "notas": notas_txt,
-            }
-        )
         await send_vincula_email("empresa_aprobada", emp.correo_contacto,
                                  empresa=emp.razon_social or emp.nombre_comercial)
 
@@ -532,18 +519,6 @@ class SuperAdminService:
 
         await session.commit()
 
-        # Disparar webhook hacia n8n y enviar correo oficial de aprobación IES
-        await N8nWebhookDispatcher.dispatch_event(
-            "institucion-aprobada",
-            {
-                "evento": "institucion.aprobada",
-                "id_institucion": str(ies.id),
-                "nombre_oficial": ies.nombre_oficial,
-                "codigo_snies": ies.codigo_snies,
-                "correo_institucional": ies.correo_institucional,
-                "notas": notas_txt,
-            }
-        )
         await send_vincula_email("ies_aprobada", ies.correo_institucional,
                                  institucion=ies.nombre_oficial or ies.nombre_corto)
 

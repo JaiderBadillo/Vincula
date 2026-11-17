@@ -16,7 +16,6 @@ from google.auth.transport import requests as google_requests
 from app.core.config import settings
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.integrations.supabase_storage import SupabaseStorageService
-from app.integrations.n8n_webhooks import N8nWebhookDispatcher
 from app.integrations.transactional_notifications import send_vincula_email
 from app.modules.iam.models import Usuario
 from app.modules.companies.models import Empresa, ReclutadorEmpresa, DocumentoEmpresa
@@ -451,22 +450,6 @@ class IAMService:
 
         await session.commit()
 
-        # 3. Disparar webhook asíncrono hacia n8n para bienvenida y notificación
-        await N8nWebhookDispatcher.dispatch_event(
-            "registro-egresado",
-            {
-                "evento": "egresado.registrado",
-                "id_usuario": str(nuevo_usuario.id),
-                "id_egresado": str(nuevo_egresado.id),
-                "nombre": data.nombre_completo,
-                "correo": data.correo.lower(),
-                "carrera": data.carrera,
-                "ciudad": data.ciudad,
-                "departamento": data.departamento,
-                "url_completar_perfil": "https://vincula-henna.vercel.app/login?redirect=%2Fdashboard%2Fperfil",
-            }
-        )
-
         await send_vincula_email("registro_egresado", data.correo.lower(),
                                  nombre=data.nombre_completo, carrera=data.carrera)
 
@@ -616,23 +599,6 @@ class IAMService:
         await session.commit()
 
         radicado = f"RAD-EMP-2026-{str(nueva_empresa.id)[:8].upper()}"
-
-        # Disparar webhook asíncrono hacia n8n para notificación de radicación y SLA 72h
-        await N8nWebhookDispatcher.dispatch_event(
-            "registro-empresa",
-            {
-                "evento": "empresa.registrada",
-                "radicado": radicado,
-                "id_usuario": str(nuevo_usuario.id),
-                "id_empresa": str(nueva_empresa.id),
-                "razon_social": data.razon_social,
-                "nit": data.nit,
-                "correo_contacto": data.correo_contacto.lower(),
-                "representante_legal": data.nombre_representante_legal,
-                "persona_contacto": data.persona_contacto,
-                "sla_horas": 72,
-            }
-        )
 
         await send_vincula_email("registro_empresa", data.correo_contacto.lower(),
                                  empresa=data.razon_social or data.nombre_comercial, radicado=radicado)
@@ -786,22 +752,6 @@ class IAMService:
         await session.commit()
 
         radicado = f"RAD-IES-2026-{str(nueva_ies.id)[:8].upper()}"
-
-        # Disparar webhook asíncrono hacia n8n para radicación institucional
-        await N8nWebhookDispatcher.dispatch_event(
-            "registro-institucion",
-            {
-                "evento": "institucion.registrada",
-                "radicado": radicado,
-                "id_usuario": str(nuevo_usuario.id),
-                "id_institucion": str(nueva_ies.id),
-                "nombre_institucion": data.nombre_institucion,
-                "codigo_snies": data.codigo_snies,
-                "nit": data.nit,
-                "correo_institucional": data.correo_institucional.lower(),
-                "sla_horas": 72,
-            }
-        )
 
         await send_vincula_email("registro_ies", data.correo_institucional.lower(),
                                  institucion=data.nombre_institucion, radicado=radicado)

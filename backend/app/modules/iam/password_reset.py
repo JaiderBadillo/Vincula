@@ -1,4 +1,4 @@
-"""Recuperación de contraseña con códigos de un solo uso enviados por n8n."""
+"""Recuperación de contraseña con códigos de un solo uso enviados por Brevo HTTPS."""
 import hashlib
 import hmac
 import secrets
@@ -34,13 +34,12 @@ class ResetPassword(BaseModel):
 
 
 def _email_configured() -> bool:
-    return bool(settings.BREVO_API_KEY or (settings.N8N_WEBHOOK_BASE_URL and settings.N8N_WEBHOOK_SECRET)
-                or (settings.SMTP_USER and settings.SMTP_PASSWORD))
+    return bool(settings.BREVO_API_KEY or (settings.SMTP_USER and settings.SMTP_PASSWORD))
 
 
 async def _deliver_code(recipient: str, code: str) -> bool:
-    """Brevo (HTTPS) y, si falla, n8n; SMTP solo cuando no hay ninguno de los dos (desarrollo local)."""
-    if settings.BREVO_API_KEY or (settings.N8N_WEBHOOK_BASE_URL and settings.N8N_WEBHOOK_SECRET):
+    """Brevo (HTTPS) en producción; SMTP solo cuando no hay Brevo configurado (desarrollo local)."""
+    if settings.BREVO_API_KEY:
         return await send_vincula_email("recuperacion_contrasena", recipient, codigo=code, minutos_validez=10)
     body = (f"Tu código de recuperación de Víncula es: {code}\n\n"
             "Vence en 10 minutos. Si no solicitaste este cambio, ignora este mensaje. "

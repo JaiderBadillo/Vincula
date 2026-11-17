@@ -1,4 +1,4 @@
-"""Correos transaccionales de Vincula entregados a n8n por HTTPS."""
+"""Correos transaccionales de Vincula entregados mediante Brevo API HTTPS."""
 
 import logging
 
@@ -7,7 +7,6 @@ from html import escape
 
 from app.core.config import settings
 from app.integrations.email_service import _generate_vincula_email_html, get_stage_display_info
-from app.integrations.n8n_webhooks import N8nWebhookDispatcher
 
 logger = logging.getLogger("vincula.notifications")
 
@@ -122,22 +121,15 @@ async def _send_with_brevo(recipient, subject, plain, html):
 
 
 async def send_vincula_email(kind, recipient, **data):
-    """Entrega por Brevo (HTTPS) y, si no está disponible, por n8n. Nunca simula un envío."""
+    """Entrega correos transaccionales por Brevo (HTTPS). Nunca simula un envío."""
     if not recipient:
         logger.warning("Correo %s omitido: destinatario vacío", kind)
         return False
     subject, plain, html = build_message(kind, data)
-    if settings.BREVO_API_KEY:
-        if await _send_with_brevo(recipient, subject, plain, html):
-            return True
-        logger.error("Brevo no aceptó el correo %s", kind)
-    if not settings.N8N_WEBHOOK_BASE_URL or not settings.N8N_WEBHOOK_SECRET:
-        logger.error("Correo %s no enviado: ni Brevo ni n8n están configurados", kind)
+    if not settings.BREVO_API_KEY:
+        logger.error("Correo %s no enviado: BREVO_API_KEY no está configurada", kind)
         return False
-    accepted = await N8nWebhookDispatcher.dispatch_event("correo-transaccional", {
-        "tipo": kind, "correo": recipient, "asunto": subject,
-        "texto": plain, "html": html,
-    })
-    if not accepted:
-        logger.error("n8n no confirmó correo %s", kind)
-    return accepted
+    if await _send_with_brevo(recipient, subject, plain, html):
+        return True
+    logger.error("Brevo no aceptó el correo %s", kind)
+    return False

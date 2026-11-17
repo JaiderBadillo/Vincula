@@ -22,7 +22,6 @@ from app.modules.companies.models import Empresa, SedeEmpresa, ReclutadorEmpresa
 from app.modules.institutions.models import ProgramaAcademico
 from app.core.skills_taxonomy import normalize_text
 from app.modules.graduates.models import Egresado, AcademicoEgresado
-from app.integrations.n8n_webhooks import N8nWebhookDispatcher
 from app.integrations.supabase_storage import SupabaseStorageService
 from app.integrations.transactional_notifications import send_vincula_email
 from app.modules.vacancies_ats.models import (
@@ -1007,21 +1006,7 @@ class VacancyATSService:
 
         emp_nombre = empresa.nombre_comercial or empresa.razon_social
 
-        # 7. Disparar webhook n8n y enviar correos transaccionales (Brevo / fallback n8n)
-        await N8nWebhookDispatcher.dispatch_event(
-            "postulacion-creada",
-            {
-                "evento": "postulacion.creada",
-                "id_postulacion": str(nueva_postulacion.id),
-                "id_vacante": str(vacante.id),
-                "vacante_titulo": vacante.titulo,
-                "vacante_codigo": vacante.codigo_vacante,
-                "empresa_nombre": emp_nombre,
-                "egresado_nombre": egresado.nombre_completo,
-                "egresado_correo": egresado.correo_personal,
-                "fase_actual": "en_revision",
-            }
-        )
+        # 7. Enviar correos transaccionales vía Brevo
         await cls._notify_application_created(
             session, empresa, vacante, egresado,
             fallback_email=current_user.get("correo") if current_user else None,
@@ -1272,24 +1257,8 @@ class VacancyATSService:
         vac = postulacion.vacante
         emp_nombre = (vac.empresa.nombre_comercial or vac.empresa.razon_social) if (vac and vac.empresa) else ""
         vac_titulo = vac.titulo if vac else ""
-        vac_codigo = vac.codigo_vacante if vac else ""
 
-        # Disparar webhook hacia n8n y enviar correo de avance de fase al egresado
-        await N8nWebhookDispatcher.dispatch_event(
-            "postulacion-cambio-fase",
-            {
-                "evento": "postulacion.cambio_fase",
-                "id_postulacion": str(postulacion.id),
-                "candidato_nombre": egr.nombre_completo if egr else "",
-                "candidato_correo": egr.correo_personal if egr else "",
-                "vacante_titulo": vac_titulo,
-                "vacante_codigo": vac_codigo,
-                "empresa_nombre": emp_nombre,
-                "fase_anterior": fase_anterior,
-                "fase_nueva": db_fase,
-                "retroalimentacion": postulacion.motivo_descarte if db_fase == "descartados" else retro_txt,
-            }
-        )
+        # Enviar correo de avance de fase al egresado vía Brevo
         if egr and egr.correo_personal:
             await send_vincula_email("fase_postulacion", egr.correo_personal,
                                      nombre=egr.nombre_completo,

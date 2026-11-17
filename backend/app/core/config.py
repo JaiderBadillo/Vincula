@@ -51,16 +51,12 @@ class Settings(BaseSettings):
     # Base de Datos PostgreSQL / Supabase
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/postgres"
 
-    # Supabase Integraciones (Storage de PDFs y Webhooks)
+    # Supabase Integraciones (Storage de PDFs)
     SUPABASE_URL: str = ""
     SUPABASE_ANON_KEY: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
     SUPABASE_STORAGE_BUCKET_DOCS: str = "vincula-documentos-auditoria"
     SUPABASE_STORAGE_BUCKET_DIPLOMAS: str = "vincula-diplomas-validados"
-
-    # Orquestador n8n (Webhooks de Automatizaciones)
-    N8N_WEBHOOK_BASE_URL: str = ""
-    N8N_WEBHOOK_SECRET: str = ""
 
     # Correo Electrónico Transaccional (Gmail SMTP)
     SMTP_HOST: str = "smtp.gmail.com"

@@ -25,24 +25,10 @@ class TransactionalNotificationTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIn("Ana &lt;Test&gt;", html)
                 self.assertNotIn("cid:vincula_logo", html)
 
-    async def test_dispatches_only_when_n8n_is_configured(self):
-        dispatcher = AsyncMock(return_value=True)
-        with patch("app.integrations.transactional_notifications.settings") as config, patch(
-            "app.integrations.transactional_notifications.N8nWebhookDispatcher.dispatch_event", dispatcher
-        ):
+    async def test_returns_false_when_brevo_is_not_configured(self):
+        with patch("app.integrations.transactional_notifications.settings") as config:
             config.BREVO_API_KEY = ""
-            config.N8N_WEBHOOK_BASE_URL = ""
-            config.N8N_WEBHOOK_SECRET = ""
             self.assertFalse(await send_vincula_email("registro_empresa", "test@example.com"))
-            dispatcher.assert_not_awaited()
-            config.N8N_WEBHOOK_BASE_URL = "https://example.test/webhook"
-            config.N8N_WEBHOOK_SECRET = "configured"
-            self.assertTrue(await send_vincula_email("empresa_aprobada", "test@example.com", empresa="Prueba"))
-            event, payload = dispatcher.await_args.args
-            self.assertEqual(event, "correo-transaccional")
-            self.assertEqual(payload["tipo"], "empresa_aprobada")
-            self.assertEqual(payload["correo"], "test@example.com")
-            self.assertIn("<html", payload["html"])
 
     async def test_sends_with_brevo_when_api_key_is_set(self):
         fake_response = SimpleNamespace(status_code=201, text="{}")

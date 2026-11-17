@@ -95,12 +95,12 @@ class RecruiterNoPhantomRecordsTests(unittest.IsolatedAsyncioTestCase):
         missing.scalar_one_or_none.return_value = None
         session = SimpleNamespace(execute=AsyncMock(side_effect=[found, missing]), add=MagicMock())
         payload = PostulacionCreateRequest(vacante_titulo='Vacante de muestra', empresa_nombre='Empresa de muestra')
-        with patch('app.modules.vacancies_ats.services.N8nWebhookDispatcher.dispatch_event', new_callable=AsyncMock) as webhook:
+        with patch('app.modules.vacancies_ats.services.send_vincula_email', new_callable=AsyncMock) as mail:
             with self.assertRaises(HTTPException) as error:
                 await VacancyATSService.postular_egresado(session, str(uuid.uuid4()), str(uuid.uuid4()), payload=payload)
         self.assertEqual(error.exception.status_code, 404)
         session.add.assert_not_called()
-        webhook.assert_not_awaited()
+        mail.assert_not_awaited()
 
     async def test_unknown_application_cannot_move_stage_or_email(self):
         missing = MagicMock()
