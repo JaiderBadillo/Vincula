@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { authService, extractErrorMessage } from '../../services/authService.js';
 import PortalThemePicker from './PortalThemePicker.jsx';
+import PrivacyAndDataPanel from './PrivacyAndDataPanel.jsx';
 import RoleFaq from './RoleFaq.jsx';
 
 const API = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -11,6 +12,7 @@ const tabs = [
   { id: 'perfil', title: 'Perfil', detail: 'Tu identidad', icon: 'bx-id-card' },
   { id: 'seguridad', title: 'Seguridad', detail: 'Contraseña y Google', icon: 'bx-shield-quarter' },
   { id: 'sesiones', title: 'Accesos', detail: 'Sesión y actividad', icon: 'bx-devices' },
+  { id: 'privacidad', title: 'Privacidad y datos', detail: 'Tus datos y cuenta', icon: 'bx-data' },
 ];
 const faqTab = { id: 'faq', title: 'Preguntas frecuentes', detail: 'Ayuda para tu rol', icon: 'bx-help-circle' };
 const themeTab = { id: 'apariencia', title: 'Apariencia', detail: 'Tema y colores', icon: 'bx-palette' };
@@ -171,7 +173,8 @@ export default function UniversalSettingsModal({ isOpen, onClose, role, userName
           {success && <p role="status" className="rounded-xl border border-green/20 bg-green/10 p-3 text-xs text-green-dark">{success}</p>}
           {tab === 'apariencia' && role !== 'graduate' && <PortalThemePicker />}
           {tab === 'faq' && <RoleFaq role={role} />}
-          {tab !== 'apariencia' && tab !== 'faq' && !account && !error && <p className="text-sm text-secondary">Cargando tu cuenta…</p>}
+          {tab === 'privacidad' && <PrivacyAndDataPanel role={role} />}
+          {tab !== 'apariencia' && tab !== 'faq' && tab !== 'privacidad' && !account && !error && <p className="text-sm text-secondary">Cargando tu cuenta…</p>}
           {account && tab === 'cuenta' && <form onSubmit={event => save(event, 'email')} className="grid gap-5">
             <div><h3 className="text-lg font-bold text-ink">Correo de inicio de sesión</h3><p className="mt-1 text-xs text-secondary">Este es el correo registrado para entrar a Víncula.</p></div>
             <label className="grid gap-2 text-xs font-semibold text-secondary">Correo electrónico<input type="email" required className={field} value={email} onChange={event => setEmail(event.target.value)} /></label>

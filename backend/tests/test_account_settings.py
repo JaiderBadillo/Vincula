@@ -5,7 +5,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from fastapi import HTTPException
 
-from app.modules.iam.account_settings import change_password, get_settings
+from app.modules.iam.account_settings import (
+    AccountDeletionRequest,
+    change_password,
+    delete_my_account,
+    get_my_personal_data,
+    get_settings,
+)
 from app.modules.iam.advisor_settings import PasswordChange
 from app.modules.iam.services import IAMService
 
@@ -79,6 +85,82 @@ class AccountSettingsTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(usuario.google_sub, "google-sub-12345")
         session.commit.assert_awaited()
+
+    async def test_get_my_personal_data_returns_categories_and_purposes(self):
+        user_id = uuid.uuid4()
+        user = SimpleNamespace(
+            id=user_id,
+            rol="egresado",
+            estado="activo",
+            correo_electronico="angie@example.com",
+            google_sub="sub-123",
+            ultimo_acceso_en=None,
+            creado_en=None,
+        )
+        egresado = SimpleNamespace(
+            id=uuid.uuid4(),
+            nombre_completo="Angie Camargo",
+            tipo_documento="CC",
+            numero_documento="1098000111",
+            ciudad_residencia="Bucaramanga",
+            departamento_residencia="Santander",
+            telefono="3001112233",
+            correo_personal="angie@example.com",
+            titular_profesional="Ingeniería Industrial",
+            biografia="Ingeniera",
+            disponible_para_trabajar=True,
+            visibilidad_disponibilidad="todos_los_reclutadores",
+            dispuesto_a_reubicarse=False,
+            estado="aprobado",
+            perfil_adicional={},
+            academicos=[],
+            hojas_vida=[],
+        )
+        res_user = MagicMock()
+        res_user.scalar_one_or_none.return_value = user
+        res_egr = MagicMock()
+        res_egr.scalar_one_or_none.return_value = egresado
+        res_posts = MagicMock()
+        res_posts.scalars.return_value.all.return_value = []
+
+        session = SimpleNamespace(execute=AsyncMock(side_effect=[res_user, res_egr, res_posts]))
+        report = await get_my_personal_data({"sub": str(user_id), "rol": "egresado"}, session)
+
+        self.assertEqual(report["titular"]["correo"], "angie@example.com")
+        ids = [cat["id"] for cat in report["tratamiento_resumen"]]
+        self.assertEqual(ids, ["cuenta", "perfil", "documentos", "actividad"])
+        self.assertTrue(all(cat["que_tenemos"] and cat["que_hacemos"] for cat in report["tratamiento_resumen"]))
+
+    async def test_delete_my_account_requires_confirmation_and_deletes_user(self):
+        user_id = uuid.uuid4()
+        user = SimpleNamespace(
+            id=user_id,
+            rol="egresado",
+            estado="activo",
+            correo_electronico="angie@example.com",
+            contrasena_hash="stored-hash",
+        )
+        res_user = MagicMock()
+        res_user.scalar_one_or_none.return_value = user
+        res_none = MagicMock()
+        res_none.scalar_one_or_none.return_value = None
+
+        session = SimpleNamespace(
+            execute=AsyncMock(side_effect=[res_user, res_none, res_none, res_none, res_none, res_none]),
+            delete=AsyncMock(),
+            commit=AsyncMock(),
+        )
+
+        with patch("app.modules.iam.account_settings.verify_password", return_value=True):
+            result = await delete_my_account(
+                AccountDeletionRequest(contrasena_actual="Clave123*", confirmacion="ELIMINAR", motivo="Prueba"),
+                {"sub": str(user_id), "rol": "egresado"},
+                session,
+            )
+
+        self.assertTrue(result["eliminado"])
+        session.delete.assert_awaited_once_with(user)
+        session.commit.assert_awaited_once()
 
 
 if __name__ == "__main__":

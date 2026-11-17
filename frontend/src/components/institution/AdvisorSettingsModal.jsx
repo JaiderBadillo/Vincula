@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { authService, extractErrorMessage } from '../../services/authService.js';
 import PortalThemePicker from '../common/PortalThemePicker.jsx';
+import PrivacyAndDataPanel from '../common/PrivacyAndDataPanel.jsx';
 import RoleFaq from '../common/RoleFaq.jsx';
 
 const API = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -23,6 +24,7 @@ const sections = [
   { id: 'seguridad', icon: 'bx-shield-quarter', title: 'Seguridad', detail: 'Contraseña y Google' },
   { id: 'notificaciones', icon: 'bx-bell', title: 'Notificaciones', detail: 'Avisos por correo' },
   { id: 'sesiones', icon: 'bx-devices', title: 'Accesos', detail: 'Historial y sesión' },
+  { id: 'privacidad', icon: 'bx-data', title: 'Privacidad y datos', detail: 'Tus datos y cuenta' },
   { id: 'apariencia', icon: 'bx-palette', title: 'Apariencia', detail: 'Tema y colores' },
   { id: 'faq', icon: 'bx-help-circle', title: 'Preguntas frecuentes', detail: 'Ayuda para asesores' },
 ];
@@ -179,7 +181,8 @@ export default function AdvisorSettingsModal({ isOpen, onClose, userName, userAv
           {success && <p role="status" className="rounded-xl border border-green/20 bg-green/10 p-3 text-xs text-green-dark">{success}</p>}
           {section === 'apariencia' && <PortalThemePicker />}
           {section === 'faq' && <RoleFaq role="institution_advisor" />}
-          {section !== 'apariencia' && section !== 'faq' && !account && !error && <p className="text-sm text-secondary">Cargando tu cuenta…</p>}
+          {section === 'privacidad' && <PrivacyAndDataPanel role="institution_advisor" />}
+          {section !== 'apariencia' && section !== 'faq' && section !== 'privacidad' && !account && !error && <p className="text-sm text-secondary">Cargando tu cuenta…</p>}
           {account && section === 'cuenta' && <form onSubmit={event => save(event, 'email')} className="grid gap-5">
             <div><h3 className="m-0 text-lg font-bold text-ink">Correo de inicio de sesión</h3><p className="mt-1 text-xs text-secondary">Usa este correo para entrar y recibir avisos de Víncula.</p></div>
             <label className="grid gap-2 text-xs font-semibold uppercase tracking-wide text-secondary">Correo electrónico<input type="email" required className={input} value={email} onChange={event => setEmail(event.target.value)} /></label>
