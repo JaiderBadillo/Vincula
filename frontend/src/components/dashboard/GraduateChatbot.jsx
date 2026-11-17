@@ -146,7 +146,8 @@ function ChatPanel() {
     const timeout = setTimeout(() => controller.abort(), 75000);
     const previous = messages;
     // Mantener pares completos y limitar el contexto enviado al proveedor.
-    let history = previous.slice(-12);
+    // Solo role y content: el backend rechaza campos extra (p. ej. las fuentes guardadas para mostrar)
+    let history = previous.slice(-12).map(({ role, content }) => ({ role, content }));
     while (history.reduce((sum, item) => sum + item.content.length, 0) > 24000) history = history.slice(2);
     setMessages([...previous, { role: 'user', content: message }]);
     setDraft('');
