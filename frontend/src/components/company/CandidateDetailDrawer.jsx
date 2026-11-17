@@ -17,6 +17,7 @@ export default function CandidateDetailDrawer({
   initialTab = 'match',
   onClose,
   onMoveStage,
+  onScheduleInterview,
   onDiscard,
   onSaveNotes,
 }) {
@@ -776,7 +777,7 @@ export default function CandidateDetailDrawer({
               {candidate.stage === 'evaluation' && (
                 <button
                   type="button"
-                  onClick={() => onMoveStage(candidate.id, 'interview')}
+                  onClick={() => (onScheduleInterview ? onScheduleInterview(candidate) : onMoveStage(candidate.id, 'interview'))}
                   className="rounded-xl bg-cocoa px-4 py-2 text-xs font-bold text-white hover:bg-cocoa/90 transition-all cursor-pointer shadow-xs"
                 >
                   Citar a Entrevista

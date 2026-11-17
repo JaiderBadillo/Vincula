@@ -47,6 +47,17 @@ export function useCompanyCandidates(vacancyIds = []) {
     await atsService.moveCandidateStage(id, 'discarded', reason, notes);
     await loadLiveBoard(candidate.vacancyId);
   };
+  // Agenda la cita (el backend crea el enlace si es virtual y avisa al egresado por correo)
+  const scheduleInterview = async (id, payload) => {
+    const candidate = candidateById(id);
+    if (!candidate) throw new Error('No se encontro la postulacion en tus vacantes.');
+    const result = await atsService.scheduleInterview(id, payload, {
+      email: candidate.email, candidateName: candidate.candidateName,
+      vacancyTitle: candidate.vacancyTitle, vacancyCode: candidate.vacancyCode,
+    });
+    await loadLiveBoard(candidate.vacancyId);
+    return result;
+  };
   const addCandidateNote = async (id, noteText) => {
     const candidate = candidateById(id);
     if (!candidate) throw new Error('No se encontro la postulacion en tus vacantes.');
@@ -54,5 +65,5 @@ export function useCompanyCandidates(vacancyIds = []) {
     await loadLiveBoard(candidate.vacancyId);
   };
 
-  return { candidates, loading, error, loadLiveBoard, moveCandidateStage, discardCandidate, addCandidateNote };
+  return { candidates, loading, error, loadLiveBoard, moveCandidateStage, discardCandidate, addCandidateNote, scheduleInterview };
 }

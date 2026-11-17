@@ -1,6 +1,8 @@
 """Correos transaccionales de Vincula entregados mediante Brevo API HTTPS."""
 
 import logging
+import re
+from datetime import date
 
 import httpx
 from html import escape
@@ -13,6 +15,41 @@ logger = logging.getLogger("vincula.notifications")
 
 def _clean(value, fallback=""):
     return escape(str(value or fallback), quote=True)
+
+
+_MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+_DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
+
+
+def _long_date(value):
+    """'2026-11-20' -> 'viernes 20 de noviembre de 2026' (sin depender del idioma del servidor)."""
+    try:
+        d = date.fromisoformat(str(value)[:10])
+    except ValueError:
+        return _clean(value)
+    return f"{_DIAS[d.weekday()]} {d.day} de {_MESES[d.month - 1]} de {d.year}"
+
+
+def _interview_content(data, company, vacancy):
+    """Texto y filas de la cita: enlace si es virtual, lugar si es presencial."""
+    virtual = str(data.get("modalidad", "")).strip().lower() == "virtual"
+    where = str(data.get("enlace") or "").strip()
+    link = where if virtual and re.fullmatch(r"https?://[^\s<>\"']+", where) else None
+    when = f"{_long_date(data.get('fecha'))} a las {_clean(data.get('franja'))}"
+    text = f"{company} te cita a una entrevista para la vacante {vacancy}: {when} ({'virtual' if virtual else 'presencial'})."
+    if link:
+        text += f" Únete con este enlace: {link}"  # el enlace ya está validado: sin caracteres que rompan HTML
+    elif not virtual and where:
+        text += f" Lugar: {_clean(where)}."
+    if data.get("objetivo"):
+        text += f" Objetivo: {_clean(data.get('objetivo'))}."
+    text += " Si no puedes asistir, avísale a la empresa con tiempo."
+    rows = [("Vacante", vacancy), ("Empresa", company), ("Fecha", _long_date(data.get("fecha"))),
+            ("Hora", _clean(data.get("franja"))), ("Modalidad", "Virtual" if virtual else "Presencial")]
+    rows.append(("Enlace", link) if link else ("Lugar", _clean(where, "Por confirmar")))
+    if data.get("reclutador"):
+        rows.append(("Te entrevista", _clean(data.get("reclutador"))))
+    return text, rows, link
 
 
 def build_message(kind, data):
@@ -75,6 +112,8 @@ def build_message(kind, data):
             "Inhabilitamos una de tus vacantes",
             f"El equipo de Vincula inhabilitó la vacante {vacancy} tras una revisión por posible irregularidad. Ya no es visible para los egresados. Si crees que es un error, responde a este correo o contacta a soporte.",
             [("Vacante", vacancy), ("Empresa", company), ("Estado", "Inhabilitada")]),
+        "entrevista_programada": ("Te citaron a una entrevista · Vincula", "Entrevista programada", "ENTREVISTA DE SELECCIÓN",
+            f"{company} te cita a una entrevista", *_interview_content(data, company, vacancy)[:2]),
         "nueva_postulacion_empresa": ("Nueva postulación recibida · Vincula", "Nuevo candidato", "SEGUIMIENTO DE VACANTE",
             "Recibiste una nueva postulación",
             f"{_clean(data.get('candidato'), 'Un egresado')} se postuló a {vacancy}.",
@@ -86,12 +125,18 @@ def build_message(kind, data):
     pipeline_stage = data.get("fase_nueva") if kind == "fase_postulacion" else ("en_revision" if kind == "postulacion_creada" else None)
     # Los correos de seguridad no llevan botón: el usuario no debe seguir enlaces para cambiar su clave.
     seguridad = kind in ("recuperacion_contrasena", "contrasena_actualizada")
+    if kind == "entrevista_programada":
+        link = _interview_content(data, company, vacancy)[2]
+        cta = ("Unirme a la reunión", escape(link, quote=True)) if link else (None, None)
+    elif seguridad:
+        cta = (None, None)
+    else:
+        cta = ("Ingresar a Vincula", "https://vincula-henna.vercel.app/login")
     html = _generate_vincula_email_html(
         preheader=paragraph, status_pill=pill, eyebrow=eyebrow, title=title,
         greeting="Hola:" if seguridad else f"Hola, {name}:", paragraphs=[paragraph], metadata_rows=metadata,
         pipeline_stage=pipeline_stage,
-        cta_text=None if seguridad else "Ingresar a Vincula",
-        cta_url=None if seguridad else "https://vincula-henna.vercel.app/login",
+        cta_text=cta[0], cta_url=cta[1],
     )
     # El logo CID de la plantilla SMTP no se adjunta al enviar con Gmail API.
     html = html.replace('<img src="cid:vincula_logo" width="300" height="64" alt="Vincula" style="display: block; margin: 0 auto; border: 0;" />',

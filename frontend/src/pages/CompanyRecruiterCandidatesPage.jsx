@@ -11,6 +11,7 @@ import { ATS_STAGES } from '../data/companyCandidatesData.js';
 import { useCompanyRecruiters } from '../hooks/useCompanyRecruiters.js';
 import { authService } from '../services/authService.js';
 import ExportExcelButton from '../components/common/ExportExcelButton.jsx';
+import ScheduleInterviewModal from '../components/company/ScheduleInterviewModal.jsx';
 import { buildCandidatesReport } from '../utils/exportReports.js';
 
 const selectClass =
@@ -47,6 +48,7 @@ export default function CompanyRecruiterCandidatesPage() {
     moveCandidateStage,
     discardCandidate,
     addCandidateNote,
+    scheduleInterview,
     loading: candidatesLoading,
     error: candidatesError,
   } = useCompanyCandidates(vacancyIds);
@@ -175,6 +177,18 @@ export default function CompanyRecruiterCandidatesPage() {
       await moveCandidateStage(candidateId, newStage, notes);
       setToast(`${candidate ? candidate.candidateName : 'Candidato'} movido a etapa «${stageObj?.label || newStage}».`);
     } catch (error) { setToast(`No se guardó el cambio: ${error.message}`); }
+  }
+
+  const [schedulingId, setSchedulingId] = useState(null);
+  const schedulingCandidate = candidates.find((c) => c.id === schedulingId) || null;
+
+  async function handleScheduleInterview(payload) {
+    const result = await scheduleInterview(schedulingId, payload); // si falla, el formulario muestra el error
+    const name = schedulingCandidate?.candidateName || 'el candidato';
+    setSchedulingId(null);
+    setToast(result.correo_enviado
+      ? `Entrevista agendada. Se envió un correo a ${name} con los datos de la cita.`
+      : `Entrevista agendada, pero el correo a ${name} no salió: avísale por otro medio.`);
   }
 
   async function handleDiscard(candidateId, reason, notes = null) {
@@ -845,9 +859,13 @@ export default function CompanyRecruiterCandidatesPage() {
           initialTab={drawerInitialTab}
           onClose={() => setSelectedCandidateId(null)}
           onMoveStage={handleMoveStage}
+          onScheduleInterview={(candidate) => setSchedulingId(candidate.id)}
           onDiscard={handleDiscard}
           onSaveNotes={handleSaveNotes}
         />
+        {schedulingCandidate && (
+          <ScheduleInterviewModal candidate={schedulingCandidate} onClose={() => setSchedulingId(null)} onSubmit={handleScheduleInterview} />
+        )}
       </main>
     </CompanyPortalLayout>
   );

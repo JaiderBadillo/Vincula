@@ -8,10 +8,11 @@ Garantiza:
 - Trazabilidad y compatibilidad hacia atrás con el ATS Kanban.
 """
 
+import logging
 import uuid
 import time
 import re
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +24,7 @@ from app.modules.institutions.models import ProgramaAcademico
 from app.core.skills_taxonomy import normalize_text
 from app.modules.graduates.models import Egresado, AcademicoEgresado
 from app.integrations.supabase_storage import SupabaseStorageService
+from app.integrations.meetings import generate_meeting_link
 from app.integrations.transactional_notifications import send_vincula_email
 from app.modules.vacancies_ats.models import (
     Vacante,
@@ -61,6 +63,8 @@ def _slugify(text: str) -> str:
     cleaned = re.sub(r"[^\w\s-]", "", text.strip().lower())
     return re.sub(r"[-\s]+", "_", cleaned)
 
+
+logger = logging.getLogger(__name__)
 
 class VacancyATSService:
 
@@ -845,6 +849,8 @@ class VacancyATSService:
         if hasattr(p, "entrevistas") and p.entrevistas:
             first_ent = p.entrevistas[0]
             interview_info = f"{first_ent.fecha_entrevista.strftime('%Y-%m-%d')} · {first_ent.franja_horaria} ({first_ent.modalidad})"
+            if first_ent.url_reunion:
+                interview_info += f" — {first_ent.url_reunion}"
 
         # Habilidades requeridas de la vacante para el match visual
         skills_match = []
@@ -1356,6 +1362,12 @@ class VacancyATSService:
             parsed_date = datetime.strptime(payload.fecha_entrevista, "%Y-%m-%d").date()
         except ValueError:
             raise HTTPException(status_code=422, detail="Fecha de entrevista inválida.")
+        hoy = datetime.now(timezone(timedelta(hours=-5))).date()  # Colombia: UTC-5 todo el año
+        if parsed_date < hoy:
+            raise HTTPException(
+                status_code=422,
+                detail={"codigo": "FECHA_PASADA", "mensaje": "La fecha de la entrevista ya pasó."}
+            )
 
         try:
             post_uuid = uuid.UUID(str(id_postulacion))
@@ -1389,13 +1401,15 @@ class VacancyATSService:
                 detail={"codigo": "RECLUTADOR_NO_ENCONTRADO", "mensaje": "No se encontró reclutador responsable para la entrevista."}
             )
 
+        # Virtual sin enlace propio: se genera una sala; presencial: url_reunion guarda el lugar
+        enlace = payload.url_reunion or (generate_meeting_link() if payload.modalidad == "Virtual" else None)
         entrevista = EntrevistaPostulacion(
             id_postulacion=postulacion.id,
             id_reclutador=rec.id,
             fecha_entrevista=parsed_date,
             franja_horaria=payload.franja_horaria.strip(),
             modalidad=payload.modalidad.strip(),
-            url_reunion=payload.url_reunion.strip() if payload.url_reunion else None,
+            url_reunion=enlace,
             objetivo=payload.objetivo.strip(),
             estado="programada"
         )
@@ -1422,10 +1436,17 @@ class VacancyATSService:
         vac = postulacion.vacante
         emp_nombre = (vac.empresa.nombre_comercial or vac.empresa.razon_social) if (vac and vac.empresa) else ""
         vac_titulo = vac.titulo if vac else ""
-        if fase_ant != postulacion.fase_actual and egr and egr.correo_personal:
-            await send_vincula_email("fase_postulacion", egr.correo_personal,
-                                     nombre=egr.nombre_completo,
-                                     vacante=vac_titulo, empresa=emp_nombre, fase_nueva="entrevista")
+        # Un solo correo, con lo que el egresado necesita: cuándo, cómo y dónde (sustituye al aviso genérico de fase)
+        correo_enviado = False
+        if egr and egr.correo_personal:
+            try:
+                correo_enviado = await send_vincula_email(
+                    "entrevista_programada", egr.correo_personal, nombre=egr.nombre_completo,
+                    vacante=vac_titulo, empresa=emp_nombre, fecha=entrevista.fecha_entrevista.isoformat(),
+                    franja=entrevista.franja_horaria, modalidad=entrevista.modalidad, enlace=entrevista.url_reunion,
+                    objetivo=entrevista.objetivo, reclutador=rec.nombre_completo)
+            except Exception as exc:  # noqa: BLE001  la cita ya quedó registrada
+                logger.warning("Correo de entrevista no enviado: tipo=%s", type(exc).__name__)
 
         return EntrevistaResponse(
             id=str(entrevista.id),
@@ -1438,7 +1459,8 @@ class VacancyATSService:
             url_reunion=entrevista.url_reunion,
             objetivo=entrevista.objetivo,
             estado=entrevista.estado,
-            creado_en=entrevista.creado_en.isoformat()
+            creado_en=entrevista.creado_en.isoformat(),
+            correo_enviado=bool(correo_enviado),
         )
 
     @classmethod

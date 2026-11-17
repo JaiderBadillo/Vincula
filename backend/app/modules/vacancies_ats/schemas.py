@@ -7,8 +7,13 @@ Soporta:
 - Compatibilidad hacia atrás con endpoints previos
 """
 
+import re
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from app.integrations.meetings import is_valid_meeting_url
+
+_FRANJA = re.compile(r"(0?[1-9]|1[0-2]):[0-5]\d (AM|PM) - (0?[1-9]|1[0-2]):[0-5]\d (AM|PM)")
 
 
 class CompetenciaItem(BaseModel):
@@ -294,6 +299,47 @@ class ProgramarEntrevistaRequest(BaseModel):
     vacante_titulo: Optional[str] = None
     empresa_nombre: Optional[str] = None
 
+    @field_validator("modalidad")
+    @classmethod
+    def _modalidad(cls, value: str) -> str:
+        value = value.strip().capitalize()
+        if value not in ("Virtual", "Presencial"):
+            raise ValueError("La modalidad debe ser Virtual o Presencial.")
+        return value
+
+    @field_validator("franja_horaria")
+    @classmethod
+    def _franja(cls, value: str) -> str:
+        value = value.strip().upper()
+        if not _FRANJA.fullmatch(value):
+            raise ValueError("La franja debe tener el formato '10:00 AM - 11:00 AM'.")
+        return value
+
+    @field_validator("url_reunion")
+    @classmethod
+    def _url(cls, value: Optional[str]) -> Optional[str]:
+        value = (value or "").strip()
+        if len(value) > 300:
+            raise ValueError("El enlace o lugar no puede superar 300 caracteres.")
+        return value or None
+
+    @field_validator("objetivo")
+    @classmethod
+    def _objetivo(cls, value: str) -> str:
+        value = value.strip()
+        if not value or len(value) > 200:
+            raise ValueError("El objetivo es obligatorio y no puede superar 200 caracteres.")
+        return value
+
+    @model_validator(mode="after")
+    def _coherente(self):
+        if self.modalidad == "Presencial":
+            if not self.url_reunion or len(self.url_reunion) < 5:
+                raise ValueError("Indica el lugar de la entrevista presencial (dirección y sala).")
+        elif self.url_reunion and not is_valid_meeting_url(self.url_reunion):
+            raise ValueError("El enlace debe empezar por http:// o https:// y no llevar espacios.")
+        return self
+
 
 class EntrevistaResponse(BaseModel):
     id: str
@@ -307,6 +353,7 @@ class EntrevistaResponse(BaseModel):
     objetivo: str
     estado: str
     creado_en: str
+    correo_enviado: bool = False  # si el correo al egresado salió
 
 
 # ATS Kanban (Fases posteriores)
