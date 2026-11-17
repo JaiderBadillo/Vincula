@@ -128,6 +128,28 @@ class ATSService {
       throw err;
     }
   }
+
+  /**
+   * Obtiene la URL firmada temporal para visualizar el diploma / título en PDF del candidato.
+   */
+  async getCandidateDiplomaUrl(applicationId, expiresIn = 3600) {
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/reclutador/postulaciones/${encodeURIComponent(applicationId)}/diploma-url?expires_in=${expiresIn}`,
+        {
+          headers: this.getAuthHeaders(),
+        }
+      );
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(extractErrorMessage(errorData, 'No se pudo obtener el título o diploma del candidato.'));
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[ATSService] getCandidateDiplomaUrl error:', err.message);
+      throw err;
+    }
+  }
 }
 
 export const atsService = new ATSService();

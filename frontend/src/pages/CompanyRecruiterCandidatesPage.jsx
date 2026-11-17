@@ -59,7 +59,13 @@ export default function CompanyRecruiterCandidatesPage() {
   const [selectedStageTab, setSelectedStageTab] = useState('all'); // para la vista de lista
 
   const [selectedCandidateId, setSelectedCandidateId] = useState(null);
+  const [drawerInitialTab, setDrawerInitialTab] = useState('match');
   const [toast, setToast] = useState(null);
+
+  function openCandidateDrawer(candidateId, tab = 'match') {
+    setDrawerInitialTab(tab);
+    setSelectedCandidateId(candidateId);
+  }
 
   // Sincronizar parámetro URL si cambia
   useEffect(() => {
@@ -603,7 +609,7 @@ export default function CompanyRecruiterCandidatesPage() {
                             stageCandidates.map((cand) => (
                               <article
                                 key={cand.id}
-                                onClick={() => setSelectedCandidateId(cand.id)}
+                                onClick={() => openCandidateDrawer(cand.id, 'match')}
                                 className="group rounded-xl border border-sand-line bg-white p-3.5 shadow-2xs hover:shadow-card hover:border-terracotta/40 transition-all cursor-pointer space-y-2.5"
                               >
                                 {/* Cabecera Tarjeta: Foto + Nombre + Match */}
@@ -638,6 +644,33 @@ export default function CompanyRecruiterCandidatesPage() {
                                   <span className="font-semibold text-secondary truncate" title={cand.vacancyTitle}>
                                     {cand.vacancyCode}
                                   </span>
+                                </div>
+
+                                {/* Estado del Título y acceso rápido al Diploma */}
+                                <div className="flex items-center justify-between gap-1.5 text-[0.65rem]">
+                                  {cand.degreeVerified ? (
+                                    <span className="inline-flex items-center gap-1 font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                      <i className="bx bxs-shield-check text-emerald-600" />
+                                      <span>Título verificado IES</span>
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 font-semibold text-secondary bg-cream px-2 py-0.5 rounded-md">
+                                      <i className="bx bx-certification" />
+                                      <span>Título en revisión</span>
+                                    </span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openCandidateDrawer(cand.id, 'diploma');
+                                    }}
+                                    className="inline-flex items-center gap-1 font-bold text-terracotta hover:underline cursor-pointer"
+                                    title="Ver título o diploma en PDF"
+                                  >
+                                    <i className="bx bxs-file-pdf text-xs" />
+                                    <span>Ver diploma</span>
+                                  </button>
                                 </div>
 
                                 {/* Chips de Habilidades Técnicas destacadas */}
@@ -709,7 +742,7 @@ export default function CompanyRecruiterCandidatesPage() {
                               <div className="flex items-center gap-2.5 flex-wrap">
                                 <button
                                   type="button"
-                                  onClick={() => setSelectedCandidateId(cand.id)}
+                                  onClick={() => openCandidateDrawer(cand.id, 'match')}
                                   className="m-0 p-0 text-left font-display text-base font-bold text-ink hover:text-terracotta transition-colors cursor-pointer"
                                 >
                                   {cand.candidateName}
@@ -719,6 +752,13 @@ export default function CompanyRecruiterCandidatesPage() {
                                   <i className="bx bxs-badge-check text-ochre-dark" />
                                   <span>{cand.matchPercentage == null ? 'Sin puntaje calculado' : `${cand.matchPercentage}% afinidad`}</span>
                                 </span>
+
+                                {cand.degreeVerified && (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.2 text-[0.68rem] font-bold text-emerald-800">
+                                    <i className="bx bxs-shield-check text-emerald-600" />
+                                    <span>Título verificado IES</span>
+                                  </span>
+                                )}
 
                                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-secondary">
                                   <span className={`size-2 rounded-full ${stage.dot}`} />
@@ -764,10 +804,18 @@ export default function CompanyRecruiterCandidatesPage() {
                           </div>
 
                           {/* Botones de Acción */}
-                          <div className="flex items-center gap-2 shrink-0 self-end lg:self-center">
+                          <div className="flex items-center gap-2 shrink-0 self-end lg:self-center flex-wrap">
                             <button
                               type="button"
-                              onClick={() => setSelectedCandidateId(cand.id)}
+                              onClick={() => openCandidateDrawer(cand.id, 'diploma')}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-sand-line bg-cream/60 px-3.5 py-2 text-xs font-bold text-cocoa hover:bg-sand transition-all cursor-pointer shadow-2xs"
+                            >
+                              <i className="bx bxs-graduation text-terracotta text-sm" />
+                              <span>Ver Título / Diploma</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openCandidateDrawer(cand.id, 'match')}
                               className="inline-flex items-center gap-1.5 rounded-xl bg-cocoa px-4 py-2 text-xs font-bold text-white hover:bg-cocoa/90 transition-all cursor-pointer shadow-xs"
                             >
                               <i className="bx bx-file-find text-sm" />
@@ -787,6 +835,7 @@ export default function CompanyRecruiterCandidatesPage() {
         {/* ─── Drawer Lateral de Evaluación Completa del Candidato ─── */}
         <CandidateDetailDrawer
           candidate={selectedCandidateForDrawer}
+          initialTab={drawerInitialTab}
           onClose={() => setSelectedCandidateId(null)}
           onMoveStage={handleMoveStage}
           onDiscard={handleDiscard}

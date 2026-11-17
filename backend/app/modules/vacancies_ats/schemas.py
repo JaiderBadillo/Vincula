@@ -213,6 +213,30 @@ class KanbanCandidateCardResponse(BaseModel):
     recruiterNotes: Optional[str] = None
     rejectionReason: Optional[str] = None
     interviewDate: Optional[str] = None
+    degreeVerified: bool = False
+    degreeVerificationStatus: Optional[str] = None
+    degreeLevel: Optional[str] = None
+    hasDiplomaPdf: bool = False
+    diplomaFileName: Optional[str] = None
+    actaNumber: Optional[str] = None
+    bookFolio: Optional[str] = None
+    degreeDate: Optional[str] = None
+    digitalSeal: Optional[str] = None
+    academicId: Optional[str] = None
+
+
+class CandidateDiplomaUrlResponse(BaseModel):
+    id_postulacion: str
+    id_academico: str
+    nombre_archivo: str
+    url_segura: str
+    expira_en_segundos: int = 3600
+    titulo_verificado: bool = False
+    estado_verificacion: Optional[str] = None
+    numero_acta_grado: Optional[str] = None
+    numero_libro_folio: Optional[str] = None
+    fecha_grado: Optional[str] = None
+    sello_digital: Optional[str] = None
 
 
 class KanbanBoardDetailedResponse(BaseModel):

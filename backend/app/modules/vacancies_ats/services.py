@@ -17,11 +17,13 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, desc, or_, and_, text
 
+from app.core.config import settings
 from app.modules.companies.models import Empresa, SedeEmpresa, ReclutadorEmpresa
 from app.modules.institutions.models import ProgramaAcademico
 from app.core.skills_taxonomy import normalize_text
 from app.modules.graduates.models import Egresado, AcademicoEgresado
 from app.integrations.n8n_webhooks import N8nWebhookDispatcher
+from app.integrations.supabase_storage import SupabaseStorageService
 from app.integrations.transactional_notifications import send_vincula_email
 from app.modules.vacancies_ats.models import (
     Vacante,
@@ -46,6 +48,7 @@ from app.modules.vacancies_ats.schemas import (
     PostulacionCreateRequest,
     PostulacionResponse,
     KanbanCandidateCardResponse,
+    CandidateDiplomaUrlResponse,
     KanbanBoardDetailedResponse,
     MoverFaseRequest,
     NotaReclutadorRequest,
@@ -775,18 +778,58 @@ class VacancyATSService:
         vac = p.vacante
         stage_ui = cls.STAGE_DB_TO_UI.get(str(p.fase_actual), "review")
 
-        # Extraer programa e institución del egresado si existen
+        # Extraer programa, institución y estado del diploma del egresado si existen
         prog_nombre = ""
         inst_nombre = ""
         grad_year = None
+        degree_verified = False
+        degree_status = None
+        degree_level = None
+        has_diploma_pdf = False
+        diploma_file_name = None
+        acta_number = None
+        book_folio = None
+        degree_date = None
+        digital_seal = None
+        academic_id = None
         if hasattr(egr, "academicos") and egr.academicos:
-            academic_rec = egr.academicos[0]
+            academic_rec = next(
+                (
+                    a for a in egr.academicos
+                    if getattr(a, "diploma_cargado_por_egresado", False) and getattr(a, "url_diploma_pdf", None)
+                ),
+                egr.academicos[0]
+            )
             if hasattr(academic_rec, "programa") and academic_rec.programa:
                 prog_nombre = academic_rec.programa.nombre
             if hasattr(academic_rec, "institucion") and academic_rec.institucion:
                 inst_nombre = academic_rec.institucion.nombre_oficial or academic_rec.institucion.nombre_corto
-            if academic_rec.ano_graduacion:
+            if getattr(academic_rec, "ano_graduacion", None):
                 grad_year = str(academic_rec.ano_graduacion)
+            degree_status = getattr(academic_rec, "estado_verificacion", None)
+            degree_verified = bool(
+                getattr(academic_rec, "validado_por_ies", False) or degree_status == "aprobado"
+            )
+            degree_level = getattr(academic_rec, "nivel_formacion", None)
+            raw_diploma_url = (getattr(academic_rec, "url_diploma_pdf", None) or "").strip()
+            has_diploma_pdf = bool(
+                getattr(academic_rec, "diploma_cargado_por_egresado", False)
+                and raw_diploma_url
+                and not raw_diploma_url.startswith(("/storage/mock/", "/storage/local-mock/", "/mock/"))
+            )
+            if has_diploma_pdf:
+                diploma_file_name = raw_diploma_url.split("/")[-1].split("?")[0] or "diploma.pdf"
+            acta_number = getattr(academic_rec, "numero_acta_grado", None)
+            book_folio = getattr(academic_rec, "numero_libro_folio", None)
+            raw_degree_date = getattr(academic_rec, "fecha_grado", None)
+            degree_date = (
+                raw_degree_date.isoformat()
+                if hasattr(raw_degree_date, "isoformat")
+                else (str(raw_degree_date) if raw_degree_date else None)
+            )
+            digital_seal = getattr(academic_rec, "sello_digital", None)
+            if getattr(academic_rec, "id", None):
+                academic_id = str(academic_rec.id)
 
         # Última nota de reclutador
         latest_note = p.notas[0].texto_nota if (hasattr(p, "notas") and p.notas) else None
@@ -826,6 +869,16 @@ class VacancyATSService:
             recruiterNotes=latest_note,
             rejectionReason=p.motivo_descarte,
             interviewDate=interview_info,
+            degreeVerified=degree_verified,
+            degreeVerificationStatus=degree_status,
+            degreeLevel=degree_level,
+            hasDiplomaPdf=has_diploma_pdf,
+            diplomaFileName=diploma_file_name,
+            actaNumber=acta_number,
+            bookFolio=book_folio,
+            degreeDate=degree_date,
+            digitalSeal=digital_seal,
+            academicId=academic_id,
         )
 
     @classmethod
@@ -1410,5 +1463,124 @@ class VacancyATSService:
             objetivo=entrevista.objetivo,
             estado=entrevista.estado,
             creado_en=entrevista.creado_en.isoformat()
+        )
+
+    @classmethod
+    async def get_candidate_diploma_url_async(
+        cls,
+        session: AsyncSession,
+        id_postulacion: str,
+        user_role: str,
+        company_id: Optional[str] = None,
+        expires_in: int = 3600,
+    ) -> CandidateDiplomaUrlResponse:
+        """
+        Genera una URL firmada temporal de Supabase Storage para que el reclutador o administrador
+        de la empresa pueda visualizar el diploma/título en PDF del candidato postulado,
+        incluso cuando el título ya se encuentra verificado por la institución.
+        """
+        try:
+            post_uuid = uuid.UUID(str(id_postulacion))
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"codigo": "UUID_INVALIDO", "mensaje": "Identificador de postulación inválido."}
+            )
+
+        postulacion = (await session.execute(
+            select(Postulacion).where(Postulacion.id == post_uuid)
+        )).scalar_one_or_none()
+
+        if not postulacion:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"codigo": "POSTULACION_NO_ENCONTRADA", "mensaje": "La postulación no existe."}
+            )
+
+        if user_role not in ("superadmin_vincula", "superadmin"):
+            if not company_id or not postulacion.vacante or str(postulacion.vacante.id_empresa) != str(company_id):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail={"codigo": "ACCESO_DENEGADO", "mensaje": "No tienes permisos para ver el diploma de un candidato de otra empresa."}
+                )
+
+        egr = postulacion.egresado
+        academic_rec = None
+        if egr and hasattr(egr, "academicos") and egr.academicos:
+            academic_rec = next(
+                (
+                    a for a in egr.academicos
+                    if getattr(a, "diploma_cargado_por_egresado", False) and getattr(a, "url_diploma_pdf", None)
+                ),
+                egr.academicos[0]
+            )
+
+        if not academic_rec and postulacion.id_egresado:
+            academic_rec = (await session.execute(
+                select(AcademicoEgresado)
+                .where(AcademicoEgresado.id_egresado == postulacion.id_egresado)
+                .order_by(AcademicoEgresado.creado_en.desc())
+            )).scalars().first()
+
+        if not academic_rec:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"codigo": "DIPLOMA_NO_ENCONTRADO", "mensaje": "El candidato no tiene un registro académico asociado."}
+            )
+
+        bucket = settings.SUPABASE_STORAGE_BUCKET_DIPLOMAS
+        raw_url = (academic_rec.url_diploma_pdf or "").strip() if getattr(academic_rec, "diploma_cargado_por_egresado", False) else ""
+
+        if not raw_url or raw_url.startswith(("/storage/mock/", "/storage/local-mock/", "/mock/")):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "codigo": "DIPLOMA_SIN_ARCHIVO",
+                    "mensaje": "El egresado aún no ha cargado el archivo PDF de su título o diploma en la plataforma."
+                }
+            )
+
+        nombre_archivo = raw_url.split("/")[-1].split("?")[0] or "diploma.pdf"
+
+        if f"/object/public/{bucket}/" in raw_url:
+            path_in_bucket = raw_url.split(f"/object/public/{bucket}/")[-1]
+        elif f"/object/sign/{bucket}/" in raw_url:
+            path_in_bucket = raw_url.split(f"/object/sign/{bucket}/")[-1].split("?")[0]
+        elif f"/{bucket}/" in raw_url:
+            path_in_bucket = raw_url.split(f"/{bucket}/")[-1].split("?")[0]
+        elif raw_url.startswith("http") and settings.SUPABASE_URL and not raw_url.startswith(settings.SUPABASE_URL):
+            raise HTTPException(status_code=404, detail="El diploma no está almacenado en el repositorio documental autorizado.")
+        else:
+            path_in_bucket = raw_url.lstrip("/")
+
+        signed_url = await SupabaseStorageService.create_signed_url(
+            bucket_name=bucket,
+            file_path=path_in_bucket,
+            expires_in=expires_in,
+        )
+
+        raw_degree_date = getattr(academic_rec, "fecha_grado", None)
+        degree_date = (
+            raw_degree_date.isoformat()
+            if hasattr(raw_degree_date, "isoformat")
+            else (str(raw_degree_date) if raw_degree_date else None)
+        )
+        degree_status = getattr(academic_rec, "estado_verificacion", None)
+        degree_verified = bool(
+            getattr(academic_rec, "validado_por_ies", False) or degree_status == "aprobado"
+        )
+
+        return CandidateDiplomaUrlResponse(
+            id_postulacion=str(postulacion.id),
+            id_academico=str(academic_rec.id),
+            nombre_archivo=nombre_archivo,
+            url_segura=signed_url,
+            expira_en_segundos=expires_in,
+            titulo_verificado=degree_verified,
+            estado_verificacion=degree_status,
+            numero_acta_grado=getattr(academic_rec, "numero_acta_grado", None),
+            numero_libro_folio=getattr(academic_rec, "numero_libro_folio", None),
+            fecha_grado=degree_date,
+            sello_digital=getattr(academic_rec, "sello_digital", None),
         )
 

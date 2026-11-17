@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ATS_STAGES, DISCARD_REASONS } from '../../data/companyCandidatesData.js';
+import { atsService } from '../../services/atsService.js';
+import DocumentViewerModal from '../common/DocumentViewerModal.jsx';
 
 function initialsOf(name) {
   return name
@@ -12,17 +14,22 @@ function initialsOf(name) {
 
 export default function CandidateDetailDrawer({
   candidate,
+  initialTab = 'match',
   onClose,
   onMoveStage,
   onDiscard,
   onSaveNotes,
 }) {
-  const [activeTab, setActiveTab] = useState('match'); // 'match' | 'cv' | 'history'
+  const [activeTab, setActiveTab] = useState(initialTab); // 'match' | 'cv' | 'diploma' | 'history'
   const [notes, setNotes] = useState('');
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [discardModalOpen, setDiscardModalOpen] = useState(false);
   const [selectedDiscardReason, setSelectedDiscardReason] = useState(DISCARD_REASONS[0]);
   const [discardNote, setDiscardNote] = useState('');
+  const [diplomaPdfUrl, setDiplomaPdfUrl] = useState(null);
+  const [loadingDiplomaPdf, setLoadingDiplomaPdf] = useState(false);
+  const [diplomaPdfError, setDiplomaPdfError] = useState(null);
+  const [showDiplomaModal, setShowDiplomaModal] = useState(false);
 
   const open = Boolean(candidate);
 
@@ -30,7 +37,9 @@ export default function CandidateDetailDrawer({
     if (!open) return undefined;
     function handleKeyDown(e) {
       if (e.key === 'Escape') {
-        if (discardModalOpen) {
+        if (showDiplomaModal) {
+          setShowDiplomaModal(false);
+        } else if (discardModalOpen) {
           setDiscardModalOpen(false);
         } else {
           onClose();
@@ -39,7 +48,7 @@ export default function CandidateDetailDrawer({
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose, discardModalOpen]);
+  }, [open, onClose, discardModalOpen, showDiplomaModal]);
 
   useEffect(() => {
     if (candidate) {
@@ -48,12 +57,48 @@ export default function CandidateDetailDrawer({
       setDiscardModalOpen(false);
       setSelectedDiscardReason(DISCARD_REASONS[0]);
       setDiscardNote('');
+      setDiplomaPdfUrl(null);
+      setDiplomaPdfError(null);
+      setLoadingDiplomaPdf(false);
+      setShowDiplomaModal(false);
+      setActiveTab(initialTab || 'match');
     }
-  }, [candidate]);
+  }, [candidate, initialTab]);
+
+  useEffect(() => {
+    if (candidate && activeTab === 'diploma' && !diplomaPdfUrl && !loadingDiplomaPdf && !diplomaPdfError) {
+      handleLoadDiplomaPdf(false);
+    }
+  }, [candidate, activeTab]);
 
   if (!candidate) return null;
 
   const currentStage = ATS_STAGES.find((s) => s.id === candidate.stage) || ATS_STAGES[0];
+
+  async function handleLoadDiplomaPdf(openViewer = false) {
+    setActiveTab('diploma');
+    if (diplomaPdfUrl) {
+      if (openViewer) setShowDiplomaModal(true);
+      return;
+    }
+    setLoadingDiplomaPdf(true);
+    setDiplomaPdfError(null);
+    try {
+      const res = await atsService.getCandidateDiplomaUrl(candidate.id, 3600);
+      if (res && res.url_segura) {
+        setDiplomaPdfUrl(res.url_segura);
+        if (openViewer) setShowDiplomaModal(true);
+      } else {
+        setDiplomaPdfError('No se recibió el enlace firmado del diploma.');
+      }
+    } catch (err) {
+      setDiplomaPdfError(
+        err.message || 'El egresado aún no ha cargado el archivo PDF de su título o diploma en la plataforma.'
+      );
+    } finally {
+      setLoadingDiplomaPdf(false);
+    }
+  }
 
   function handleSaveNotesClick() {
     if (onSaveNotes) {
@@ -106,6 +151,12 @@ export default function CandidateDetailDrawer({
                     <i className="bx bxs-badge-check text-ochre-dark" />
                     <span>{candidate.matchPercentage == null ? 'Sin puntaje calculado' : `${candidate.matchPercentage}% afinidad`}</span>
                   </span>
+                  {candidate.degreeVerified && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
+                      <i className="bx bxs-shield-check text-emerald-600" />
+                      <span>Título Verificado IES</span>
+                    </span>
+                  )}
                 </div>
 
                 <p className="m-0 mt-0.5 text-xs font-semibold text-cocoa">
@@ -156,6 +207,16 @@ export default function CandidateDetailDrawer({
                   <span>{candidate.phone}</span>
                 </a>
               )}
+
+              <button
+                type="button"
+                onClick={() => handleLoadDiplomaPdf(false)}
+                className="inline-flex items-center gap-1 rounded-lg border border-terracotta/35 bg-white px-2.5 py-1 text-xs font-bold text-cocoa hover:bg-sand transition-colors cursor-pointer"
+                title="Ver el título o diploma en PDF del egresado"
+              >
+                <i className="bx bxs-graduation text-terracotta text-sm" />
+                <span>Ver Título / Diploma</span>
+              </button>
             </div>
 
             <div className="inline-flex items-center gap-1.5 rounded-full border border-sand-line bg-white px-3 py-1 text-xs font-bold text-ink shadow-2xs">
@@ -166,10 +227,11 @@ export default function CandidateDetailDrawer({
         </header>
 
         {/* ─── Pestañas de Navegación del Drawer ─── */}
-        <div className="flex border-b border-sand-line px-6 bg-cream/20">
+        <div className="flex border-b border-sand-line px-6 bg-cream/20 overflow-x-auto">
           {[
             { id: 'match', label: 'Match y Evaluación', icon: 'bx-radar' },
             { id: 'cv', label: 'Hoja de Vida & Perfil', icon: 'bx-id-card' },
+            { id: 'diploma', label: 'Título / Diploma', icon: 'bxs-graduation' },
             { id: 'history', label: 'Historial ATS', icon: 'bx-history' },
           ].map((tab) => {
             const isActive = activeTab === tab.id;
@@ -177,8 +239,14 @@ export default function CandidateDetailDrawer({
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1.5 border-b-2 py-3 px-3 text-xs font-bold transition-colors cursor-pointer ${
+                onClick={() => {
+                  if (tab.id === 'diploma') {
+                    handleLoadDiplomaPdf(false);
+                  } else {
+                    setActiveTab(tab.id);
+                  }
+                }}
+                className={`flex items-center gap-1.5 border-b-2 py-3 px-3 text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
                   isActive
                     ? 'border-terracotta text-terracotta'
                     : 'border-transparent text-secondary hover:text-ink'
@@ -354,22 +422,79 @@ export default function CandidateDetailDrawer({
                 </div>
               </div>
 
-              {/* Formación Académica */}
+              {/* Formación Académica y Título / Diploma */}
               <div className="space-y-2">
                 <h4 className="m-0 text-xs font-bold uppercase tracking-wider text-secondary">
-                  Formación y Universidad
+                  Formación, Título y Universidad
                 </h4>
-                <div className="rounded-xl border border-sand-line bg-white p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="m-0 text-xs font-bold text-ink">{candidate.program}</p>
-                    <span className="text-[0.7rem] font-bold text-cocoa bg-sand px-2 py-0.5 rounded">
-                      {candidate.graduationYear || 'Recién egresado'}
-                    </span>
+                <div className="rounded-xl border border-sand-line bg-white p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div>
+                      <p className="m-0 text-xs font-bold text-ink">{candidate.program}</p>
+                      {candidate.degreeLevel && (
+                        <p className="m-0 text-[0.7rem] text-secondary">{candidate.degreeLevel}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {candidate.degreeVerified ? (
+                        <span className="inline-flex items-center gap-1 text-[0.68rem] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                          <i className="bx bxs-shield-check text-emerald-600" />
+                          <span>Verificado por IES</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[0.68rem] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                          <i className="bx bx-time-five text-amber-600" />
+                          <span>En revisión IES</span>
+                        </span>
+                      )}
+                      <span className="text-[0.7rem] font-bold text-cocoa bg-sand px-2 py-0.5 rounded">
+                        {candidate.graduationYear || 'Recién egresado'}
+                      </span>
+                    </div>
                   </div>
                   <p className="m-0 text-xs text-secondary">{candidate.institution}</p>
                   {candidate.educationSummary && (
                     <p className="m-0 mt-1 text-xs text-ink/80 italic">{candidate.educationSummary}</p>
                   )}
+
+                  {(candidate.actaNumber || candidate.bookFolio || candidate.degreeDate) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-sand-line/60 text-[0.7rem]">
+                      {candidate.actaNumber && (
+                        <div>
+                          <span className="text-secondary block">Acta de grado</span>
+                          <strong className="text-ink">{candidate.actaNumber}</strong>
+                        </div>
+                      )}
+                      {candidate.bookFolio && (
+                        <div>
+                          <span className="text-secondary block">Libro / Folio</span>
+                          <strong className="text-ink">{candidate.bookFolio}</strong>
+                        </div>
+                      )}
+                      {candidate.degreeDate && (
+                        <div>
+                          <span className="text-secondary block">Fecha de grado</span>
+                          <strong className="text-ink">{candidate.degreeDate}</strong>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-sand-line/60 flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-[0.7rem] text-secondary">
+                      {candidate.hasDiplomaPdf
+                        ? 'El soporte original del título / diploma está disponible para revisión.'
+                        : 'Consulta el soporte documental del título universitario.'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleLoadDiplomaPdf(false)}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-cocoa px-3.5 py-2 text-xs font-bold text-white hover:bg-cocoa/90 transition-colors cursor-pointer shadow-2xs"
+                    >
+                      <i className="bx bxs-graduation text-sm" />
+                      <span>Ver Título / Diploma (PDF)</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -379,6 +504,142 @@ export default function CandidateDetailDrawer({
                 <p className="m-0 mt-1 text-xs font-bold text-ink">Archivo de hoja de vida</p>
                 <p className="m-0 text-[0.7rem] text-secondary">No hay un documento asociado a esta postulación para abrir desde este panel.</p>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'diploma' && (
+            <div className="space-y-4">
+              {/* Estado de Verificación Institucional + Sello Digital */}
+              <div
+                className={`rounded-2xl border p-4 space-y-2.5 ${
+                  candidate.degreeVerified
+                    ? 'border-emerald-200 bg-emerald-50/60'
+                    : 'border-amber-200 bg-amber-50/60'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="space-y-0.5">
+                    <p
+                      className={`m-0 text-xs font-bold flex items-center gap-1.5 ${
+                        candidate.degreeVerified ? 'text-emerald-950' : 'text-amber-950'
+                      }`}
+                    >
+                      <i
+                        className={`bx ${
+                          candidate.degreeVerified
+                            ? 'bxs-shield-check text-emerald-700'
+                            : 'bx-time-five text-amber-700'
+                        } text-base`}
+                      />
+                      <span>
+                        {candidate.degreeVerified
+                          ? 'Título Universitario Verificado por la Institución (IES)'
+                          : 'Título Universitario en Proceso de Verificación por la IES'}
+                      </span>
+                    </p>
+                    <p className="m-0 text-[0.72rem] text-secondary">
+                      {candidate.program} · {candidate.institution}
+                      {candidate.graduationYear ? ` (${candidate.graduationYear})` : ''}
+                    </p>
+                  </div>
+
+                  {candidate.degreeVerified && (
+                    <span className="rounded-md bg-emerald-200/80 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-900">
+                      Sello Digital SHA-256
+                    </span>
+                  )}
+                </div>
+
+                {(candidate.actaNumber || candidate.bookFolio || candidate.degreeDate) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-emerald-200/60 text-[0.7rem]">
+                    {candidate.actaNumber && (
+                      <div>
+                        <span className="text-secondary block">Acta de grado</span>
+                        <strong className="text-ink">{candidate.actaNumber}</strong>
+                      </div>
+                    )}
+                    {candidate.bookFolio && (
+                      <div>
+                        <span className="text-secondary block">Libro / Folio</span>
+                        <strong className="text-ink">{candidate.bookFolio}</strong>
+                      </div>
+                    )}
+                    {candidate.degreeDate && (
+                      <div>
+                        <span className="text-secondary block">Fecha de grado</span>
+                        <strong className="text-ink">{candidate.degreeDate}</strong>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {candidate.digitalSeal && (
+                  <p className="m-0 font-mono text-[0.65rem] text-emerald-900 bg-white/90 p-2 rounded-lg border border-emerald-200 break-all select-all">
+                    {candidate.digitalSeal}
+                  </p>
+                )}
+              </div>
+
+              {/* Barra de controles del visor de diploma */}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div>
+                  <h3 className="m-0 text-sm font-bold text-ink flex items-center gap-1.5">
+                    <i className="bx bxs-file-pdf text-terracotta text-base" />
+                    <span>Diploma / Acta de Grado del Egresado</span>
+                  </h3>
+                  <p className="m-0 text-[0.7rem] text-secondary">
+                    Visualización directa del soporte documental original cargado por el egresado.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleLoadDiplomaPdf(true)}
+                    disabled={loadingDiplomaPdf}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-cocoa hover:bg-cocoa/90 text-white px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer shadow-xs disabled:opacity-60"
+                  >
+                    <i className="bx bx-fullscreen text-sm" />
+                    <span>Visor Completo</span>
+                  </button>
+
+                  {diplomaPdfUrl && (
+                    <a
+                      href={diplomaPdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 rounded-lg border border-sand-line bg-cream/50 hover:bg-sand text-ink px-2.5 py-1.5 text-xs font-semibold transition-colors no-underline cursor-pointer"
+                      title="Abrir diploma en nueva pestaña"
+                    >
+                      <i className="bx bx-link-external text-secondary" />
+                      <span>Nueva pestaña</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {loadingDiplomaPdf ? (
+                <div className="h-96 flex flex-col items-center justify-center rounded-xl border border-sand-line bg-cream/20 text-secondary text-sm">
+                  <i className="bx bx-loader-alt bx-spin text-3xl text-cocoa mb-2" />
+                  <span>Cargando título / diploma original desde el repositorio seguro...</span>
+                </div>
+              ) : diplomaPdfUrl ? (
+                <iframe
+                  src={`${diplomaPdfUrl}#toolbar=1&navpanes=0`}
+                  title={`Diploma de ${candidate.candidateName}`}
+                  className="w-full h-96 rounded-xl border border-sand-line bg-white shadow-inner"
+                />
+              ) : (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 space-y-2">
+                  <p className="m-0 font-bold flex items-center gap-1.5">
+                    <i className="bx bx-info-circle text-base text-amber-700" />
+                    <span>{diplomaPdfError || 'Diploma PDF no adjunto por el egresado'}</span>
+                  </p>
+                  <p className="m-0 text-amber-800">
+                    El egresado aún no cuenta con un archivo PDF de su título o diploma cargado en el repositorio documental.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -633,6 +894,23 @@ export default function CandidateDetailDrawer({
             </div>
           </div>
         )}
+
+        {/* ─── Visor Integrado de Diploma / Título del Egresado ─── */}
+        <DocumentViewerModal
+          isOpen={showDiplomaModal}
+          onClose={() => setShowDiplomaModal(false)}
+          documentUrl={diplomaPdfUrl}
+          title={`Título / Diploma — ${candidate.candidateName}`}
+          subtitle={`${candidate.program || 'Programa académico'} · ${candidate.institution || 'IES'}`}
+          metadata={{
+            egresado: candidate.candidateName,
+            programa: candidate.program,
+            institucion: candidate.institution,
+            estado: candidate.degreeVerified ? 'Verificado por la IES' : 'En revisión IES',
+            acta: candidate.actaNumber || undefined,
+            folio: candidate.bookFolio || undefined,
+          }}
+        />
       </div>
     </div>
   );

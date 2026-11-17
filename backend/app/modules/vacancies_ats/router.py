@@ -24,6 +24,7 @@ from app.modules.vacancies_ats.schemas import (
     PostulacionCreateRequest,
     PostulacionResponse,
     KanbanCandidateCardResponse,
+    CandidateDiplomaUrlResponse,
     KanbanBoardDetailedResponse,
     MoverFaseRequest,
     NotaReclutadorRequest,
@@ -349,6 +350,27 @@ async def schedule_candidate_interview(
         id_postulacion=application_id,
         payload=payload,
         company_id=current_user.get("id_entidad")
+    )
+
+
+@router.get("/reclutador/postulaciones/{application_id}/diploma-url", response_model=CandidateDiplomaUrlResponse)
+@router.get("/reclutador/postulaciones/{application_id}/diploma-secure-url", response_model=CandidateDiplomaUrlResponse)
+async def get_candidate_diploma_url(
+    application_id: str,
+    expires_in: int = Query(3600, ge=60, le=86400, description="Segundos de validez de la URL firmada"),
+    current_user: Dict[str, Any] = Depends(require_approved_company),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Genera una URL firmada temporal para que el reclutador o administrador de empresa
+    pueda ver el título o diploma en PDF del egresado postulado, incluso cuando ya está verificado.
+    """
+    return await VacancyATSService.get_candidate_diploma_url_async(
+        session=db,
+        id_postulacion=application_id,
+        user_role=current_user.get("rol", ""),
+        company_id=current_user.get("id_entidad"),
+        expires_in=expires_in,
     )
 
 
