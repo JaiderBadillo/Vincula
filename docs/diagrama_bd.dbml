@@ -1,0 +1,733 @@
+// Generado por backend/scripts/schema_tools.py desde la base de datos desplegada. No editar a mano.
+// Pégalo en https://dbdiagram.io para ver el diagrama MER y exportarlo a PNG o PDF.
+
+Enum categoria_competencia_enum {
+  "tecnica"
+  "blanda"
+}
+
+Enum estado_convenio_enum {
+  "activo"
+  "en_tramite"
+  "vencido"
+  "terminado"
+}
+
+Enum estado_cuenta_enum {
+  "activo"
+  "inactivo"
+  "suspendido"
+  "pendiente_verificacion"
+}
+
+Enum estado_entrevista_enum {
+  "programada"
+  "confirmada"
+  "realizada"
+  "cancelada"
+  "reprogramada"
+}
+
+Enum estado_vacante_enum {
+  "borrador"
+  "abierta"
+  "pausada"
+  "cerrada"
+  "inhabilitada"
+}
+
+Enum estado_validacion_enum {
+  "pendiente"
+  "en_subsanacion"
+  "aprobado"
+  "rechazado"
+}
+
+Enum fase_postulacion_enum {
+  "en_revision"
+  "preseleccionados"
+  "prueba_tecnica"
+  "entrevista"
+  "oferta_finalistas"
+  "contratado"
+  "descartados"
+}
+
+Enum modalidad_convenio_enum {
+  "Pasantía"
+  "Aprendizaje"
+  "Laboral"
+}
+
+Enum modalidad_trabajo_enum {
+  "Presencial"
+  "Remoto"
+  "Híbrido"
+}
+
+Enum rol_usuario_enum {
+  "egresado"
+  "asesor_ies"
+  "admin_ies"
+  "admin_empresa"
+  "reclutador_empresa"
+  "superadmin_vincula"
+}
+
+Enum tipo_periodo_analitica_enum {
+  "mensual"
+  "semestral"
+}
+
+Table academicos_egresado {
+  id uuid [pk]
+  id_egresado uuid
+  id_institucion uuid
+  id_programa uuid
+  id_sede uuid [null]
+  nivel_formacion varchar(60)
+  ano_graduacion integer
+  periodo_graduacion varchar(20) [null]
+  promedio_ponderado numeric(3,2) [null]
+  proyecto_grado text [null]
+  estado_academico varchar(50)
+  estado_laboral varchar(50)
+  validado_por_ies boolean
+  creado_en timestamptz
+  url_diploma_pdf text [null]
+  estado_verificacion varchar(30)
+  numero_acta_grado varchar(60) [null]
+  numero_libro_folio varchar(60) [null]
+  fecha_grado date [null]
+  fecha_verificacion timestamptz [null]
+  verificado_por_usuario uuid [null]
+  motivo_rechazo text [null]
+  sello_digital varchar(128) [null]
+  diploma_cargado_por_egresado boolean
+}
+
+Table accesos_asesor_ies {
+  id uuid [pk]
+  id_usuario uuid
+  fecha timestamptz
+  metodo varchar(20)
+  navegador varchar(120)
+  direccion_ip varchar(45) [null]
+}
+
+Table acciones_moderacion {
+  id uuid [pk]
+  tipo_entidad varchar(20)
+  id_entidad uuid
+  accion varchar(40)
+  motivo text
+  id_admin uuid [null]
+  creado_en timestamptz
+}
+
+Table archivos_hoja_vida {
+  id uuid [pk]
+  id_egresado uuid
+  nombre_archivo varchar(255)
+  url_archivo text
+  tamano_kb integer
+  es_predeterminado boolean
+  subido_en timestamptz
+}
+
+Table areas_sede_empresa {
+  id uuid [pk]
+  id_sede uuid
+  nombre_area varchar(100)
+  personal_asignado integer
+}
+
+Table asesores_ies {
+  id uuid [pk]
+  id_usuario uuid [unique]
+  id_institucion uuid
+  id_sede uuid [null]
+  id_facultad uuid [null]
+  nombre_completo varchar(150)
+  correo_institucional varchar(255)
+  telefono varchar(50) [null]
+  cargo varchar(100) [null]
+  estado varchar(30)
+  creado_en timestamptz
+  sedes_cobertura text [null]
+  avisar_accesos_email boolean
+  avisar_cambios_email boolean
+}
+
+Table asignacion_asesores_programas {
+  id_asesor uuid [pk]
+  id_programa uuid [pk]
+}
+
+Table asignacion_reclutadores_sedes {
+  id_reclutador uuid [pk]
+  id_sede uuid [pk]
+}
+
+Table asignaturas_pensum {
+  id uuid [pk]
+  id_pensum uuid
+  numero_semestre integer
+  codigo_asignatura varchar(50)
+  nombre varchar(255)
+  creditos integer
+  herramientas text[]
+}
+
+Table auditorias_superadmin {
+  id uuid [pk]
+  tipo_entidad varchar(30)
+  id_entidad uuid
+  id_auditor uuid
+  accion_realizada varchar(60)
+  observaciones_correccion text
+  registrado_en timestamptz
+}
+
+Table bitacora_actividad_empresa {
+  id uuid [pk]
+  id_empresa uuid
+  id_usuario uuid
+  tipo_evento varchar(60)
+  entidad_afectada varchar(60)
+  id_registro_afectado uuid
+  descripcion text
+  registrado_en timestamptz
+}
+
+Table codigos_recuperacion {
+  id_usuario uuid [pk]
+  codigo_hash varchar(64)
+  expira_en timestamptz
+  solicitado_en timestamptz
+  intentos integer
+}
+
+Table competencias_asignatura {
+  id uuid [pk]
+  id_asignatura uuid
+  id_competencia uuid [null]
+  texto_competencia varchar(255)
+  tipo_competencia varchar(50)
+}
+
+Table competencias_egresado {
+  id_egresado uuid [pk]
+  id_competencia uuid [pk]
+  nivel_dominio integer [null]
+  validada_por_pensum boolean
+}
+
+Table competencias_exigidas_vacante {
+  id_vacante uuid [pk]
+  id_competencia uuid [pk]
+  es_obligatoria boolean
+}
+
+Table convenios_interinstitucionales {
+  id uuid [pk]
+  id_empresa uuid
+  id_institucion uuid
+  codigo_convenio varchar(60) [unique]
+  modalidad modalidad_convenio_enum
+  fecha_inicio date
+  fecha_vencimiento date
+  estado estado_convenio_enum
+  tasa_retencion numeric(5,2) [null]
+  puntuacion_satisfaccion numeric(3,2) [null]
+  url_documento_soporte text [null]
+  persona_contacto_ies varchar(150) [null]
+  creado_en timestamptz
+}
+
+Table documentos_empresa {
+  id uuid [pk]
+  id_empresa uuid
+  tipo_documento varchar(60)
+  nombre_archivo varchar(255)
+  url_archivo text
+  tamano_kb integer
+  subido_en timestamptz
+  estado varchar(30)
+  archivo_cargado_por_usuario boolean
+}
+
+Table documentos_institucion {
+  id uuid [pk]
+  id_institucion uuid
+  tipo_documento varchar(60)
+  nombre_archivo varchar(255)
+  url_archivo text
+  tamano_kb integer
+  subido_en timestamptz
+  estado varchar(30)
+  archivo_cargado_por_usuario boolean
+}
+
+Table egresados {
+  id uuid [pk]
+  id_usuario uuid [unique]
+  tipo_documento varchar(10)
+  numero_documento varchar(30) [unique]
+  codigo_estudiantil varchar(50) [null]
+  nombre_completo varchar(150)
+  fecha_nacimiento date [null]
+  ciudad_residencia varchar(100)
+  departamento_residencia varchar(100) [null]
+  telefono varchar(50)
+  correo_personal varchar(255)
+  url_avatar text [null]
+  url_portada text [null]
+  titular_profesional varchar(255) [null]
+  biografia text [null]
+  disponible_para_trabajar boolean
+  visibilidad_disponibilidad varchar(50)
+  tipo_disponibilidad varchar(50) [null]
+  aspiracion_salarial_min numeric(12,2) [null]
+  aspiracion_salarial_max numeric(12,2) [null]
+  tipos_contrato_interes text[] [null]
+  modalidades_interes text[] [null]
+  dispuesto_a_reubicarse boolean
+  porcentaje_completitud_perfil integer
+  creado_en timestamptz
+  actualizado_en timestamptz
+  estado varchar(30)
+  perfil_adicional jsonb
+}
+
+Table empresas {
+  id uuid [pk]
+  razon_social varchar(255)
+  nombre_comercial varchar(255)
+  nit varchar(30) [unique]
+  codigo_ciiu varchar(10)
+  descripcion_ciiu text
+  sector_economico varchar(100)
+  tamano_empresa varchar(50)
+  departamento varchar(100)
+  ciudad varchar(100)
+  direccion varchar(255)
+  telefono varchar(50)
+  correo_contacto varchar(255)
+  sitio_web varchar(255) [null]
+  nombre_representante_legal varchar(150)
+  documento_representante_legal varchar(30)
+  persona_contacto varchar(150)
+  url_logo text [null]
+  url_portada text [null]
+  descripcion_corporativa text [null]
+  dominio_es_corporativo boolean
+  estado estado_validacion_enum
+  registrado_en timestamptz
+  aprobado_en timestamptz [null]
+  creado_en timestamptz
+  actualizado_en timestamptz
+}
+
+Table enlaces_egresado {
+  id_egresado uuid [pk]
+  url_linkedin text [null]
+  url_github text [null]
+  url_portafolio text [null]
+}
+
+Table entrevistas_postulacion {
+  id uuid [pk]
+  id_postulacion uuid
+  id_reclutador uuid
+  fecha_entrevista date
+  franja_horaria varchar(50)
+  modalidad varchar(50)
+  url_reunion text [null]
+  objetivo text
+  estado estado_entrevista_enum
+  creado_en timestamptz
+}
+
+Table experiencias_laborales_egresado {
+  id uuid [pk]
+  id_egresado uuid
+  empresa varchar(150)
+  cargo varchar(150)
+  fecha_inicio date
+  fecha_fin date [null]
+  es_trabajo_actual boolean
+  descripcion_funciones text [null]
+}
+
+Table facultades {
+  id uuid [pk]
+  id_institucion uuid
+  codigo varchar(50)
+  sigla varchar(30) [null]
+  nombre varchar(255)
+  telefono varchar(50) [null]
+  oficina varchar(100) [null]
+  color_distintivo varchar(30) [null]
+  estado varchar(30)
+  creado_en timestamptz
+}
+
+Table favoritos_banco_talento {
+  id_reclutador uuid [pk]
+  id_egresado uuid [pk]
+  marcado_en timestamptz
+}
+
+Table historial_fases_postulacion {
+  id uuid [pk]
+  id_postulacion uuid
+  fase_anterior fase_postulacion_enum [null]
+  fase_nueva fase_postulacion_enum
+  cambiado_por_usuario uuid
+  comentario text [null]
+  registrado_en timestamptz
+}
+
+Table idiomas_egresado {
+  id uuid [pk]
+  id_egresado uuid
+  nombre_idioma varchar(60)
+  nivel_marco_europeo varchar(20)
+}
+
+Table instantaneas_metricas_periodicas {
+  id uuid [pk]
+  clave_periodo varchar(30) [unique]
+  tipo_periodo tipo_periodo_analitica_enum
+  etiqueta_periodo varchar(60)
+  etiqueta_corta varchar(20)
+  semestre varchar(20) [null]
+  trimestre varchar(20) [null]
+  nuevas_empresas integer
+  empresas_acumuladas integer
+  nuevas_vacantes integer
+  vacantes_acumuladas integer
+  nuevas_instituciones integer
+  instituciones_acumuladas integer
+  nuevos_egresados integer
+  egresados_acumulados integer
+  total_postulaciones integer
+  tasa_crecimiento numeric(5,2)
+  fecha_corte date
+  creado_en timestamptz
+}
+
+Table instituciones {
+  id uuid [pk]
+  nombre_oficial varchar(255)
+  nombre_corto varchar(60)
+  codigo_snies varchar(30) [unique]
+  nit varchar(30) [unique]
+  caracter_academico varchar(100)
+  nombre_rector varchar(150)
+  documento_rector varchar(30)
+  persona_contacto varchar(150)
+  direccion varchar(255)
+  ciudad varchar(100)
+  departamento varchar(100)
+  telefono varchar(50)
+  correo_institucional varchar(255)
+  sitio_web varchar(255) [null]
+  url_logo text [null]
+  url_portada text [null]
+  estado estado_validacion_enum
+  registrado_en timestamptz
+  aprobado_en timestamptz [null]
+  creado_en timestamptz
+  actualizado_en timestamptz
+}
+
+Table interacciones_seguimiento_empresa {
+  id uuid [pk]
+  id_convenio uuid
+  id_asesor uuid
+  tipo_interaccion varchar(60)
+  resumen_acuerdos text
+  fecha_interaccion date
+  creado_en timestamptz
+}
+
+Table invitaciones_banco_talento {
+  id uuid [pk]
+  id_reclutador uuid
+  id_egresado uuid
+  id_vacante uuid
+  mensaje_personalizado text
+  estado varchar(30)
+  enviado_en timestamptz
+}
+
+Table notas_reclutador_postulacion {
+  id uuid [pk]
+  id_postulacion uuid
+  id_reclutador uuid
+  texto_nota text
+  creado_en timestamptz
+}
+
+Table pensums_programa {
+  id uuid [pk]
+  id_programa uuid
+  codigo_version varchar(50)
+  es_activo boolean
+  url_pdf text [null]
+  extraido_en timestamptz [null]
+  creado_en timestamptz
+}
+
+Table postulaciones {
+  id uuid [pk]
+  id_vacante uuid
+  id_egresado uuid
+  id_hoja_vida uuid [null]
+  fase_actual fase_postulacion_enum
+  porcentaje_afinidad numeric(5,2)
+  retroalimentacion_reclutador text [null]
+  motivo_descarte varchar(255) [null]
+  descartado_en timestamptz [null]
+  postulado_en timestamptz
+  actualizado_en timestamptz
+}
+
+Table programas_academicos {
+  id uuid [pk]
+  id_institucion uuid
+  id_facultad uuid
+  id_sede uuid
+  codigo_interno varchar(50)
+  codigo_snies varchar(30)
+  nombre varchar(255)
+  nivel_formacion varchar(60)
+  modalidad varchar(50)
+  duracion_semestres integer
+  total_creditos integer
+  nombre_director varchar(150) [null]
+  correo_director varchar(255) [null]
+  estado_acreditacion varchar(100) [null]
+  estado varchar(30)
+  creado_en timestamptz
+  id_programa_previo uuid [null]
+}
+
+Table programas_afines_vacante {
+  id_vacante uuid [pk]
+  id_programa uuid [pk]
+}
+
+Table reclutadores_empresa {
+  id uuid [pk]
+  id_usuario uuid [unique]
+  id_empresa uuid
+  nombre_completo varchar(150)
+  correo_corporativo varchar(255)
+  telefono varchar(50) [null]
+  cargo varchar(100) [null]
+  url_avatar text [null]
+  estado varchar(30)
+  ultimo_acceso_en timestamptz [null]
+  creado_en timestamptz
+}
+
+Table registros_laborales_egresado {
+  id uuid [pk]
+  id_academico uuid
+  empresa_contratante varchar(150)
+  cargo_desempenado varchar(150)
+  tipo_contrato varchar(60)
+  modalidad_trabajo varchar(50)
+  rango_salarial varchar(60) [null]
+  fecha_vinculacion date
+  creado_en timestamptz
+  id_postulacion uuid [unique, null]
+}
+
+Table reportes_vacante {
+  id uuid [pk]
+  id_vacante uuid
+  id_reportante uuid
+  motivo varchar(30)
+  detalle text [null]
+  estado varchar(20)
+  resolucion varchar(30) [null]
+  nota_admin text [null]
+  resuelto_por uuid [null]
+  resuelto_en timestamptz [null]
+  creado_en timestamptz
+}
+
+Table sedes_empresa {
+  id uuid [pk]
+  id_empresa uuid
+  nombre varchar(150)
+  nombre_corto varchar(50) [null]
+  departamento varchar(100)
+  ciudad varchar(100)
+  direccion varchar(255)
+  telefono varchar(50) [null]
+  correo varchar(255) [null]
+  nombre_responsable varchar(150) [null]
+  es_sede_principal boolean
+  estado varchar(30)
+  creado_en timestamptz
+}
+
+Table sedes_institucion {
+  id uuid [pk]
+  id_institucion uuid
+  nombre varchar(150)
+  nombre_corto varchar(50) [null]
+  ciudad varchar(100)
+  departamento varchar(100)
+  direccion varchar(255)
+  telefono varchar(50) [null]
+  correo varchar(255) [null]
+  es_sede_principal boolean
+  estado varchar(30)
+  creado_en timestamptz
+}
+
+Table solicitudes_convenio_ies {
+  id uuid [pk]
+  id_empresa uuid
+  id_institucion uuid
+  tipo_convenio varchar(60)
+  vacantes_proyectadas integer
+  duracion_anos integer
+  facultades_objetivo text[] [null]
+  programas_objetivo text[] [null]
+  estado varchar(30)
+  notas_evaluador text [null]
+  solicitado_en timestamptz
+  revisado_en timestamptz [null]
+}
+
+Table taxonomia_competencias {
+  id uuid [pk]
+  nombre varchar(120) [unique]
+  categoria categoria_competencia_enum
+  etiqueta_normalizada varchar(120) [unique]
+  vector_embedding vector(1536) [null]
+}
+
+Table usuarios {
+  id uuid [pk]
+  correo_electronico varchar(255) [unique]
+  contrasena_hash varchar(255)
+  rol rol_usuario_enum
+  estado estado_cuenta_enum
+  ultimo_acceso_en timestamptz [null]
+  creado_en timestamptz
+  actualizado_en timestamptz
+  google_sub varchar(255) [null]
+}
+
+Table vacantes {
+  id uuid [pk]
+  id_empresa uuid
+  id_sede uuid
+  id_reclutador_responsable uuid
+  codigo_vacante varchar(50) [unique]
+  titulo varchar(255)
+  categoria varchar(100)
+  modalidad modalidad_trabajo_enum
+  tipo_contrato varchar(100)
+  nivel_experiencia varchar(60)
+  salario_minimo numeric(12,2) [null]
+  salario_maximo numeric(12,2) [null]
+  salario_es_confidencial boolean
+  periodo_salario varchar(20)
+  jornada_laboral varchar(100)
+  idiomas_requeridos text[] [null]
+  cupos_disponibles integer
+  total_postulantes integer
+  descripcion text
+  responsabilidades text[]
+  requisitos text[]
+  beneficios text[] [null]
+  estado estado_vacante_enum
+  publicado_en timestamptz
+  fecha_cierre date
+  creado_en timestamptz
+  actualizado_en timestamptz
+}
+
+Ref: academicos_egresado.id_egresado > egresados.id
+Ref: academicos_egresado.id_institucion > instituciones.id
+Ref: academicos_egresado.id_programa > programas_academicos.id
+Ref: academicos_egresado.id_sede > sedes_institucion.id
+Ref: academicos_egresado.verificado_por_usuario > usuarios.id
+Ref: accesos_asesor_ies.id_usuario > usuarios.id
+Ref: acciones_moderacion.id_admin > usuarios.id
+Ref: archivos_hoja_vida.id_egresado > egresados.id
+Ref: areas_sede_empresa.id_sede > sedes_empresa.id
+Ref: asesores_ies.id_facultad > facultades.id
+Ref: asesores_ies.id_institucion > instituciones.id
+Ref: asesores_ies.id_sede > sedes_institucion.id
+Ref: asesores_ies.id_usuario > usuarios.id
+Ref: asignacion_asesores_programas.id_asesor > asesores_ies.id
+Ref: asignacion_asesores_programas.id_programa > programas_academicos.id
+Ref: asignacion_reclutadores_sedes.id_reclutador > reclutadores_empresa.id
+Ref: asignacion_reclutadores_sedes.id_sede > sedes_empresa.id
+Ref: asignaturas_pensum.id_pensum > pensums_programa.id
+Ref: auditorias_superadmin.id_auditor > usuarios.id
+Ref: bitacora_actividad_empresa.id_empresa > empresas.id
+Ref: bitacora_actividad_empresa.id_usuario > usuarios.id
+Ref: codigos_recuperacion.id_usuario > usuarios.id
+Ref: competencias_asignatura.id_asignatura > asignaturas_pensum.id
+Ref: competencias_asignatura.id_competencia > taxonomia_competencias.id
+Ref: competencias_egresado.id_competencia > taxonomia_competencias.id
+Ref: competencias_egresado.id_egresado > egresados.id
+Ref: competencias_exigidas_vacante.id_competencia > taxonomia_competencias.id
+Ref: competencias_exigidas_vacante.id_vacante > vacantes.id
+Ref: convenios_interinstitucionales.id_empresa > empresas.id
+Ref: convenios_interinstitucionales.id_institucion > instituciones.id
+Ref: documentos_empresa.id_empresa > empresas.id
+Ref: documentos_institucion.id_institucion > instituciones.id
+Ref: egresados.id_usuario > usuarios.id
+Ref: enlaces_egresado.id_egresado > egresados.id
+Ref: entrevistas_postulacion.id_postulacion > postulaciones.id
+Ref: entrevistas_postulacion.id_reclutador > reclutadores_empresa.id
+Ref: experiencias_laborales_egresado.id_egresado > egresados.id
+Ref: facultades.id_institucion > instituciones.id
+Ref: favoritos_banco_talento.id_egresado > egresados.id
+Ref: favoritos_banco_talento.id_reclutador > reclutadores_empresa.id
+Ref: historial_fases_postulacion.cambiado_por_usuario > usuarios.id
+Ref: historial_fases_postulacion.id_postulacion > postulaciones.id
+Ref: idiomas_egresado.id_egresado > egresados.id
+Ref: interacciones_seguimiento_empresa.id_asesor > asesores_ies.id
+Ref: interacciones_seguimiento_empresa.id_convenio > convenios_interinstitucionales.id
+Ref: invitaciones_banco_talento.id_egresado > egresados.id
+Ref: invitaciones_banco_talento.id_reclutador > reclutadores_empresa.id
+Ref: invitaciones_banco_talento.id_vacante > vacantes.id
+Ref: notas_reclutador_postulacion.id_postulacion > postulaciones.id
+Ref: notas_reclutador_postulacion.id_reclutador > reclutadores_empresa.id
+Ref: pensums_programa.id_programa > programas_academicos.id
+Ref: postulaciones.id_egresado > egresados.id
+Ref: postulaciones.id_hoja_vida > archivos_hoja_vida.id
+Ref: postulaciones.id_vacante > vacantes.id
+Ref: programas_academicos.id_facultad > facultades.id
+Ref: programas_academicos.id_institucion > instituciones.id
+Ref: programas_academicos.id_programa_previo > programas_academicos.id
+Ref: programas_academicos.id_sede > sedes_institucion.id
+Ref: programas_afines_vacante.id_programa > programas_academicos.id
+Ref: programas_afines_vacante.id_vacante > vacantes.id
+Ref: reclutadores_empresa.id_empresa > empresas.id
+Ref: reclutadores_empresa.id_usuario > usuarios.id
+Ref: registros_laborales_egresado.id_academico > academicos_egresado.id
+Ref: registros_laborales_egresado.id_postulacion > postulaciones.id
+Ref: reportes_vacante.id_reportante > usuarios.id
+Ref: reportes_vacante.id_vacante > vacantes.id
+Ref: reportes_vacante.resuelto_por > usuarios.id
+Ref: sedes_empresa.id_empresa > empresas.id
+Ref: sedes_institucion.id_institucion > instituciones.id
+Ref: solicitudes_convenio_ies.id_empresa > empresas.id
+Ref: solicitudes_convenio_ies.id_institucion > instituciones.id
+Ref: vacantes.id_empresa > empresas.id
+Ref: vacantes.id_reclutador_responsable > reclutadores_empresa.id
+Ref: vacantes.id_sede > sedes_empresa.id

@@ -1,6 +1,6 @@
 # Diagrama de Base de Datos (ERD) — Plataforma Vincula
 
-Este documento presenta el modelo Entidad-Relación completo de las **43 tablas** definidas en [schema_vincula_completo.sql](file:///u:/Bolsa_de_empleo/database/schema_vincula_completo.sql) (PostgreSQL 15+ y `pgvector`). Para evitar cruces de líneas y superposición de textos, el modelo se presenta en una **Vista Macro** seguida de **5 diagramas detallados por dominio**.
+Este documento presenta el modelo Entidad-Relación completo de las **45 tablas** definidas en [schema_vincula_completo.sql](file:///u:/Bolsa_de_empleo/database/schema_vincula_completo.sql) (PostgreSQL 15+ y `pgvector`). Para evitar cruces de líneas y superposición de textos, el modelo se presenta en una **Vista Macro** seguida de **6 diagramas detallados por dominio**.
 
 ---
 
@@ -30,6 +30,9 @@ erDiagram
 
     vacantes ||--o{ postulaciones : "recibe"
     postulaciones ||--o| registros_laborales_egresado : "origina"
+
+    vacantes ||--o{ reportes_vacante : "es reportada"
+    usuarios ||--o{ reportes_vacante : "reporta"
 ```
 
 ---
@@ -549,3 +552,68 @@ erDiagram
     postulaciones ||--o{ entrevistas_postulacion : "agenda"
     vacantes ||--o{ invitaciones_banco_talento : "convoca"
 ```
+
+---
+
+## 7. Dominio 6 — Moderación de Vacantes y Cuentas
+
+Tablas: `reportes_vacante`, `acciones_moderacion` (y el estado `inhabilitada` de `vacantes.estado`).
+
+```mermaid
+erDiagram
+    reportes_vacante {
+        uuid id PK
+        uuid id_vacante FK
+        uuid id_reportante FK
+        varchar motivo
+        text detalle
+        varchar estado
+        varchar resolucion
+        text nota_admin
+        uuid resuelto_por FK
+        timestamptz resuelto_en
+        timestamptz creado_en
+    }
+
+    acciones_moderacion {
+        uuid id PK
+        varchar tipo_entidad
+        uuid id_entidad
+        varchar accion
+        text motivo
+        uuid id_admin FK
+        timestamptz creado_en
+    }
+
+    vacantes ||--o{ reportes_vacante : "es reportada"
+    usuarios ||--o{ reportes_vacante : "reporta (una vez por vacante)"
+    usuarios |o--o{ reportes_vacante : "resuelve"
+    usuarios |o--o{ acciones_moderacion : "ejecuta"
+```
+
+`acciones_moderacion.id_entidad` apunta, según `tipo_entidad`, a una vacante, un usuario o una empresa (referencia polimórfica sin clave foránea). La tabla `auditorias_superadmin` no se reutiliza porque su restricción solo admite `empresa` e `institucion`.
+
+---
+
+## 8. Cómo mantener el SQL y el diagrama iguales a la base de datos desplegada
+
+La fuente de verdad es la base de datos desplegada; el SQL del repositorio es su copia legible. Cada vez que se aplique una migración (`database/*.sql`):
+
+1. Reflejar el cambio en `schema_vincula_completo.sql` (y en este documento si cambian tablas o relaciones).
+2. Verificar que no haya deriva, desde `backend/`:
+
+```bash
+python scripts/schema_tools.py check
+```
+
+Compara tablas, columnas y valores de enums contra la BD real y termina con código 1 si hay diferencias.
+
+3. Regenerar el diagrama MER interactivo (DBML) desde la BD real:
+
+```bash
+python scripts/schema_tools.py dbml
+```
+
+Esto escribe `docs/diagrama_bd.dbml`. Se pega en [dbdiagram.io](https://dbdiagram.io) para verlo, reordenarlo y exportarlo a PNG o PDF.
+
+Alternativas con conexión directa a la BD: DBeaver (clic derecho en el esquema → *View Diagram*) y pgAdmin (*Generate ERD*).

@@ -47,7 +47,8 @@ CREATE TYPE estado_vacante_enum AS ENUM (
     'borrador',
     'abierta',
     'pausada',
-    'cerrada'
+    'cerrada',
+    'inhabilitada' -- fijado solo por el administrador de Vincula (moderación)
 );
 
 CREATE TYPE fase_postulacion_enum AS ENUM (
@@ -779,6 +780,43 @@ CREATE TABLE instantaneas_metricas_periodicas (
 );
 
 CREATE INDEX idx_instantaneas_tipo_clave ON instantaneas_metricas_periodicas(tipo_periodo, clave_periodo);
+
+-- ============================================================================
+-- SECCIÓN 9: MODERACIÓN DE VACANTES Y CUENTAS
+-- ============================================================================
+
+-- Reportes de usuarios sobre vacantes irregulares (uno por usuario y vacante)
+CREATE TABLE reportes_vacante (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_vacante UUID NOT NULL REFERENCES vacantes(id) ON DELETE CASCADE,
+    id_reportante UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    motivo VARCHAR(30) NOT NULL, -- 'fraude_o_estafa', 'cobro_indebido', 'discriminacion', 'informacion_falsa', 'contenido_inapropiado', 'otro'
+    detalle TEXT,
+    estado VARCHAR(20) DEFAULT 'pendiente' NOT NULL CHECK (estado IN ('pendiente', 'resuelto', 'descartado')),
+    resolucion VARCHAR(30), -- 'vacante_inhabilitada', 'empresa_suspendida', 'sin_irregularidad'
+    nota_admin TEXT,
+    resuelto_por UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+    resuelto_en TIMESTAMPTZ,
+    creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    UNIQUE (id_vacante, id_reportante)
+);
+
+CREATE INDEX ix_reportes_vacante_estado ON reportes_vacante(estado, creado_en DESC);
+CREATE INDEX ix_reportes_vacante_reportante ON reportes_vacante(id_reportante, creado_en DESC);
+
+-- Historial de acciones de moderación (auditorias_superadmin solo admite 'empresa' e 'institucion')
+CREATE TABLE acciones_moderacion (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tipo_entidad VARCHAR(20) NOT NULL CHECK (tipo_entidad IN ('vacante', 'usuario', 'empresa')),
+    id_entidad UUID NOT NULL,
+    accion VARCHAR(40) NOT NULL, -- 'vacante_inhabilitada', 'cuenta_suspendida', 'empresa_suspendida', 'reportes_descartados'...
+    motivo TEXT NOT NULL,
+    id_admin UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+    creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE INDEX ix_acciones_moderacion_entidad ON acciones_moderacion(tipo_entidad, id_entidad, creado_en DESC);
+CREATE INDEX ix_acciones_moderacion_fecha ON acciones_moderacion(creado_en DESC);
 
 -- ============================================================================
 -- FIN DEL ESQUEMA DDL - PLATAFORMA VINCULA
