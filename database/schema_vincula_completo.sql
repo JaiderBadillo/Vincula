@@ -108,6 +108,7 @@ CREATE TABLE usuarios (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     correo_electronico VARCHAR(255) UNIQUE NOT NULL,
     contrasena_hash VARCHAR(255) NOT NULL,
+    google_sub VARCHAR(255) UNIQUE,
     rol rol_usuario_enum NOT NULL,
     estado estado_cuenta_enum DEFAULT 'activo' NOT NULL,
     ultimo_acceso_en TIMESTAMPTZ,
@@ -117,10 +118,30 @@ CREATE TABLE usuarios (
 
 CREATE INDEX idx_usuarios_rol_estado ON usuarios(rol, estado);
 CREATE INDEX idx_usuarios_correo ON usuarios(correo_electronico);
+CREATE UNIQUE INDEX uq_usuarios_google_sub ON usuarios(google_sub) WHERE google_sub IS NOT NULL;
 
 CREATE TRIGGER trg_usuarios_actualizado
 BEFORE UPDATE ON usuarios
 FOR EACH ROW EXECUTE FUNCTION actualizar_marca_tiempo();
+
+CREATE TABLE codigos_recuperacion (
+    id_usuario UUID PRIMARY KEY REFERENCES usuarios(id) ON DELETE CASCADE,
+    codigo_hash VARCHAR(64) NOT NULL,
+    expira_en TIMESTAMPTZ NOT NULL,
+    solicitado_en TIMESTAMPTZ NOT NULL,
+    intentos INTEGER DEFAULT 0 NOT NULL
+);
+
+CREATE TABLE accesos_asesor_ies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_usuario UUID NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+    fecha TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    metodo VARCHAR(20) NOT NULL CHECK (metodo IN ('contraseña', 'google')),
+    navegador VARCHAR(120) NOT NULL,
+    direccion_ip VARCHAR(45)
+);
+
+CREATE INDEX ix_accesos_asesor_usuario_fecha ON accesos_asesor_ies(id_usuario, fecha DESC);
 
 -- ============================================================================
 -- SECCIÓN 3: ECOSISTEMA ACADÉMICO (IES, SEDES, FACULTADES, PROGRAMAS Y PENSUM)
@@ -164,6 +185,7 @@ CREATE TABLE documentos_institucion (
     tipo_documento VARCHAR(60) NOT NULL, -- 'resolucion_men', 'rut_institucional', 'cedula_rector'
     nombre_archivo VARCHAR(255) NOT NULL,
     url_archivo TEXT NOT NULL,
+    archivo_cargado_por_usuario BOOLEAN DEFAULT FALSE NOT NULL,
     tamano_kb INTEGER NOT NULL,
     subido_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     estado VARCHAR(30) DEFAULT 'adjunto' NOT NULL
@@ -276,6 +298,9 @@ CREATE TABLE asesores_ies (
     correo_institucional VARCHAR(255) NOT NULL,
     telefono VARCHAR(50),
     cargo VARCHAR(100) DEFAULT 'Asesor de Enlace y Prácticas',
+    avisar_accesos_email BOOLEAN DEFAULT FALSE NOT NULL,
+    avisar_cambios_email BOOLEAN DEFAULT TRUE NOT NULL,
+    sedes_cobertura VARCHAR(500),
     estado VARCHAR(30) DEFAULT 'activo' NOT NULL,
     creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
@@ -332,6 +357,7 @@ CREATE TABLE documentos_empresa (
     tipo_documento VARCHAR(60) NOT NULL, -- 'camara_comercio', 'rut', 'cedula_rep_legal', 'carta_autorizacion'
     nombre_archivo VARCHAR(255) NOT NULL,
     url_archivo TEXT NOT NULL,
+    archivo_cargado_por_usuario BOOLEAN DEFAULT FALSE NOT NULL,
     tamano_kb INTEGER NOT NULL,
     subido_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     estado VARCHAR(30) DEFAULT 'adjunto' NOT NULL
@@ -454,6 +480,7 @@ CREATE TABLE egresados (
     url_portada TEXT,
     titular_profesional VARCHAR(255),
     biografia TEXT,
+    perfil_adicional JSONB DEFAULT '{}'::jsonb NOT NULL,
     disponible_para_trabajar BOOLEAN DEFAULT TRUE NOT NULL,
     visibilidad_disponibilidad VARCHAR(50) DEFAULT 'todos_los_reclutadores' NOT NULL,
     tipo_disponibilidad VARCHAR(50) DEFAULT 'inmediata',
@@ -463,6 +490,7 @@ CREATE TABLE egresados (
     modalidades_interes TEXT[],
     dispuesto_a_reubicarse BOOLEAN DEFAULT FALSE NOT NULL,
     porcentaje_completitud_perfil INTEGER DEFAULT 0 NOT NULL,
+    estado VARCHAR(30) DEFAULT 'pendiente' NOT NULL,
     creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     actualizado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
@@ -487,25 +515,22 @@ CREATE TABLE academicos_egresado (
     proyecto_grado TEXT,
     estado_academico VARCHAR(50) DEFAULT 'recien-egresado' NOT NULL, -- 'recien-egresado', 'practicante', 'experiencia'
     estado_laboral VARCHAR(50) DEFAULT 'buscando' NOT NULL, -- 'empleado', 'buscando', 'inactivo'
-    validado_por_ies BOOLEAN DEFAULT TRUE NOT NULL,
+    validado_por_ies BOOLEAN DEFAULT FALSE NOT NULL,
+    url_diploma_pdf TEXT,
+    diploma_cargado_por_egresado BOOLEAN DEFAULT FALSE NOT NULL,
+    estado_verificacion VARCHAR(30) DEFAULT 'pendiente' NOT NULL, -- 'pendiente', 'aprobado', 'rechazado'
+    numero_acta_grado VARCHAR(60),
+    numero_libro_folio VARCHAR(60),
+    fecha_grado DATE,
+    fecha_verificacion TIMESTAMPTZ,
+    verificado_por_usuario UUID REFERENCES usuarios(id) ON DELETE SET NULL,
+    motivo_rechazo TEXT,
+    sello_digital VARCHAR(128),
     creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 CREATE INDEX idx_academicos_egresado_prog ON academicos_egresado(id_programa);
-
--- Registro de empleo actual para seguimiento y métricas de empleabilidad IES
-CREATE TABLE registros_laborales_egresado (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_academico UUID NOT NULL REFERENCES academicos_egresado(id) ON DELETE CASCADE,
-    empresa_contratante VARCHAR(150) NOT NULL,
-    cargo_desempenado VARCHAR(150) NOT NULL,
-    tipo_contrato VARCHAR(60) NOT NULL,
-    modalidad_trabajo VARCHAR(50) NOT NULL,
-    rango_salarial VARCHAR(60),
-    fecha_vinculacion DATE NOT NULL,
-    creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    id_postulacion UUID UNIQUE REFERENCES postulaciones(id) ON DELETE SET NULL -- contratación que originó el registro
-);
+CREATE INDEX idx_academicos_egresado_estado_verif ON academicos_egresado(estado_verificacion);
 
 CREATE TABLE competencias_egresado (
     id_egresado UUID NOT NULL REFERENCES egresados(id) ON DELETE CASCADE,
@@ -632,6 +657,20 @@ CREATE INDEX idx_postulaciones_egresado ON postulaciones(id_egresado);
 CREATE TRIGGER trg_postulaciones_actualizado
 BEFORE UPDATE ON postulaciones
 FOR EACH ROW EXECUTE FUNCTION actualizar_marca_tiempo();
+
+-- Registro de empleo actual para seguimiento y métricas de empleabilidad IES (vinculado a postulaciones)
+CREATE TABLE registros_laborales_egresado (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_academico UUID NOT NULL REFERENCES academicos_egresado(id) ON DELETE CASCADE,
+    id_postulacion UUID UNIQUE REFERENCES postulaciones(id) ON DELETE SET NULL,
+    empresa_contratante VARCHAR(150) NOT NULL,
+    cargo_desempenado VARCHAR(150) NOT NULL,
+    tipo_contrato VARCHAR(60) NOT NULL,
+    modalidad_trabajo VARCHAR(50) NOT NULL,
+    rango_salarial VARCHAR(60),
+    fecha_vinculacion DATE NOT NULL,
+    creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
 
 CREATE TABLE historial_fases_postulacion (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
