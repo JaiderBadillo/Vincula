@@ -42,6 +42,7 @@ EstadoVacanteEnum = PG_ENUM(
     'abierta',
     'pausada',
     'cerrada',
+    'inhabilitada',  # moderación: la fija solo el administrador de Vincula
     name='estado_vacante_enum',
     create_type=False
 )

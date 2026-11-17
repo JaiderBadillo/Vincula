@@ -59,6 +59,13 @@ def client(role, session=None, user_id=USER_ID):
     return TestClient(app)
 
 
+class ModelTests(unittest.TestCase):
+    def test_el_modelo_de_vacante_acepta_el_estado_inhabilitada(self):
+        """Si el enum del ORM no lo declara, cargar una vacante inhabilitada lanza LookupError (500)."""
+        from app.modules.vacancies_ats.models import EstadoVacanteEnum
+        self.assertIn("inhabilitada", EstadoVacanteEnum.enums)
+
+
 class AccessTests(unittest.TestCase):
     def test_sin_sesion_no_se_puede_reportar(self):
         app = FastAPI(); app.include_router(router)

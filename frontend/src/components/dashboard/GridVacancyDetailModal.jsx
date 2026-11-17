@@ -644,7 +644,12 @@ export default function GridVacancyDetailModal({
         </div>
 
       </div>
-      {reporting && <ReportVacancyModal job={job} onClose={() => setReporting(false)} />}
+      {/* El fondo de este modal cierra al hacer clic: el de reporte no debe propagarle los suyos */}
+      {reporting && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <ReportVacancyModal job={job} onClose={() => setReporting(false)} />
+        </div>
+      )}
     </div>
   );
 }
