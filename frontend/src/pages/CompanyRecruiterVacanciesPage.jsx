@@ -8,6 +8,8 @@ import { useCompanySites } from '../hooks/useCompanySites.js';
 import { useCompanyRecruiters } from '../hooks/useCompanyRecruiters.js';
 import { companyPhotos } from '../data/companyImages.js';
 import { authService } from '../services/authService.js';
+import ExportExcelButton from '../components/common/ExportExcelButton.jsx';
+import { buildVacanciesReport } from '../utils/exportReports.js';
 import {
   VACANCY_STATUS,
   VACANCY_TABS,
@@ -191,6 +193,15 @@ export default function CompanyRecruiterVacanciesPage() {
                   <i className="bx bx-user-check text-sm" />
                   <span>Ver Embudo ATS</span>
                 </Link>
+                <ExportExcelButton
+                  variant="glass"
+                  disabled={!baseVacancies.length}
+                  buildSpec={() => buildVacanciesReport(baseVacancies, {
+                    companyName: authService.getCurrentUser()?.nombre,
+                    sitesById: Object.fromEntries(sites.map((s) => [s.id, s.name])),
+                    recruitersById: Object.fromEntries(recruiters.map((r) => [r.id, r.fullName])),
+                  })}
+                />
               </div>
             }
           />

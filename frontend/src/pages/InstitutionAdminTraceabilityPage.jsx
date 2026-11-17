@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import InstitutionPortalLayout from '../components/institution/InstitutionPortalLayout.jsx';
+import ExportExcelButton from '../components/common/ExportExcelButton.jsx';
+import { authService } from '../services/authService.js';
+import { buildTraceabilityReport } from '../utils/exportReports.js';
 import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
 import PensumUploadModal from '../components/institution/PensumUploadModal.jsx';
 import TraceabilityCurriculumViews from '../components/institution/TraceabilityCurriculumViews.jsx';
@@ -228,6 +231,12 @@ export default function InstitutionAdminTraceabilityPage() {
                     : 'Sin malla curricular registrada'}
                 </p>
               </div>
+              {report && !isLoading && !loadError && (
+                <ExportExcelButton
+                  label="Exportar a Excel"
+                  buildSpec={() => buildTraceabilityReport({ report, outcomes, institutionName: authService.getCurrentUser()?.nombre })}
+                />
+              )}
             </div>
 
             {report && (

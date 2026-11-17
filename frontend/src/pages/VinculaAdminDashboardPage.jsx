@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import VinculaAdminLayout from '../components/admin/VinculaAdminLayout.jsx';
+import ExportExcelButton from '../components/common/ExportExcelButton.jsx';
+import { buildPlatformSummaryReport } from '../utils/exportReports.js';
 import CompanyPageHero from '../components/company/CompanyPageHero.jsx';
 import PlatformPeriodicAnalytics from '../components/admin/PlatformPeriodicAnalytics.jsx';
 import CompanyVerificationDrawer from '../components/admin/CompanyVerificationDrawer.jsx';
@@ -119,6 +121,12 @@ export default function VinculaAdminDashboardPage() {
                     <i className="bx bx-graduation text-sm" />
                     <span>Aprobar IES ({metrics.pendingInstitutions})</span>
                   </Link>
+                  <ExportExcelButton
+                    variant="glass"
+                    label="Exportar resumen"
+                    disabled={isLoading}
+                    buildSpec={() => buildPlatformSummaryReport(metrics)}
+                  />
                 </div>
               }
             />

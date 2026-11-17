@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import CompanyPortalLayout from '../components/company/CompanyPortalLayout.jsx';
 import CompanyPageHero from '../components/company/CompanyPageHero.jsx';
+import ExportExcelButton from '../components/common/ExportExcelButton.jsx';
+import { authService } from '../services/authService.js';
+import { buildVacanciesReport } from '../utils/exportReports.js';
 import VacancyDetailDrawer from '../components/company/VacancyDetailDrawer.jsx';
 import { useCompanyRecruiters } from '../hooks/useCompanyRecruiters.js';
 import { useCompanyVacancies } from '../hooks/useCompanyVacancies.js';
@@ -186,6 +189,16 @@ export default function CompanyAdminVacanciesPage() {
             subtitle="Publica nuevas ofertas, sigue cada convocatoria y decide quién del equipo la lleva."
             stats={stats}
             actions={
+              <div className="flex flex-wrap items-center gap-2">
+              <ExportExcelButton
+                variant="glass"
+                disabled={!vacancies.length}
+                buildSpec={() => buildVacanciesReport(vacancies, {
+                  companyName: authService.getCurrentUser()?.nombre,
+                  sitesById: Object.fromEntries(sites.map((s) => [s.id, s.name])),
+                  recruitersById: Object.fromEntries(recruiters.map((r) => [r.id, r.fullName])),
+                })}
+              />
               <button
                 type="button"
                 data-tour="company-publicar-vacante"
@@ -195,6 +208,7 @@ export default function CompanyAdminVacanciesPage() {
                 <i className="bx bx-plus text-base" aria-hidden="true" />
                 <span>Nueva vacante</span>
               </button>
+              </div>
             }
           />
 

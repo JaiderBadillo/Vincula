@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { buildPlatformPeriods } from '../../utils/platformAnalytics.js';
+import { buildPeriodicReport } from '../../utils/exportReports.js';
+import ExportExcelButton from '../common/ExportExcelButton.jsx';
 
 export default function PlatformPeriodicAnalytics({ metrics }) {
   const { monthly, semesters } = useMemo(() => buildPlatformPeriods(metrics), [metrics]);
@@ -52,6 +54,11 @@ export default function PlatformPeriodicAnalytics({ metrics }) {
       cumGraduates: metrics?.total_egresados ?? 0,
     };
   }, [metrics]);
+
+  function buildExcelSpec() {
+    const labels = { last6m: 'Últimos 6 meses', year: `Año ${year}`, quarter: `Trimestre Q${currentQuarter.slice(-1)}`, semestral: 'Semestres' };
+    return buildPeriodicReport({ series: seriesData, totals: periodTotals, rangeLabel: labels[selectedRange] });
+  }
 
   // Función de descarga CSV
   function handleDownloadCSV() {
@@ -213,6 +220,7 @@ export default function PlatformPeriodicAnalytics({ metrics }) {
             <i className="bx bx-download text-sm" />
             <span>Exportar CSV</span>
           </button>
+          <ExportExcelButton variant="warm" buildSpec={buildExcelSpec} disabled={!seriesData.length} />
         </div>
       </div>
 

@@ -10,6 +10,8 @@ import { companyPhotos } from '../data/companyImages.js';
 import { ATS_STAGES } from '../data/companyCandidatesData.js';
 import { useCompanyRecruiters } from '../hooks/useCompanyRecruiters.js';
 import { authService } from '../services/authService.js';
+import ExportExcelButton from '../components/common/ExportExcelButton.jsx';
+import { buildCandidatesReport } from '../utils/exportReports.js';
 
 const selectClass =
   'w-full appearance-none rounded-xl border border-sand-line bg-white py-2.5 pl-3.5 pr-9 text-xs font-semibold text-ink outline-none transition-colors focus:border-terracotta cursor-pointer';
@@ -226,6 +228,11 @@ export default function CompanyRecruiterCandidatesPage() {
                   <i className="bx bx-home-alt-2 text-sm" />
                   <span>Panel de Inicio</span>
                 </Link>
+                <ExportExcelButton
+                  variant="glass"
+                  disabled={!candidates.length}
+                  buildSpec={() => buildCandidatesReport(candidates, { companyName: currentUser?.nombre })}
+                />
               </div>
             }
           />
