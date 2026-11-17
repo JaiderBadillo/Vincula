@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { authService, extractErrorMessage } from '../../services/authService.js';
 import PortalThemePicker from '../common/PortalThemePicker.jsx';
+import RoleFaq from '../common/RoleFaq.jsx';
 
 const API = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 const GOOGLE_CLIENT_ID = import.meta.env?.VITE_GOOGLE_CLIENT_ID || '698543862122-050jkphuknmg709207im4lfs39744ef8.apps.googleusercontent.com';
@@ -23,6 +24,7 @@ const sections = [
   { id: 'notificaciones', icon: 'bx-bell', title: 'Notificaciones', detail: 'Avisos por correo' },
   { id: 'sesiones', icon: 'bx-devices', title: 'Accesos', detail: 'Historial y sesión' },
   { id: 'apariencia', icon: 'bx-palette', title: 'Apariencia', detail: 'Tema y colores' },
+  { id: 'faq', icon: 'bx-help-circle', title: 'Preguntas frecuentes', detail: 'Ayuda para asesores' },
 ];
 
 export default function AdvisorSettingsModal({ isOpen, onClose, userName, userAvatar, userInitials }) {
@@ -142,7 +144,7 @@ export default function AdvisorSettingsModal({ isOpen, onClose, userName, userAv
           <p className="m-0 text-[0.7rem] font-bold uppercase tracking-widest text-white/70">Perfil en uso</p>
           <h3 className="mt-1 font-display text-lg font-bold text-white">{userName || 'Asesor IES'}</h3>
           <p className="text-xs font-semibold text-ochre">Asesor IES · {account?.institucion || 'Institución'}</p>
-          <nav aria-label="Secciones de configuración" className="mt-4 grid grid-cols-3 gap-2 md:mt-7 md:grid-cols-1">
+          <nav aria-label="Secciones de configuración" className="mt-4 grid grid-cols-2 gap-2 md:mt-7 md:grid-cols-1">
             {sections.map(item => <button type="button" key={item.id} onClick={() => { setSection(item.id); setError(''); setSuccess(''); setCurrent(''); passwordRef.current = ''; }}
               aria-current={section === item.id ? 'page' : undefined}
               className={`flex items-center justify-center gap-3 rounded-xl border px-2 py-2 text-center transition-colors md:justify-start md:px-3 md:py-3 md:text-left ${section === item.id ? 'border-lime/60 bg-white/20' : 'border-transparent hover:bg-white/10'}`}>
@@ -176,7 +178,8 @@ export default function AdvisorSettingsModal({ isOpen, onClose, userName, userAv
           {error && <p role="alert" className="rounded-xl border border-terracotta/30 bg-terracotta/10 p-3 text-xs text-terracotta-dark">{error}</p>}
           {success && <p role="status" className="rounded-xl border border-green/20 bg-green/10 p-3 text-xs text-green-dark">{success}</p>}
           {section === 'apariencia' && <PortalThemePicker />}
-          {section !== 'apariencia' && !account && !error && <p className="text-sm text-secondary">Cargando tu cuenta…</p>}
+          {section === 'faq' && <RoleFaq role="institution_advisor" />}
+          {section !== 'apariencia' && section !== 'faq' && !account && !error && <p className="text-sm text-secondary">Cargando tu cuenta…</p>}
           {account && section === 'cuenta' && <form onSubmit={event => save(event, 'email')} className="grid gap-5">
             <div><h3 className="m-0 text-lg font-bold text-ink">Correo de inicio de sesión</h3><p className="mt-1 text-xs text-secondary">Usa este correo para entrar y recibir avisos de Víncula.</p></div>
             <label className="grid gap-2 text-xs font-semibold uppercase tracking-wide text-secondary">Correo electrónico<input type="email" required className={input} value={email} onChange={event => setEmail(event.target.value)} /></label>

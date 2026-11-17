@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { authService, extractErrorMessage } from '../../services/authService.js';
 import PortalThemePicker from './PortalThemePicker.jsx';
+import RoleFaq from './RoleFaq.jsx';
 
 const API = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 const GOOGLE_CLIENT_ID = import.meta.env?.VITE_GOOGLE_CLIENT_ID || '698543862122-050jkphuknmg709207im4lfs39744ef8.apps.googleusercontent.com';
@@ -11,6 +12,7 @@ const tabs = [
   { id: 'seguridad', title: 'Seguridad', detail: 'Contraseña y Google', icon: 'bx-shield-quarter' },
   { id: 'sesiones', title: 'Accesos', detail: 'Sesión y actividad', icon: 'bx-devices' },
 ];
+const faqTab = { id: 'faq', title: 'Preguntas frecuentes', detail: 'Ayuda para tu rol', icon: 'bx-help-circle' };
 const themeTab = { id: 'apariencia', title: 'Apariencia', detail: 'Tema y colores', icon: 'bx-palette' };
 const labels = {
   graduate: 'Egresado', institution_admin: 'Administrador IES', company_admin: 'Administrador de empresa',
@@ -111,7 +113,7 @@ export default function UniversalSettingsModal({ isOpen, onClose, role, userName
     finally { setBusy(false); }
   }
 
-  const visibleTabs = role === 'graduate' ? tabs : [...tabs, themeTab];
+  const visibleTabs = role === 'graduate' ? [...tabs, faqTab] : [...tabs, themeTab, faqTab];
 
   if (!isOpen) return null;
   return createPortal(<div role="dialog" aria-modal="true" aria-labelledby="universal-settings-title" onClick={onClose}
@@ -168,7 +170,8 @@ export default function UniversalSettingsModal({ isOpen, onClose, role, userName
           {error && <p role="alert" className="rounded-xl border border-terracotta/30 bg-terracotta/10 p-3 text-xs text-terracotta-dark">{error}</p>}
           {success && <p role="status" className="rounded-xl border border-green/20 bg-green/10 p-3 text-xs text-green-dark">{success}</p>}
           {tab === 'apariencia' && role !== 'graduate' && <PortalThemePicker />}
-          {tab !== 'apariencia' && !account && !error && <p className="text-sm text-secondary">Cargando tu cuenta…</p>}
+          {tab === 'faq' && <RoleFaq role={role} />}
+          {tab !== 'apariencia' && tab !== 'faq' && !account && !error && <p className="text-sm text-secondary">Cargando tu cuenta…</p>}
           {account && tab === 'cuenta' && <form onSubmit={event => save(event, 'email')} className="grid gap-5">
             <div><h3 className="text-lg font-bold text-ink">Correo de inicio de sesión</h3><p className="mt-1 text-xs text-secondary">Este es el correo registrado para entrar a Víncula.</p></div>
             <label className="grid gap-2 text-xs font-semibold text-secondary">Correo electrónico<input type="email" required className={field} value={email} onChange={event => setEmail(event.target.value)} /></label>
