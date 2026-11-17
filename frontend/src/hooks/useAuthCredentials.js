@@ -1,11 +1,31 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export const AUTH_CREDENTIALS_STORAGE_KEY = 'vincula.auth.credentials.v2';
+export const AUTH_CREDENTIALS_STORAGE_KEY = 'vincula.auth.credentials.v3';
 export const AUTH_CREDENTIALS_SYNC_EVENT = 'vincula:auth-credentials-updated';
 export const COMPANY_PERSONA_STORAGE_KEY = 'vincula.company.active-persona';
 export const COMPANY_PERSONA_SYNC_EVENT = 'vincula:company-persona-updated';
 
 export const INITIAL_CREDENTIALS = {
+  graduate: {
+    roleId: 'graduate',
+    roleLabel: 'Egresado',
+    category: 'Egresados y Graduados',
+    name: 'Angie Camargo',
+    email: 'salaswos1b@gmail.com',
+    password: 'Egresado123*',
+    lastChanged: 'Hoy',
+    portalRoute: '/dashboard',
+  },
+  institution_advisor: {
+    roleId: 'institution_advisor',
+    roleLabel: 'Asesor IES (Juan David)',
+    category: 'Institución de Educación Superior',
+    name: 'Ing. Juan David Paredes',
+    email: 'jd1279w@gmail.com',
+    password: 'Asesor123*',
+    lastChanged: 'Hoy',
+    portalRoute: '/institucion/dashboard',
+  },
   institution_admin: {
     roleId: 'institution_admin',
     roleLabel: 'Administrador IES (UTS)',
@@ -15,6 +35,26 @@ export const INITIAL_CREDENTIALS = {
     password: 'IesAdmin123*',
     lastChanged: 'Hoy',
     portalRoute: '/institucion/admin/perfil',
+  },
+  company_admin: {
+    roleId: 'company_admin',
+    roleLabel: 'Administrador de Empresa',
+    category: 'Empresas y Empleadores',
+    name: 'Johan Sneider Henao',
+    email: 'wositozurdo7@gmail.com',
+    password: 'Empresa123*',
+    lastChanged: 'Hoy',
+    portalRoute: '/empresa/admin/perfil',
+  },
+  company_recruiter: {
+    roleId: 'company_recruiter',
+    roleLabel: 'Reclutador (Laura Barco)',
+    category: 'Empresas y Empleadores',
+    name: 'Laura Barco',
+    email: 'laurabarco@gmail.com',
+    password: 'Reclutador123*',
+    lastChanged: 'Hoy',
+    portalRoute: '/empresa/reclutador/dashboard',
   },
   vincula_admin: {
     roleId: 'vincula_admin',
@@ -31,8 +71,9 @@ export const INITIAL_CREDENTIALS = {
 function readCredentials() {
   if (typeof window === 'undefined') return INITIAL_CREDENTIALS;
   try {
-    // Limpieza de claves obsoletas v1 si existían
+    // Limpieza de claves obsoletas v1/v2 si existían
     window.localStorage.removeItem('vincula.auth.credentials.v1');
+    window.localStorage.removeItem('vincula.auth.credentials.v2');
     const raw = window.localStorage.getItem(AUTH_CREDENTIALS_STORAGE_KEY);
     if (!raw) return INITIAL_CREDENTIALS;
     const parsed = JSON.parse(raw);

@@ -475,21 +475,57 @@ export default function LoginPage() {
             <div className="flex flex-wrap justify-center gap-2">
               <button
                 type="button"
-                onClick={() => handleQuickFill('vincula_admin')}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-terracotta/30 bg-terracotta/10 px-3.5 py-1.5 text-xs font-bold text-terracotta hover:bg-terracotta hover:text-white transition-colors cursor-pointer"
-                title="Super Administrador Vincula (admin@vincula.com.co)"
+                onClick={() => handleQuickFill('graduate')}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-sand-line bg-white px-3 py-1.5 text-xs font-bold text-ink hover:bg-green hover:text-white hover:border-green transition-colors cursor-pointer"
+                title="Egresado — Angie Camargo (salaswos1b@gmail.com)"
               >
-                <i className="bx bx-shield-quarter text-sm" aria-hidden="true" />
-                Admin Vincula
+                <i className="bx bxs-graduation text-sm text-green" aria-hidden="true" />
+                Egresado
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('institution_advisor')}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-sand-line bg-white px-3 py-1.5 text-xs font-bold text-ink hover:bg-green hover:text-white hover:border-green transition-colors cursor-pointer"
+                title="Asesor IES — Ing. Juan David Paredes (jd1279w@gmail.com)"
+              >
+                <i className="bx bx-user-check text-sm text-green" aria-hidden="true" />
+                Asesor IES (Juan David)
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickFill('institution_admin')}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-green/30 bg-green/10 px-3.5 py-1.5 text-xs font-bold text-green-dark hover:bg-green hover:text-white transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-green/30 bg-green/10 px-3 py-1.5 text-xs font-bold text-green-dark hover:bg-green hover:text-white transition-colors cursor-pointer"
                 title="Cuenta Institucional UTS (ies@uts.edu.co)"
               >
                 <i className="bx bx-buildings text-sm" aria-hidden="true" />
                 Cuenta UTS (IES)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('company_admin')}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-sand-line bg-white px-3 py-1.5 text-xs font-bold text-ink hover:bg-cocoa hover:text-white transition-colors cursor-pointer"
+                title="Admin Empresa — Johan Sneider Henao (wositozurdo7@gmail.com)"
+              >
+                <i className="bx bx-briefcase-alt-2 text-sm text-cocoa" aria-hidden="true" />
+                Admin Empresa
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('company_recruiter')}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-sand-line bg-white px-3 py-1.5 text-xs font-bold text-ink hover:bg-cocoa hover:text-white transition-colors cursor-pointer"
+                title="Reclutador — Laura Barco (laurabarco@gmail.com)"
+              >
+                <i className="bx bx-id-card text-sm text-cocoa" aria-hidden="true" />
+                Reclutador (Laura)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill('vincula_admin')}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-terracotta/30 bg-terracotta/10 px-3 py-1.5 text-xs font-bold text-terracotta hover:bg-terracotta hover:text-white transition-colors cursor-pointer"
+                title="Super Administrador Vincula (admin@vincula.com.co)"
+              >
+                <i className="bx bx-shield-quarter text-sm" aria-hidden="true" />
+                Admin Vincula
               </button>
             </div>
           </div>
