@@ -5,7 +5,7 @@
 1. **Capa de Presentación (Frontend SPA):** React 18, Vite 8, React Router v7 y Tailwind CSS v4 (desplegada en Vercel).
 2. **Capa de Aplicación (Backend API):** FastAPI, Uvicorn ASGI y SQLAlchemy 2.0 Async con Gating de Cuarentena y 7 dominios modulares bajo `/api/v1` (desplegada en Render).
 3. **Capa de Persistencia:** PostgreSQL 15+, extensión vectorial `pgvector` y buckets privados en Supabase Storage.
-4. **Capa de Procesamiento e Integraciones:** Google Gemini API, Google OAuth 2.0, Motor OCR/PDF local (PyPDF + RapidOCR + ReportLab), Brevo HTTPS / SMTP y Webhooks n8n.
+4. **Capa de Procesamiento e Integraciones:** Google Gemini API, Google OAuth 2.0, Motor OCR/PDF local (PyPDF + RapidOCR + ReportLab) y correo transaccional vía Brevo API HTTPS.
 
 ---
 
@@ -44,8 +44,7 @@ flowchart TD
         EXT_GEM["Google Gemini API"]
         EXT_OCR["Motor OCR y PDF Local"]
         EXT_SSO["Google OAuth 2.0"]
-        EXT_MAIL["Brevo API y Gmail SMTP"]
-        EXT_N8N["Webhooks n8n"]
+        EXT_MAIL["Brevo API HTTPS - Correo Transaccional"]
     end
 
     U_EGR --> FE_APP
@@ -69,7 +68,6 @@ flowchart TD
     BE_MODS --> EXT_OCR
     BE_AUTH --> EXT_SSO
     BE_MODS --> EXT_MAIL
-    BE_MODS --> EXT_N8N
 ```
 
 ---
@@ -100,9 +98,8 @@ flowchart LR
     end
 
     subgraph INTEG["Adaptadores (app/integrations)"]
-        I_STO["supabase_storage.py"]
-        I_NOT["transactional_notifications.py"]
-        I_WEB["n8n_webhooks.py"]
+        I_STO["supabase_storage.py - Storage y URLs Firmadas"]
+        I_NOT["transactional_notifications.py - Brevo HTTPS"]
     end
 
     MAIN --> M1
@@ -121,6 +118,7 @@ flowchart LR
     M6 --> CORE
     M7 --> CORE
 
+    M1 --> INTEG
     M2 --> INTEG
     M3 --> INTEG
     M4 --> INTEG
@@ -132,13 +130,13 @@ flowchart LR
 
 | Módulo | Prefijo API | Responsabilidad Principal |
 | :--- | :--- | :--- |
-| **1. `iam`** | `/api/v1/auth` | Autenticación JWT, login con Google OAuth 2.0, registro multirrol, sesiones y contraseñas. |
+| **1. `iam`** | `/api/v1/auth` | Autenticación JWT, login con Google OAuth 2.0, registro multirrol, sesiones y recuperación de contraseña. |
 | **2. `superadmin`** | `/api/v1/admin` | Auditoría legal de 72h, aprobación o subsanación de empresas e instituciones y analítica global. |
 | **3. `companies`** | `/api/v1/empresas` | Perfil corporativo, sedes, equipo de reclutadores, convenios con IES y bitácora de actividad. |
 | **4. `institutions`** | `/api/v1/instituciones` | Sedes IES, facultades, programas SNIES, extracción OCR de pensums y validación de diplomas con Sello Digital SHA-256. |
 | **5. `graduates`** | `/api/v1/egresados` | Hoja de vida integral, soporte de diploma PDF, idiomas, experiencia, privacidad y seguimiento de postulaciones. |
 | **6. `vacancies_ats`** | `/api/v1/vacantes` y `/api/v1/reclutador` | Publicación de vacantes con Gating de Cuarentena, tablero ATS Kanban de 6 fases, entrevistas y visor de diplomas para reclutadores. |
-| **7. `ai_engine`** | `/api/v1/ia` | Recomendación híbrida de vacantes, asistente de carrera con RAG y trazabilidad curricular frente al mercado laboral. |
+| **7. `ai_engine`** | `/api/v1/ia` | Recomendación híbrida de vacantes (TF-IDF + competencias), asistente de carrera con RAG y trazabilidad curricular frente al mercado laboral. |
 
 ---
 
@@ -173,5 +171,5 @@ sequenceDiagram
     EMP->>API: Consulta tablero ATS Kanban y solicita URL firmada del diploma
     API-->>EMP: Entrega ficha del candidato, Sello Digital y visor PDF del diploma
     EMP->>API: Avanza candidato por las fases del embudo ATS
-    API-->>EGR: Notifica cambio de etapa y entrevistas programadas
+    API-->>EGR: Envia notificacion por correo via Brevo API HTTPS
 ```
