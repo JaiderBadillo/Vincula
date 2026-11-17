@@ -3,6 +3,8 @@ Vincula API - Monolito Modular Híbrido Asíncrono
 FastAPI 2.0+ con Gating de Cuarentena (Opción 2) y 7 Dominios Modulares Desacoplados.
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
@@ -17,8 +19,27 @@ from app.modules.graduates.router import router as graduates_router
 from app.modules.vacancies_ats.router import router as vacancies_router
 from app.modules.ai_engine.router import router as ai_engine_router
 from app.api.endpoints.traceability import router as legacy_traceability_router
+from app.modules.moderation.router import router as moderation_router
+
+@asynccontextmanager
+async def lifespan(_app):
+    """Carga las cuentas suspendidas para cortar también sus sesiones abiertas tras un reinicio."""
+    try:
+        from app.core import database
+        from app.core.dependencies import revoke_sessions
+        from app.modules.moderation.services import load_suspended_users
+        if database.AsyncSessionLocal is not None:
+            async with database.AsyncSessionLocal() as session:
+                for uid in await load_suspended_users(session):
+                    revoke_sessions(uid)
+    except Exception as exc:  # noqa: BLE001  (p. ej. antes de aplicar la migración)
+        import logging
+        logging.getLogger(__name__).warning("No se cargaron las cuentas suspendidas: tipo=%s", type(exc).__name__)
+    yield
+
 
 app = FastAPI(
+    lifespan=lifespan,
     title="Vincula API - Plataforma de Empleabilidad IES",
     description=(
         "Backend estructurado bajo arquitectura de Monolito Modular Híbrido Asíncrono. "
@@ -52,6 +73,7 @@ async def add_security_headers(request, call_next):
 # Montaje de los 7 Dominios Modulares bajo /api/v1
 app.include_router(iam_router, prefix="/api/v1")
 app.include_router(superadmin_router, prefix="/api/v1")
+app.include_router(moderation_router, prefix="/api/v1")
 app.include_router(companies_router, prefix="/api/v1")
 app.include_router(institutions_router, prefix="/api/v1")
 app.include_router(graduates_router, prefix="/api/v1")

@@ -713,6 +713,13 @@ class VacancyATSService:
                 detail={"codigo": "VACANTE_NO_ENCONTRADA", "mensaje": "Vacante no encontrada."}
             )
 
+        if vacante.estado == "inhabilitada":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"codigo": "VACANTE_INHABILITADA",
+                        "mensaje": "El equipo de Vincula inhabilitó esta vacante. Contacta a soporte para revisarla."}
+            )
+
         estado_clean = nuevo_estado.strip().lower()
         if estado_clean not in ("abierta", "pausada", "cerrada", "borrador"):
             raise HTTPException(

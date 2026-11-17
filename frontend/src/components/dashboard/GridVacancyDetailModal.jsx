@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { formatClosingLabel } from '../../utils/formatters.js';
+import ReportVacancyModal from './ReportVacancyModal.jsx';
 
 export default function GridVacancyDetailModal({
   job,
@@ -14,6 +15,7 @@ export default function GridVacancyDetailModal({
 }) {
   const [activeTab, setActiveTab] = useState('cargo'); // 'cargo' | 'match' | 'empresa' | 'proceso'
   const [copiedLink, setCopiedLink] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   // Cerrar con Escape, navegación con flechas y bloqueo de scroll
   useEffect(() => {
@@ -611,6 +613,15 @@ export default function GridVacancyDetailModal({
           <div className="flex items-center gap-2.5 w-full sm:w-auto">
             <button
               type="button"
+              onClick={() => setReporting(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-secondary hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+              title="Avisar al equipo de Vincula si esta vacante parece irregular"
+            >
+              <i className="bx bx-flag text-base" aria-hidden="true" />
+              <span>Reportar</span>
+            </button>
+            <button
+              type="button"
               onClick={onClose}
               className="rounded-xl border border-line bg-page px-4 py-2 text-xs font-semibold text-secondary hover:text-ink hover:bg-page/70 transition-colors cursor-pointer"
             >
@@ -633,6 +644,7 @@ export default function GridVacancyDetailModal({
         </div>
 
       </div>
+      {reporting && <ReportVacancyModal job={job} onClose={() => setReporting(false)} />}
     </div>
   );
 }

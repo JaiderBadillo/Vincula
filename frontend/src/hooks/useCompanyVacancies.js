@@ -48,7 +48,7 @@ function mapApiVacancyToLocal(v) {
     category: v.categoria,
     siteId: v.id_sede,
     ownerRecruiterId: v.id_reclutador_responsable,
-    status: v.estado === 'abierta' ? 'open' : v.estado === 'borrador' ? 'draft' : v.estado === 'pausada' ? 'paused' : 'closed',
+    status: v.estado === 'abierta' ? 'open' : v.estado === 'borrador' ? 'draft' : v.estado === 'pausada' ? 'paused' : v.estado === 'inhabilitada' ? 'disabled' : 'closed',
     modality: (v.modalidad || 'presencial').toLowerCase(),
     contractType: v.tipo_contrato,
     experienceLevel: v.nivel_experiencia || '',

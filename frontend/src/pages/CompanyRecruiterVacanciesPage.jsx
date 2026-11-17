@@ -113,6 +113,7 @@ export default function CompanyRecruiterVacanciesPage() {
       paused: baseVacancies.filter((v) => v.status === 'paused').length,
       draft: baseVacancies.filter((v) => v.status === 'draft').length,
       closed: baseVacancies.filter((v) => v.status === 'closed').length,
+      disabled: baseVacancies.filter((v) => v.status === 'disabled').length,
       all: baseVacancies.length,
     };
   }, [baseVacancies]);
@@ -223,6 +224,7 @@ export default function CompanyRecruiterVacanciesPage() {
                 { id: 'paused', label: 'Pausadas', count: countsByTab.paused },
                 { id: 'draft', label: 'Borradores', count: countsByTab.draft },
                 { id: 'closed', label: 'Cerradas', count: countsByTab.closed },
+                ...(countsByTab.disabled ? [{ id: 'disabled', label: 'Inhabilitadas', count: countsByTab.disabled }] : []),
                 { id: 'all', label: 'Todas', count: countsByTab.all },
               ].map((tab) => {
                 const isActive = activeTab === tab.id;

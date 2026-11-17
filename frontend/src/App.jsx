@@ -39,6 +39,7 @@ import VacanciesProposalPage from './pages/VacanciesProposalPage.jsx';
 import VinculaAdminDashboardPage from './pages/VinculaAdminDashboardPage.jsx';
 import VinculaAdminCompaniesPage from './pages/VinculaAdminCompaniesPage.jsx';
 import VinculaAdminInstitutionsPage from './pages/VinculaAdminInstitutionsPage.jsx';
+import VinculaAdminModerationPage from './pages/VinculaAdminModerationPage.jsx';
 import AccountVerificationPage from './pages/AccountVerificationPage.jsx';
 
 export default function App() {
@@ -147,6 +148,7 @@ export default function App() {
           <Route path="/admin/dashboard" element={<VinculaAdminDashboardPage />} />
           <Route path="/admin/empresas" element={<VinculaAdminCompaniesPage />} />
           <Route path="/admin/instituciones" element={<VinculaAdminInstitutionsPage />} />
+          <Route path="/admin/moderacion" element={<VinculaAdminModerationPage />} />
         </Route>
 
         {/* ─── Redirección global para rutas no existentes ─── */}

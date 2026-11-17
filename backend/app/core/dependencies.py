@@ -12,6 +12,19 @@ from app.core.security import decode_access_token
 security_bearer = HTTPBearer(auto_error=False)
 
 
+# Cuentas suspendidas por moderación. En memoria y cargada al arrancar desde la base de datos.
+# shortcut: es por proceso; con más de una instancia habría que consultar la BD o usar caché compartida.
+SUSPENDED_USERS: set = set()
+
+
+def revoke_sessions(user_id) -> None:
+    SUSPENDED_USERS.add(str(user_id))
+
+
+def restore_sessions(user_id) -> None:
+    SUSPENDED_USERS.discard(str(user_id))
+
+
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_bearer)
 ) -> Dict[str, Any]:
@@ -32,6 +45,13 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido o expirado. Inicia sesión nuevamente.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if str(payload.get("sub")) in SUSPENDED_USERS:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Tu cuenta fue suspendida por el equipo de Vincula.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 

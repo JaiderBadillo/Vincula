@@ -328,13 +328,19 @@ export default function VacancyDetailDrawer({
                 <i className="bx bx-edit text-sm" aria-hidden="true" />
                 <span>Editar</span>
               </button>
-              <button
-                type="button"
-                onClick={() => onCycleStatus(vacancy)}
-                className="rounded-xl border border-sand-line bg-white px-3.5 py-2 text-xs font-bold text-ink transition-colors hover:bg-sand cursor-pointer"
-              >
-                {primaryLabel}
-              </button>
+              {vacancy.status === 'disabled' ? (
+                <p className="m-0 max-w-xs text-xs font-semibold text-rose-700">
+                  El equipo de Vincula inhabilitó esta vacante tras una revisión. Contacta a soporte si crees que es un error.
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onCycleStatus(vacancy)}
+                  className="rounded-xl border border-sand-line bg-white px-3.5 py-2 text-xs font-bold text-ink transition-colors hover:bg-sand cursor-pointer"
+                >
+                  {primaryLabel}
+                </button>
+              )}
               {(vacancy.status === 'open' || vacancy.status === 'paused') && (
                 <button
                   type="button"

@@ -8,9 +8,10 @@ export const VACANCY_STATUS = {
   draft: { label: 'Borrador', plural: 'Borradores', dot: 'bg-secondary' },
   paused: { label: 'Pausada', plural: 'Pausadas', dot: 'bg-ochre' },
   closed: { label: 'Cerrada', plural: 'Cerradas', dot: 'bg-terracotta' },
+  disabled: { label: 'Inhabilitada', plural: 'Inhabilitadas', dot: 'bg-rose-600' },
 };
 
-export const VACANCY_TABS = ['open', 'draft', 'paused', 'closed'];
+export const VACANCY_TABS = ['open', 'draft', 'paused', 'closed', 'disabled'];
 
 export const VACANCY_MODALITIES = ['Presencial', 'Híbrido', 'Remoto'];
 

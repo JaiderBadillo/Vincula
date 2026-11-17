@@ -71,6 +71,17 @@ export default function VinculaAdminSidebar({
         },
       ],
     },
+    {
+      title: 'Moderación',
+      items: [
+        {
+          id: 'admin-moderacion',
+          label: 'Reportes y moderación',
+          icon: 'bx-shield-quarter',
+          to: '/admin/moderacion',
+        },
+      ],
+    },
   ];
 
   return (
