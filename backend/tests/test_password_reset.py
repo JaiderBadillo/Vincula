@@ -71,4 +71,51 @@ class RecoveryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(db.user.contrasena_hash, 'old')
 
 
+class BrevoDeliveryTests(unittest.IsolatedAsyncioTestCase):
+    """En producción el correo sale por Brevo; el código viaja en texto plano y HTML, sin botones."""
+
+    async def test_codigo_y_aviso_de_cambio_salen_por_brevo(self):
+        db = FakeDB()
+        with patch.object(reset.settings, 'BREVO_API_KEY', 'key'),              patch.object(reset.settings, 'SMTP_USER', ''),              patch.object(reset.secrets, 'randbelow', return_value=7),              patch.object(reset, 'send_vincula_email', new_callable=AsyncMock, return_value=True) as mail:
+            await reset.request_code(reset.RequestCode(correo='egresado@example.com'), db)
+            self.assertEqual(mail.call_args.args[:2], ('recuperacion_contrasena', 'egresado@example.com'))
+            self.assertEqual(mail.call_args.kwargs['codigo'], '000007')
+            with patch.object(reset, 'get_password_hash', return_value='new-hash'):
+                await reset.confirm_reset(reset.ResetPassword(correo='egresado@example.com', codigo='000007', nueva_contrasena='new-password-1'), db)
+            # el titular recibe un aviso de que su contraseña cambió
+            self.assertEqual(mail.call_args.args[0], 'contrasena_actualizada')
+
+    async def test_fallo_del_aviso_no_deshace_el_cambio(self):
+        db = FakeDB()
+        db.record = SimpleNamespace(codigo_hash=reset.code_digest(db.user.id, '123456'),
+                                    expira_en=datetime.now(timezone.utc).replace(year=2099), intentos=0)
+        with patch.object(reset, 'send_vincula_email', new_callable=AsyncMock, side_effect=RuntimeError('caído')),              patch.object(reset, 'get_password_hash', return_value='new-hash'):
+            await reset.confirm_reset(reset.ResetPassword(correo='egresado@example.com', codigo='123456', nueva_contrasena='new-password-1'), db)
+        self.assertEqual(db.user.contrasena_hash, 'new-hash')
+
+    async def test_sin_proveedor_responde_igual_exista_o_no_el_correo(self):
+        """El 503 por falta de configuración no debe depender de que el usuario exista."""
+        for exists in (True, False):
+            db = FakeDB()
+            if not exists:
+                db.user = None
+            with patch.object(reset.settings, 'BREVO_API_KEY', ''), patch.object(reset.settings, 'N8N_WEBHOOK_BASE_URL', ''),                  patch.object(reset.settings, 'SMTP_USER', ''):
+                with self.assertRaises(HTTPException) as error:
+                    await reset.request_code(reset.RequestCode(correo='alguien@example.com'), db)
+            self.assertEqual(error.exception.status_code, 503)
+
+    def test_plantillas_de_seguridad(self):
+        from app.integrations.transactional_notifications import build_message
+        subject, plain, html = build_message('recuperacion_contrasena', {'codigo': '048213', 'minutos_validez': 10})
+        self.assertIn('048213', plain)          # Brevo envía `plain` como texto plano
+        self.assertIn('048213', html)
+        _, _, aviso = build_message('contrasena_actualizada', {})
+        for page in (html, aviso):
+            self.assertNotIn('vincula.vercel.app', page)   # dominio ajeno que usaban otros correos
+            self.assertNotIn('Ingresar a Vincula', page)   # sin botón en correos de seguridad
+        _, _, otro = build_message('registro_egresado', {})
+        self.assertIn('vincula-henna.vercel.app', otro)
+        self.assertNotIn('//vincula.vercel.app', otro)
+
+
 if __name__ == '__main__': unittest.main()

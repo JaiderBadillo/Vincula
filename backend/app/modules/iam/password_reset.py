@@ -12,10 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_password_hash
-from app.integrations.n8n_webhooks import N8nWebhookDispatcher
+import logging
+
 from app.integrations.email_service import EmailService
+from app.integrations.transactional_notifications import send_vincula_email
 from app.modules.iam.models import Usuario, PasswordResetCode
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/recuperar-contrasena", tags=["IAM - Recuperación"])
 GENERIC_MESSAGE = "Si el correo está registrado, recibirás un código para restablecer tu contraseña."
 
@@ -30,6 +33,23 @@ class ResetPassword(BaseModel):
     nueva_contrasena: str = Field(min_length=10, max_length=72)
 
 
+def _email_configured() -> bool:
+    return bool(settings.BREVO_API_KEY or (settings.N8N_WEBHOOK_BASE_URL and settings.N8N_WEBHOOK_SECRET)
+                or (settings.SMTP_USER and settings.SMTP_PASSWORD))
+
+
+async def _deliver_code(recipient: str, code: str) -> bool:
+    """Brevo (HTTPS) y, si falla, n8n; SMTP solo cuando no hay ninguno de los dos (desarrollo local)."""
+    if settings.BREVO_API_KEY or (settings.N8N_WEBHOOK_BASE_URL and settings.N8N_WEBHOOK_SECRET):
+        return await send_vincula_email("recuperacion_contrasena", recipient, codigo=code, minutos_validez=10)
+    body = (f"Tu código de recuperación de Víncula es: {code}\n\n"
+            "Vence en 10 minutos. Si no solicitaste este cambio, ignora este mensaje. "
+            "No compartas este código con nadie.")
+    result = await EmailService.send_email(recipient, "Código para restablecer tu contraseña de Víncula",
+                                           f"<p>{body.replace(chr(10), '<br>')}</p>", body)
+    return result.get("success", False)
+
+
 def code_digest(user_id, code):
     return hmac.new(settings.JWT_SECRET_KEY.encode(), f"{user_id}:{code}".encode(), hashlib.sha256).hexdigest()
 
@@ -37,13 +57,12 @@ def code_digest(user_id, code):
 @router.post("/solicitar")
 async def request_code(payload: RequestCode, db: AsyncSession = Depends(get_db)):
     email = str(payload.correo).strip().lower()
+    # Antes de buscar al usuario: así la respuesta no revela si el correo existe.
+    if not _email_configured():
+        raise HTTPException(503, "El servicio de recuperación por correo no está configurado.")
     user = (await db.execute(select(Usuario).where(func.lower(Usuario.correo_electronico) == email))).scalar_one_or_none()
     if not user or user.estado != "activo":
         return {"mensaje": GENERIC_MESSAGE}
-    use_n8n = bool(settings.N8N_WEBHOOK_BASE_URL and settings.N8N_WEBHOOK_SECRET)
-    use_smtp = bool(settings.SMTP_USER and settings.SMTP_PASSWORD)
-    if not use_n8n and not use_smtp:
-        raise HTTPException(503, "El servicio de recuperación por correo no está configurado.")
     now = datetime.now(timezone.utc)
     record = (await db.execute(select(PasswordResetCode).where(PasswordResetCode.id_usuario == user.id).with_for_update())).scalar_one_or_none()
     if record and record.solicitado_en > now - timedelta(seconds=60):
@@ -59,19 +78,7 @@ async def request_code(payload: RequestCode, db: AsyncSession = Depends(get_db))
                                    expira_en=now + timedelta(minutes=10), solicitado_en=now, intentos=0)
         db.add(record)
     # El proveedor debe confirmar la recepción antes de comprometer el código.
-    if use_n8n:
-        delivered = await N8nWebhookDispatcher.dispatch_event("auth.password-reset", {
-            "correo": user.correo_electronico, "codigo": code, "minutos_validez": 10,
-        })
-    else:
-        body = (f"Tu código de recuperación de Víncula es: {code}\n\n"
-                "Vence en 10 minutos. Si no solicitaste este cambio, ignora este mensaje. "
-                "No compartas este código con nadie.")
-        result = await EmailService.send_email(user.correo_electronico,
-                                               "Código para restablecer tu contraseña de Víncula",
-                                               f"<p>{body.replace(chr(10), '<br>')}</p>", body)
-        delivered = result.get("success", False)
-    if not delivered:
+    if not await _deliver_code(user.correo_electronico, code):
         await db.rollback()
         raise HTTPException(503, "No fue posible enviar el correo. Intenta de nuevo más tarde.")
     await db.commit()
@@ -97,4 +104,9 @@ async def confirm_reset(payload: ResetPassword, db: AsyncSession = Depends(get_d
     user.contrasena_hash = get_password_hash(payload.nueva_contrasena)
     await db.delete(record)
     await db.commit()
+    # Aviso de seguridad al titular: si no fue él, se entera. No bloquea el cambio si falla.
+    try:
+        await send_vincula_email("contrasena_actualizada", user.correo_electronico)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Aviso de cambio de contraseña no enviado: tipo=%s", type(exc).__name__)
     return {"mensaje": "Contraseña actualizada. Ya puedes iniciar sesión."}

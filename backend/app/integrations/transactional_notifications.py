@@ -23,6 +23,8 @@ def build_message(kind, data):
     company = _clean(data.get("empresa"), "tu empresa")
     vacancy = _clean(data.get("vacante"), "la convocatoria")
     stage = get_stage_display_info(data.get("fase_nueva"))
+    code = _clean(data.get("codigo"))
+    minutes = _clean(data.get("minutos_validez"), "10")
 
     content = {
         "registro_egresado": ("Bienvenido a Vincula", "Cuenta registrada", "REGISTRO DE EGRESADOS",
@@ -61,6 +63,15 @@ def build_message(kind, data):
             "Recibimos tu postulación",
             f"Tu postulación a {vacancy} en {company} fue registrada en etapa inicial.",
             [("Convocatoria", vacancy), ("Código", _clean(data.get("codigo"), "—")), ("Empresa", company), ("Fase actual", "En revisión inicial")]),
+        "recuperacion_contrasena": ("Código para restablecer tu contraseña · Vincula", "Código de un solo uso", "SEGURIDAD DE LA CUENTA",
+            "Restablece tu contraseña",
+            f"Tu código para restablecer la contraseña de Vincula es {code}. Vence en {minutes} minutos y solo sirve una vez. "
+            "Si no lo solicitaste, ignora este mensaje: tu contraseña no cambia. No compartas este código con nadie.",
+            [("Código de verificación", code), ("Vigencia", f"{minutes} minutos")]),
+        "contrasena_actualizada": ("Tu contraseña de Vincula fue actualizada", "Contraseña actualizada", "SEGURIDAD DE LA CUENTA",
+            "Cambiaste tu contraseña",
+            "La contraseña de tu cuenta de Vincula acaba de actualizarse. Si no fuiste tú, restablécela de inmediato desde \"¿Olvidaste tu contraseña?\" en la página de inicio de sesión y avisa al equipo de Vincula.",
+            [("Estado", "Contraseña actualizada")]),
         "nueva_postulacion_empresa": ("Nueva postulación recibida · Vincula", "Nuevo candidato", "SEGUIMIENTO DE VACANTE",
             "Recibiste una nueva postulación",
             f"{_clean(data.get('candidato'), 'Un egresado')} se postuló a {vacancy}.",
@@ -70,11 +81,14 @@ def build_message(kind, data):
         raise ValueError(f"Tipo de correo desconocido: {kind}")
     subject, pill, eyebrow, title, paragraph, metadata = content[kind]
     pipeline_stage = data.get("fase_nueva") if kind == "fase_postulacion" else ("en_revision" if kind == "postulacion_creada" else None)
+    # Los correos de seguridad no llevan botón: el usuario no debe seguir enlaces para cambiar su clave.
+    seguridad = kind in ("recuperacion_contrasena", "contrasena_actualizada")
     html = _generate_vincula_email_html(
         preheader=paragraph, status_pill=pill, eyebrow=eyebrow, title=title,
-        greeting=f"Hola, {name}:", paragraphs=[paragraph], metadata_rows=metadata,
+        greeting="Hola:" if seguridad else f"Hola, {name}:", paragraphs=[paragraph], metadata_rows=metadata,
         pipeline_stage=pipeline_stage,
-        cta_text="Ingresar a Vincula", cta_url="https://vincula.vercel.app/login",
+        cta_text=None if seguridad else "Ingresar a Vincula",
+        cta_url=None if seguridad else "https://vincula-henna.vercel.app/login",
     )
     # El logo CID de la plantilla SMTP no se adjunta al enviar con Gmail API.
     html = html.replace('<img src="cid:vincula_logo" width="300" height="64" alt="Vincula" style="display: block; margin: 0 auto; border: 0;" />',
