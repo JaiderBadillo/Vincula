@@ -631,97 +631,38 @@ export default function CompanyRecruiterCandidatesPage() {
                               <article
                                 key={cand.id}
                                 onClick={() => openCandidateDrawer(cand.id, 'match')}
-                                className="group rounded-xl border border-sand-line bg-white p-3.5 shadow-2xs hover:shadow-card hover:border-terracotta/40 transition-all cursor-pointer space-y-2.5"
+                                title={`${cand.vacancyTitle} · ${cand.vacancyCode}`}
+                                className="group rounded-xl border border-sand-line bg-white p-3.5 shadow-2xs hover:shadow-card hover:border-terracotta/40 transition-all cursor-pointer"
                               >
-                                {/* Cabecera Tarjeta: Foto + Nombre + Match */}
-                                <div className="flex items-start gap-2.5">
+                                <div className="flex items-center gap-2.5">
                                   {cand.avatar ? (
-                                    <img
-                                      src={cand.avatar}
-                                      alt={cand.candidateName}
-                                      className="size-9 rounded-xl object-cover shrink-0 border border-sand-line"
-                                    />
+                                    <img src={cand.avatar} alt="" className="size-9 rounded-full object-cover shrink-0" />
                                   ) : (
-                                    <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-sand text-xs font-bold text-terracotta-dark">
+                                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-sand text-xs font-bold text-terracotta-dark">
                                       {initialsOf(cand.candidateName)}
                                     </span>
                                   )}
                                   <div className="min-w-0 flex-1">
-                                    <h4 className="m-0 text-xs font-bold text-ink group-hover:text-terracotta transition-colors truncate">
+                                    <h4 className="m-0 text-[0.8rem] font-bold text-ink group-hover:text-terracotta transition-colors truncate">
                                       {cand.candidateName}
                                     </h4>
-                                    <p className="m-0 text-[0.68rem] text-secondary truncate">
-                                      {cand.program}
+                                    <p className="m-0 text-[0.7rem] text-secondary truncate">
+                                      {selectedVacancyFilter === 'all' ? cand.vacancyTitle : cand.program}
                                     </p>
                                   </div>
                                 </div>
 
-                                {/* Badge de Match y Vacante */}
-                                <div className="flex items-center justify-between gap-1 text-[0.68rem]">
-                                  <span className="inline-flex items-center gap-1 font-bold text-cocoa bg-ochre/20 border border-ochre/40 px-2 py-0.5 rounded-md">
-                                    <i className="bx bxs-badge-check text-ochre-dark" />
-                                    <span>{cand.matchPercentage == null ? 'Sin puntaje calculado' : `${cand.matchPercentage}% afinidad`}</span>
+                                <div className="mt-2.5 flex items-center justify-between gap-2 text-[0.68rem] text-secondary">
+                                  <span className="font-bold text-ink" title="Afinidad con la vacante">
+                                    {cand.matchPercentage == null ? 'Sin puntaje' : `${cand.matchPercentage}% afinidad`}
+                                    {!cand.degreeVerified && <span className="ml-2 font-semibold text-amber-700">· Título en revisión</span>}
                                   </span>
-                                  <span className="font-semibold text-secondary truncate" title={cand.vacancyTitle}>
-                                    {cand.vacancyCode}
-                                  </span>
-                                </div>
-
-                                {/* Estado del Título y acceso rápido al Diploma */}
-                                <div className="flex items-center justify-between gap-1.5 text-[0.65rem]">
-                                  {cand.degreeVerified ? (
-                                    <span className="inline-flex items-center gap-1 font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                                      <i className="bx bxs-shield-check text-emerald-600" />
-                                      <span>Título verificado IES</span>
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 font-semibold text-secondary bg-cream px-2 py-0.5 rounded-md">
-                                      <i className="bx bx-certification" />
-                                      <span>Título en revisión</span>
-                                    </span>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openCandidateDrawer(cand.id, 'diploma');
-                                    }}
-                                    className="inline-flex items-center gap-1 font-bold text-terracotta hover:underline cursor-pointer"
-                                    title="Ver título o diploma en PDF"
-                                  >
-                                    <i className="bx bxs-file-pdf text-xs" />
-                                    <span>Ver diploma</span>
-                                  </button>
-                                </div>
-
-                                {/* Chips de Habilidades Técnicas destacadas */}
-                                {cand.skillsMatch && cand.skillsMatch.length > 0 && (
-                                  <div className="flex flex-wrap gap-1">
-                                    {cand.skillsMatch.slice(0, 3).map((sk) => (
-                                      <span
-                                        key={sk}
-                                        className="rounded bg-cream px-1.5 py-0.2 text-[0.65rem] font-medium text-cocoa"
-                                      >
-                                        {sk}
-                                      </span>
-                                    ))}
-                                    {cand.skillsMatch.length > 3 && (
-                                      <span className="text-[0.62rem] text-secondary">
-                                        +{cand.skillsMatch.length - 3}
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-
-                                {/* Fecha o Cita */}
-                                <div className="flex items-center justify-between pt-1 border-t border-sand-line/50 text-[0.65rem] text-secondary">
-                                  <span>{cand.institution || 'Institución por validar'}</span>
                                   {cand.interviewDate ? (
-                                    <span className="font-semibold text-terracotta-dark truncate">
-                                      {cand.interviewDate.split('(')[0]}
+                                    <span className="truncate font-semibold text-terracotta-dark">
+                                      Entrevista {new Date(`${cand.interviewDate.slice(0, 10)}T12:00:00`).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
                                     </span>
                                   ) : (
-                                    <span>{new Date(cand.appliedAt).toLocaleDateString('es-CO')}</span>
+                                    <span>{new Date(cand.appliedAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}</span>
                                   )}
                                 </div>
                               </article>
@@ -828,7 +769,7 @@ export default function CompanyRecruiterCandidatesPage() {
                           <div className="flex items-center gap-2 shrink-0 self-end lg:self-center flex-wrap">
                             <button
                               type="button"
-                              onClick={() => openCandidateDrawer(cand.id, 'diploma')}
+                              onClick={() => openCandidateDrawer(cand.id, 'match')}
                               className="inline-flex items-center gap-1.5 rounded-xl border border-sand-line bg-cream/60 px-3.5 py-2 text-xs font-bold text-cocoa hover:bg-sand transition-all cursor-pointer shadow-2xs"
                             >
                               <i className="bx bxs-graduation text-terracotta text-sm" />

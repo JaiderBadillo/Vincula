@@ -53,12 +53,10 @@ if errorlevel 1 (
 )
 
 echo [3/4] Backend (API) en el puerto %API_PORT%...
-netstat -ano | findstr ":%API_PORT% " | findstr "LISTENING" >nul 2>&1
-if %errorlevel% equ 0 (
-    echo       Ya estaba activo.
-) else (
-    start "Vincula - Backend (puerto %API_PORT%)" /d "%ROOT%backend" cmd /k python -m uvicorn app.main:app --reload --port %API_PORT%
-)
+:: Se reinicia siempre: asi toma el codigo mas reciente (un servidor viejo no tendria las rutas nuevas)
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":%API_PORT% " ^| findstr "LISTENING"') do taskkill /F /T /PID %%p >nul 2>&1
+taskkill /F /FI "WINDOWTITLE eq Vincula - Backend*" >nul 2>&1
+start "Vincula - Backend (puerto %API_PORT%)" /d "%ROOT%backend" cmd /k python -m uvicorn app.main:app --reload --port %API_PORT%
 call :wait "http://localhost:%API_PORT%/docs" 90
 if errorlevel 1 (
     color 0E
@@ -68,12 +66,9 @@ if errorlevel 1 (
 )
 
 echo [4/4] Frontend en el puerto %WEB_PORT%...
-netstat -ano | findstr ":%WEB_PORT% " | findstr "LISTENING" >nul 2>&1
-if %errorlevel% equ 0 (
-    echo       Ya estaba activo. Si ves errores de importacion, cierra su ventana y vuelve a abrir este archivo.
-) else (
-    start "Vincula - Frontend (puerto %WEB_PORT%)" /d "%ROOT%frontend" cmd /k npm run dev -- --force --port %WEB_PORT% --strictPort
-)
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":%WEB_PORT% " ^| findstr "LISTENING"') do taskkill /F /T /PID %%p >nul 2>&1
+taskkill /F /FI "WINDOWTITLE eq Vincula - Frontend*" >nul 2>&1
+start "Vincula - Frontend (puerto %WEB_PORT%)" /d "%ROOT%frontend" cmd /k npm run dev -- --force --port %WEB_PORT% --strictPort
 call :wait "http://localhost:%WEB_PORT%/" 90
 if errorlevel 1 (
     color 0E
@@ -87,7 +82,7 @@ echo ========================================================
 echo  Todo listo:
 echo    - Aplicacion:  http://localhost:%WEB_PORT%/
 echo    - API (docs):  http://localhost:%API_PORT%/docs
-echo  Para detener todo, cierra las ventanas "Vincula - ..."
+echo  Cada vez que abras este archivo se reinician ambos. Para detener todo, cierra las ventanas "Vincula - ..."
 echo ========================================================
 start "" "http://localhost:%WEB_PORT%/%OPEN_PATH%"
 ping -n 4 127.0.0.1 >nul
