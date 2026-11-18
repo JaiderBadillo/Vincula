@@ -200,7 +200,7 @@ export default function CompanySidebar({
           {navSections.map((section) => (
             <div key={section.title}>
               <p
-                className={`mb-2 px-2.5 text-[0.58rem] font-bold uppercase tracking-[0.16em] text-secondary ${
+                className={`mb-2 px-2.5 text-xs font-semibold text-secondary ${
                   collapsed ? 'sr-only' : ''
                 }`}
               >

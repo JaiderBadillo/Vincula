@@ -126,7 +126,7 @@ export default function VinculaAdminSidebar({
           {navSections.map((section) => (
             <div key={section.title} className="space-y-1">
               {!collapsed && (
-                <p className="px-3 pb-1 text-[0.62rem] font-bold uppercase tracking-[0.14em] text-secondary">
+                <p className="px-3 pb-1 text-xs font-semibold text-secondary">
                   {section.title}
                 </p>
               )}

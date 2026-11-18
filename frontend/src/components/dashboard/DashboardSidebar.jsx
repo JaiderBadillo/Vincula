@@ -85,7 +85,7 @@ function NavigationItems({ activePage, onNavigate, collapsed = false }) {
   return (
     <nav className={`mt-8 ${collapsed ? 'w-full' : ''}`} aria-label="Navegación del egresado">
       <p
-        className={`mb-2.5 px-3 text-[0.58rem] font-bold uppercase tracking-[0.18em] text-secondary ${
+        className={`mb-2.5 px-3 text-xs font-semibold text-secondary ${
           collapsed ? 'sr-only' : ''
         }`}
       >
