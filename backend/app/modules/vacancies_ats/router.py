@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_role, require_approved_company
+from app.core.dependencies import get_current_user, get_optional_user, require_role, require_approved_company
 from app.modules.vacancies_ats.schemas import (
     VacanteCreateRequest,
     VacanteUpdateRequest,
@@ -103,7 +103,8 @@ async def list_public_vacancies(
         ciudad=ciudad,
         q=q,
         salario_min=salario_min,
-        nivel_experiencia=nivel_experiencia
+        nivel_experiencia=nivel_experiencia,
+        viewer=viewer,
     )
 
 
@@ -136,12 +137,13 @@ async def list_company_vacancies(
 @router.get("/vacantes/{vacancy_id}", response_model=VacanteResponse)
 async def get_public_vacancy_detail(
     vacancy_id: str,
+    viewer: Optional[Dict[str, Any]] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Detalle público de una vacante: Solo accesible si la empresa está aprobada y la vacante abierta.
     """
-    return await VacancyATSService.get_public_vacancy_detail(session=db, vacancy_id=vacancy_id)
+    return await VacancyATSService.get_public_vacancy_detail(session=db, vacancy_id=vacancy_id, viewer=viewer)
 
 
 # =========================================================================

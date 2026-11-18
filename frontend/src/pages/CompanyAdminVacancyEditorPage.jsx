@@ -5,6 +5,7 @@ import CompanyLogo from '../components/company/CompanyLogo.jsx';
 import { useCompanyProfile } from '../hooks/useCompanyProfile.js';
 import { useCompanyRecruiters } from '../hooks/useCompanyRecruiters.js';
 import { authService } from '../services/authService.js';
+import { convenioService } from '../services/convenioService.js';
 import { suggestTechnicalSkills } from '../utils/vacancySkillSuggestions.js';
 import { useCompanyVacancies } from '../hooks/useCompanyVacancies.js';
 import { useCompanySites } from '../hooks/useCompanySites.js';
@@ -81,6 +82,7 @@ function buildInitialForm(vacancy, recruiters, isRecruiter = false) {
       languages: vacancy.languages || LANGUAGE_OPTIONS[0],
       benefits: [...(vacancy.benefits || [])],
       closingDate: vacancy.closingDate || '',
+      agreementId: vacancy.agreementId || '',
       ownerRecruiterId: vacancy.ownerRecruiterId || '',
     };
   }
@@ -105,6 +107,7 @@ function buildInitialForm(vacancy, recruiters, isRecruiter = false) {
     languages: LANGUAGE_OPTIONS[0],
     benefits: [],
     closingDate: '',
+    agreementId: '',
     ownerRecruiterId: '',
   };
 }
@@ -395,6 +398,8 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
   }, [sites]);
   const [maxReached, setMaxReached] = useState(isEditing ? STEPS.length - 1 : 0);
   const [errors, setErrors] = useState({});
+  const [agreements, setAgreements] = useState([]); // convenios vigentes: permiten vacantes exclusivas
+  useEffect(() => { convenioService.getActive().then(setAgreements).catch(() => setAgreements([])); }, []);
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -620,6 +625,7 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
       description: form.description.trim(),
       salary: form.salary.trim(),
       ownerRecruiterId: form.ownerRecruiterId || null,
+      agreementId: form.agreementId || null,
       skills: combinedSkills,
       status,
     };
@@ -1275,6 +1281,27 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
                   </div>
 
                   <div className="grid gap-5 sm:grid-cols-2">
+                    <Field
+                      id="vac-agreement"
+                      label="Dirigida a"
+                      hint={agreements.length === 0
+                        ? 'Para publicar vacantes exclusivas de una institución necesitas un convenio vigente (menú Convenios con IES).'
+                        : 'Con un convenio, solo los egresados de esa institución verán la vacante y podrán postularse.'}
+                    >
+                      <select
+                        id="vac-agreement"
+                        className={`${inputClass} cursor-pointer`}
+                        value={form.agreementId}
+                        onChange={(e) => update('agreementId', e.target.value)}
+                        disabled={agreements.length === 0 && !form.agreementId}
+                      >
+                        <option value="">Todos los egresados (vacante pública)</option>
+                        {agreements.map((a) => (
+                          <option key={a.id} value={a.id}>Solo egresados de {a.institucion}</option>
+                        ))}
+                      </select>
+                    </Field>
+
                     <Field id="vac-schedule" label="Jornada y Horario laboral">
                       <select
                         id="vac-schedule"

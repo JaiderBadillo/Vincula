@@ -12,6 +12,7 @@ from pathlib import Path
 from sqlalchemy import text as sql
 
 from app.core.text_similarity import TfidfIndex
+from app.modules.convenios.visibility import SQL_VISIBLE_PARA_EG
 
 STOP = frozenset("a al como con de del el en es la las lo los mi mis para por que se su sus tu un una unas unos y yo quiero puedes ayuda dame hacer sobre este esta cual cómo".split())
 
@@ -66,9 +67,10 @@ VACANTES_AFINES_SQL = """
     LEFT JOIN competencias_exigidas_vacante cev ON cev.id_vacante = v.id
     LEFT JOIN taxonomia_competencias tc ON tc.id = cev.id_competencia
     WHERE v.estado = 'abierta' AND (eg.id = CAST(:eid AS uuid) OR eg.id_usuario = CAST(:uid AS uuid))
+      AND {visible}
     GROUP BY v.id, e.id
     LIMIT 12
-"""
+""".replace("{visible}", SQL_VISIBLE_PARA_EG)  # las vacantes exclusivas de convenio solo para su IES
 
 
 async def retrieve_vacancies(session, current_user: dict, query: str, limit: int = 2) -> list[dict]:

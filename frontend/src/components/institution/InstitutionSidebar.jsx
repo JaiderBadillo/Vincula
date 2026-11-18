@@ -178,7 +178,7 @@ const advisorNavSections = [
     items: [
       {
         id: 'empresas-solicitudes',
-        label: 'Validar Convenios',
+        label: 'Convenios',
         icon: 'bx-buildings',
         to: '/institucion/empresas/solicitudes',
       },

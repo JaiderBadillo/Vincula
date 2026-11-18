@@ -4,12 +4,9 @@ Datos reales para las vistas del asesor IES: panel, seguimiento de egresados y e
 Todo sale de registros de Vincula; lo que no existe se devuelve vacío o None, nunca estimado.
 """
 
-import uuid
 from collections import defaultdict
-from datetime import date, timedelta
 from typing import Any, Dict, List, Optional
 
-from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -133,7 +130,7 @@ async def seguimiento_empresas_async(session: AsyncSession, iid: str) -> Dict[st
     return {"items": items}
 
 
-# ───────────────────────────────────────────────────────────── solicitudes de convenio
+# ───────────────────────────────────────────────────────────── propuestas de convenio recibidas (el resto vive en modules/convenios)
 async def solicitudes_convenio_async(session: AsyncSession, iid: str, estado: Optional[str] = None,
                                      limite: int = 200) -> Dict[str, Any]:
     filas = (await session.execute(text("""
@@ -141,49 +138,10 @@ async def solicitudes_convenio_async(session: AsyncSession, iid: str, estado: Op
                s.programas_objetivo, s.notas_evaluador, s.solicitado_en, s.revisado_en,
                e.id, e.nombre_comercial, e.nit, e.sector_economico, e.ciudad, e.persona_contacto, e.correo_contacto
         FROM solicitudes_convenio_ies s JOIN empresas e ON e.id = s.id_empresa
-        WHERE s.id_institucion = CAST(:iid AS uuid) AND (CAST(:estado AS text) IS NULL OR s.estado = CAST(:estado AS text))
+        WHERE s.id_institucion = CAST(:iid AS uuid) AND s.iniciada_por = 'empresa' AND (CAST(:estado AS text) IS NULL OR s.estado = CAST(:estado AS text))
         ORDER BY s.solicitado_en DESC LIMIT :lim"""), {"iid": iid, "estado": estado, "lim": limite})).fetchall()
     items = [{"id": str(r[0]), "estado": r[1], "tipo_convenio": r[2], "vacantes_proyectadas": r[3], "duracion_anos": r[4],
               "facultades": list(r[5] or []), "programas": list(r[6] or []), "notas": r[7], "solicitado_en": r[8],
               "revisado_en": r[9], "empresa": {"id": str(r[10]), "nombre": r[11], "nit": r[12], "sector": r[13], "ciudad": r[14],
                                                "contacto": r[15], "correo": r[16]}} for r in filas]
     return {"items": items, "total": len(items)}
-
-
-def _modalidad_convenio(tipo: str) -> str:
-    t = (tipo or "").lower()
-    return "Aprendizaje" if "prend" in t else "Laboral" if "labor" in t else "Pasantía"
-
-
-async def resolver_solicitud_async(session: AsyncSession, iid: str, solicitud_id: str, estado: str,
-                                   notas: Optional[str]) -> Dict[str, Any]:
-    """Aprueba (crea el convenio vigente), rechaza (exige observaciones) o deja en revisión."""
-    if estado not in ("aprobada", "rechazada", "en_revision"):
-        raise HTTPException(status_code=422, detail="Estado inválido.")
-    notas = (notas or "").strip() or None
-    if estado == "rechazada" and not notas:
-        raise HTTPException(status_code=422, detail="Para rechazar debes escribir las observaciones para la empresa.")
-    try:
-        sid = uuid.UUID(str(solicitud_id))
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Solicitud no encontrada.") from None
-    sol = (await session.execute(text("""
-        SELECT id_empresa, estado, tipo_convenio, duracion_anos FROM solicitudes_convenio_ies
-        WHERE id = :sid AND id_institucion = CAST(:iid AS uuid)"""), {"sid": sid, "iid": iid})).one_or_none()
-    if sol is None:
-        raise HTTPException(status_code=404, detail="Solicitud no encontrada.")
-    if sol[1] in ("aprobada", "rechazada"):
-        raise HTTPException(status_code=409, detail="Esta solicitud ya fue resuelta.")
-
-    await session.execute(text("""UPDATE solicitudes_convenio_ies SET estado = :e, notas_evaluador = :n, revisado_en = now()
-                                  WHERE id = :sid"""), {"e": estado, "n": notas, "sid": sid})
-    if estado == "aprobada":
-        hoy = date.today()
-        await session.execute(text("""
-            INSERT INTO convenios_interinstitucionales (id_empresa, id_institucion, codigo_convenio, modalidad, fecha_inicio,
-                                                        fecha_vencimiento, estado)
-            VALUES (:emp, CAST(:iid AS uuid), :cod, CAST(:mod AS modalidad_convenio_enum), :ini, :fin, 'activo')"""),
-            {"emp": sol[0], "iid": iid, "cod": f"CONV-{hoy.year}-{uuid.uuid4().hex[:6].upper()}", "mod": _modalidad_convenio(sol[2]),
-             "ini": hoy, "fin": hoy + timedelta(days=365 * max(1, sol[3] or 1))})
-    await session.commit()
-    return {"id": str(sid), "estado": estado}

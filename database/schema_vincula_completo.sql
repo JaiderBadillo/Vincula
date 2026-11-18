@@ -447,8 +447,16 @@ CREATE TABLE solicitudes_convenio_ies (
     estado VARCHAR(30) DEFAULT 'pendiente' NOT NULL, -- 'pendiente', 'en_revision', 'aprobada', 'rechazada'
     notas_evaluador TEXT,
     solicitado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    revisado_en TIMESTAMPTZ
+    revisado_en TIMESTAMPTZ,
+    iniciada_por VARCHAR(10) DEFAULT 'empresa' NOT NULL CHECK (iniciada_por IN ('empresa', 'ies')), -- quien propone; responde la otra parte
+    mensaje TEXT,
+    id_convenio UUID REFERENCES convenios_interinstitucionales(id) ON DELETE SET NULL -- convenio creado al aceptar
 );
+
+-- Una sola propuesta abierta por pareja empresa-IES
+CREATE UNIQUE INDEX uq_solicitud_convenio_abierta ON solicitudes_convenio_ies (id_empresa, id_institucion) WHERE estado IN ('pendiente', 'en_revision');
+CREATE INDEX ix_solicitudes_convenio_institucion ON solicitudes_convenio_ies (id_institucion, estado);
+CREATE INDEX ix_solicitudes_convenio_empresa ON solicitudes_convenio_ies (id_empresa, estado);
 
 -- Bitácora de seguimiento / interacciones del Asesor IES con la Empresa
 CREATE TABLE interacciones_seguimiento_empresa (
@@ -604,6 +612,7 @@ CREATE TABLE vacantes (
     requisitos TEXT[] NOT NULL,
     beneficios TEXT[],
     estado estado_vacante_enum DEFAULT 'abierta' NOT NULL,
+    id_convenio UUID REFERENCES convenios_interinstitucionales(id) ON DELETE SET NULL, -- vacante exclusiva de los egresados de la IES del convenio
     publicado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     fecha_cierre DATE NOT NULL,
     creado_en TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,

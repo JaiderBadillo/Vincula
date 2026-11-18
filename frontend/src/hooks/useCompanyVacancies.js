@@ -67,6 +67,7 @@ function mapApiVacancyToLocal(v) {
     benefits: v.beneficios || [],
     languages: (v.idiomas_requeridos || []).join(', ') || 'No requerido',
     closingDate: v.fecha_cierre,
+    agreementId: v.id_convenio || null,
     publishedAt: v.publicado_en ? v.publicado_en.slice(0, 10) : null,
     applicantsCount: v.total_postulantes || 0,
     source: 'api',
@@ -173,6 +174,7 @@ export function useCompanyVacancies() {
         fecha_cierre: data.closingDate,
         estado: data.status === 'open' ? 'abierta' : 'borrador',
         programas_afines_nombres: data.targetPrograms || [],
+        id_convenio: data.agreementId || null,
         competencias: (data.skills || []).map((s) => ({
           nombre: s,
           categoria: (data.skillsSoft || []).includes(s) ? 'blanda' : 'tecnica',
@@ -199,7 +201,7 @@ export function useCompanyVacancies() {
       experienceLevel: 'nivel_experiencia', salaryMin: 'salario_minimo', salaryMax: 'salario_maximo',
       workSchedule: 'jornada_laboral', openSpots: 'cupos_disponibles', description: 'descripcion',
       responsibilities: 'responsabilidades', requirements: 'requisitos', benefits: 'beneficios',
-      closingDate: 'fecha_cierre',
+      closingDate: 'fecha_cierre', agreementId: 'id_convenio',
     };
     Object.entries(fields).forEach(([source, target]) => {
       if (Object.prototype.hasOwnProperty.call(changes, source)) patch[target] = changes[source];

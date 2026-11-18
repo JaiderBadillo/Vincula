@@ -25,6 +25,8 @@ from app.core.skills_taxonomy import normalize_text
 from app.modules.graduates.models import Egresado, AcademicoEgresado
 from app.integrations.supabase_storage import SupabaseStorageService
 from app.integrations.meetings import generate_meeting_link
+from app.modules.convenios.services import validar_convenio_de_empresa
+from app.modules.convenios.visibility import egresado_id_de, puede_ver, visible_para
 from app.modules.vacancies_ats.interview_response import make_response_url
 from app.integrations.transactional_notifications import send_vincula_email
 from app.modules.vacancies_ats.models import (
@@ -154,6 +156,7 @@ class VacancyATSService:
             competencias=competencias_resp,
             programas_afines_ids=programas_ids,
             programas_afines_nombres=programas_nombres,
+            id_convenio=str(vacante.id_convenio) if vacante.id_convenio else None,
             empresa_nombre=emp_response.nombre_comercial,
             empresa_logo=emp_response.url_logo,
             empresa_verificada=emp_response.empresa_verificada,
@@ -194,7 +197,8 @@ class VacancyATSService:
         ciudad: Optional[str] = None,
         q: Optional[str] = None,
         salario_min: Optional[float] = None,
-        nivel_experiencia: Optional[str] = None
+        nivel_experiencia: Optional[str] = None,
+        viewer: Optional[Dict[str, Any]] = None,
     ) -> PaginatedVacanciesResponse:
         """
         Catálogo público oficial para egresados universitarios:
@@ -211,6 +215,7 @@ class VacancyATSService:
         conditions = [
             Empresa.estado == "aprobado",
             Vacante.estado == "abierta",
+            visible_para(Vacante.id_convenio, await egresado_id_de(session, viewer)),  # las exclusivas, solo para su IES
         ]
 
         if modalidad:
@@ -277,7 +282,7 @@ class VacancyATSService:
         )
 
     @classmethod
-    async def get_public_vacancy_detail(cls, session: AsyncSession, vacancy_id: str) -> VacanteResponse:
+    async def get_public_vacancy_detail(cls, session: AsyncSession, vacancy_id: str, viewer: Optional[Dict[str, Any]] = None) -> VacanteResponse:
         """
         Detalle de una vacante pública para egresados con verificación de seguridad.
         """
@@ -296,6 +301,8 @@ class VacancyATSService:
         )
         vacante = (await session.execute(stmt)).scalar_one_or_none()
 
+        if vacante and vacante.id_convenio and not await puede_ver(session, vacante.id_convenio, await egresado_id_de(session, viewer)):
+            vacante = None  # exclusiva de otra IES: para este usuario no existe
         if not vacante or vacante.empresa.estado != "aprobado" or vacante.estado != "abierta":
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -460,10 +467,12 @@ class VacancyATSService:
 
         # 5. Generar código único de vacante
         codigo_vacante = await cls.generate_codigo_vacante(session)
+        id_convenio = await validar_convenio_de_empresa(session, val_comp, payload.id_convenio) if payload.id_convenio else None
 
         # 6. Crear la entidad Vacante
         nueva_vacante = Vacante(
             id_empresa=val_comp,
+            id_convenio=id_convenio,
             id_sede=val_sede,
             id_reclutador_responsable=rec_uuid,
             codigo_vacante=codigo_vacante,
@@ -689,6 +698,14 @@ class VacancyATSService:
             vacante.idiomas_requeridos = payload.idiomas_requeridos
         if payload.fecha_cierre is not None:
             vacante.fecha_cierre = datetime.strptime(payload.fecha_cierre, "%Y-%m-%d").date()
+        if "id_convenio" in payload.model_fields_set:
+            if payload.id_convenio is None:
+                vacante.id_convenio = None  # volver a abrirla a todos los egresados
+            elif str(vacante.id_convenio) != str(payload.id_convenio):
+                if (vacante.total_postulantes or 0) > 0:
+                    raise HTTPException(status_code=409, detail={"codigo": "VACANTE_CON_POSTULANTES",
+                                        "mensaje": "La vacante ya tiene postulantes: no se puede volver exclusiva de un convenio."})
+                vacante.id_convenio = await validar_convenio_de_empresa(session, val_comp, payload.id_convenio)
         if payload.programas_afines_nombres is not None:
             await session.execute(delete(ProgramaAfinVacante).where(ProgramaAfinVacante.id_vacante == vacante.id))
             await cls._link_programs_by_name(session, vacante.id, payload.programas_afines_nombres, set())
@@ -955,6 +972,12 @@ class VacancyATSService:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"codigo": "VACANTE_NO_ENCONTRADA", "mensaje": "La vacante solicitada no existe."}
+            )
+
+        if vacante.id_convenio and not await puede_ver(session, vacante.id_convenio, egresado.id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"codigo": "VACANTE_EXCLUSIVA", "mensaje": "Esta vacante es exclusiva para egresados de una institución con convenio."}
             )
 
         # Gating RNF-01: La vacante debe estar abierta

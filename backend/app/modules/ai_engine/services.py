@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException, status
 
+from app.modules.convenios.visibility import puede_ver, visible_para
 from app.core.text_similarity import TfidfIndex, UMBRAL_SEMANTICO
 from app.core.skills_taxonomy import (
     KNOWLEDGE_FAMILIES,
@@ -365,7 +366,7 @@ class TalentMatcherService:
             select(Vacante).where(Vacante.id == vac_uuid)
         )).scalar_one_or_none()
 
-        if not vacante:
+        if not vacante or not await puede_ver(session, vacante.id_convenio, egresado.id):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"codigo": "VACANTE_NO_ENCONTRADA", "mensaje": "Vacante no encontrada."}
@@ -408,7 +409,8 @@ class TalentMatcherService:
             .join(Vacante.empresa)
             .where(
                 Vacante.estado == "abierta",
-                Empresa.estado == "aprobado"
+                Empresa.estado == "aprobado",
+                visible_para(Vacante.id_convenio, egresado.id),
             )
             .order_by(Vacante.publicado_en.desc())
         )).scalars().all()

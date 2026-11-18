@@ -1,0 +1,231 @@
+"""
+Convenios IES <-> empresa.
+
+Cualquiera de las dos partes propone; la otra acepta o rechaza. Al aceptar se crea el convenio vigente, que
+habilita a la empresa a publicar vacantes exclusivas para los egresados de esa IES. Todo se consulta y se
+valida desde la cuenta de quien llama: nadie ve ni responde propuestas de otra pareja.
+"""
+
+import logging
+import re
+import uuid
+from datetime import date, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+
+from fastapi import HTTPException
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.integrations.transactional_notifications import send_vincula_email
+
+logger = logging.getLogger(__name__)
+
+ROLES_EMPRESA = ("admin_empresa",)
+ROLES_IES = ("admin_ies", "ies_admin", "asesor_ies", "ies_asesor")
+TIPOS = ("Pasantía", "Aprendizaje", "Laboral")  # mismos valores que modalidad_convenio_enum
+ABIERTAS = ("pendiente", "en_revision")
+_ID = re.compile(r"[0-9a-fA-F-]{36}")
+
+
+def side_of(user: Dict[str, Any]) -> Tuple[str, str]:
+    """('empresa'|'ies', id de la entidad) de quien llama."""
+    entidad = str(user.get("id_entidad") or "")
+    if not _ID.fullmatch(entidad):
+        raise HTTPException(status_code=400, detail="Tu cuenta no está vinculada a una empresa o institución.")
+    rol = user.get("rol")
+    if rol in ROLES_EMPRESA:
+        return "empresa", entidad
+    if rol in ROLES_IES:
+        return "ies", entidad
+    raise HTTPException(status_code=403, detail="Tu rol no puede gestionar convenios.")
+
+
+def puede_responder(iniciada_por: str, lado: str) -> bool:
+    """Responde la parte que NO propuso."""
+    return iniciada_por != lado
+
+
+def _uuid(value: Any) -> uuid.UUID:
+    try:
+        return uuid.UUID(str(value))
+    except ValueError:
+        raise HTTPException(status_code=404, detail="No encontrado.") from None
+
+
+def _contraparte(lado: str, r) -> Dict[str, Any]:
+    """Datos de la otra parte, vistos desde `lado`."""
+    if lado == "empresa":  # la contraparte es la IES
+        return {"id": str(r["id_ies"]), "nombre": r["nombre_ies"], "detalle": r["ciudad_ies"]}
+    return {"id": str(r["id_empresa"]), "nombre": r["nombre_empresa"], "detalle": " · ".join(x for x in (r["sector"], r["ciudad_empresa"]) if x),
+            "nit": r["nit"], "contacto": r["persona_contacto"]}
+
+
+# ───────────────────────────────────────────────────────────── consulta
+async def listar(session: AsyncSession, lado: str, entidad: str) -> Dict[str, Any]:
+    columna = "s.id_empresa" if lado == "empresa" else "s.id_institucion"  # fijo: nunca viene del usuario
+    props = (await session.execute(text(f"""
+        SELECT s.id, s.estado, s.iniciada_por, s.tipo_convenio, s.vacantes_proyectadas, s.duracion_anos, s.programas_objetivo,
+               s.mensaje, s.notas_evaluador, s.solicitado_en, s.revisado_en,
+               e.id AS id_empresa, COALESCE(e.nombre_comercial, e.razon_social) AS nombre_empresa, e.nit, e.sector_economico AS sector,
+               e.ciudad AS ciudad_empresa, e.persona_contacto, i.id AS id_ies, i.nombre_oficial AS nombre_ies, i.ciudad AS ciudad_ies
+        FROM solicitudes_convenio_ies s JOIN empresas e ON e.id = s.id_empresa JOIN instituciones i ON i.id = s.id_institucion
+        WHERE {columna} = :id ORDER BY s.solicitado_en DESC LIMIT 100"""), {"id": _uuid(entidad)})).mappings().all()
+    hoy = date.today()
+    convs = (await session.execute(text(f"""
+        SELECT c.id, c.codigo_convenio, c.modalidad::text AS tipo, c.fecha_inicio, c.fecha_vencimiento, c.estado::text AS estado,
+               e.id AS id_empresa, COALESCE(e.nombre_comercial, e.razon_social) AS nombre_empresa, e.nit, e.sector_economico AS sector,
+               e.ciudad AS ciudad_empresa, e.persona_contacto, i.id AS id_ies, i.nombre_oficial AS nombre_ies, i.ciudad AS ciudad_ies,
+               (SELECT COUNT(*) FROM vacantes v WHERE v.id_convenio = c.id) AS vacantes
+        FROM convenios_interinstitucionales c JOIN empresas e ON e.id = c.id_empresa JOIN instituciones i ON i.id = c.id_institucion
+        WHERE {columna.replace('s.', 'c.')} = :id ORDER BY c.fecha_inicio DESC LIMIT 100"""), {"id": _uuid(entidad)})).mappings().all()
+
+    return {
+        "lado": lado,
+        "propuestas": [{
+            "id": str(r["id"]), "estado": r["estado"], "direccion": "enviada" if r["iniciada_por"] == lado else "recibida",
+            "tipo": r["tipo_convenio"], "vacantes_proyectadas": r["vacantes_proyectadas"], "duracion_anos": r["duracion_anos"],
+            "programas": list(r["programas_objetivo"] or []), "mensaje": r["mensaje"], "respuesta": r["notas_evaluador"],
+            "creada_en": r["solicitado_en"], "respondida_en": r["revisado_en"], "contraparte": _contraparte(lado, r),
+        } for r in props],
+        "convenios": [{
+            "id": str(r["id"]), "codigo": r["codigo_convenio"], "tipo": r["tipo"], "inicio": r["fecha_inicio"], "vence": r["fecha_vencimiento"],
+            # vigente solo si está activo y no venció, la misma regla que usan las vacantes exclusivas
+            "vigente": r["estado"] == "activo" and r["fecha_vencimiento"] >= hoy, "vacantes": r["vacantes"],
+            "contraparte": _contraparte(lado, r),
+        } for r in convs],
+    }
+
+
+async def contrapartes(session: AsyncSession, lado: str, q: Optional[str]) -> List[Dict[str, Any]]:
+    """Entidades aprobadas a las que se les puede proponer un convenio."""
+    termino = f"%{(q or '').strip()[:60]}%"
+    if lado == "empresa":
+        rows = (await session.execute(text("""
+            SELECT id, nombre_oficial, ciudad FROM instituciones WHERE estado = 'aprobado' AND nombre_oficial ILIKE :q
+            ORDER BY nombre_oficial LIMIT 20"""), {"q": termino})).fetchall()
+        return [{"id": str(r[0]), "nombre": r[1], "detalle": r[2]} for r in rows]
+    rows = (await session.execute(text("""
+        SELECT id, COALESCE(nombre_comercial, razon_social), sector_economico, ciudad FROM empresas
+        WHERE estado = 'aprobado' AND COALESCE(nombre_comercial, razon_social) ILIKE :q ORDER BY 2 LIMIT 20"""), {"q": termino})).fetchall()
+    return [{"id": str(r[0]), "nombre": r[1], "detalle": " · ".join(x for x in (r[2], r[3]) if x)} for r in rows]
+
+
+# ───────────────────────────────────────────────────────────── acciones
+async def _correo_y_nombre(session: AsyncSession, lado: str, entidad: uuid.UUID) -> Tuple[Optional[str], str, str]:
+    """(correo de contacto, nombre de quien recibe, nombre de la entidad)."""
+    if lado == "empresa":
+        r = (await session.execute(text("SELECT correo_contacto, persona_contacto, COALESCE(nombre_comercial, razon_social) FROM empresas WHERE id = :i"), {"i": entidad})).one()
+    else:
+        r = (await session.execute(text("SELECT correo_institucional, nombre_rector, nombre_oficial FROM instituciones WHERE id = :i"), {"i": entidad})).one()
+    return r[0], r[1] or "", r[2]
+
+
+async def _avisar(session: AsyncSession, receptor: str, id_receptor: uuid.UUID, kind: str, **data) -> None:
+    try:
+        correo, nombre, _ = await _correo_y_nombre(session, receptor, id_receptor)
+        if correo:
+            await send_vincula_email(kind, correo, nombre=nombre, **data)
+    except Exception as exc:  # noqa: BLE001  el aviso no debe deshacer la propuesta ya guardada
+        logger.warning("Aviso de convenio no enviado: tipo=%s", type(exc).__name__)
+
+
+async def proponer(session: AsyncSession, lado: str, entidad: str, id_contraparte: str, tipo: str, vacantes: int,
+                   anos: int, programas: List[str], mensaje: Optional[str]) -> Dict[str, Any]:
+    if tipo not in TIPOS:
+        raise HTTPException(status_code=422, detail="Tipo de convenio inválido.")
+    mia, otra = _uuid(entidad), _uuid(id_contraparte)
+    id_empresa, id_ies = (mia, otra) if lado == "empresa" else (otra, mia)
+
+    ok = (await session.execute(text("""
+        SELECT (SELECT estado::text FROM empresas WHERE id = :e), (SELECT estado::text FROM instituciones WHERE id = :i)"""),
+        {"e": id_empresa, "i": id_ies})).one()
+    if ok[0] != "aprobado" or ok[1] != "aprobado":
+        raise HTTPException(status_code=422, detail="Solo se pueden proponer convenios entre empresas e instituciones con cuenta aprobada.")
+    vigente = (await session.execute(text("""
+        SELECT 1 FROM convenios_interinstitucionales WHERE id_empresa = :e AND id_institucion = :i
+        AND estado = 'activo' AND fecha_vencimiento >= CURRENT_DATE"""), {"e": id_empresa, "i": id_ies})).first()
+    if vigente:
+        raise HTTPException(status_code=409, detail="Ya existe un convenio vigente entre estas dos partes.")
+
+    try:
+        nueva = (await session.execute(text("""
+            INSERT INTO solicitudes_convenio_ies (id_empresa, id_institucion, tipo_convenio, vacantes_proyectadas, duracion_anos,
+                                                  programas_objetivo, mensaje, iniciada_por, estado)
+            VALUES (:e, :i, :t, :v, :a, :p, :m, :lado, 'pendiente') RETURNING id"""),
+            {"e": id_empresa, "i": id_ies, "t": tipo, "v": vacantes, "a": anos, "p": programas, "m": (mensaje or "").strip() or None, "lado": lado})).scalar()
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        raise HTTPException(status_code=409, detail="Ya hay una propuesta abierta entre estas dos partes. Espera su respuesta o retírala.") from None
+
+    _, _, mi_nombre = await _correo_y_nombre(session, lado, mia)
+    await _avisar(session, "ies" if lado == "empresa" else "empresa", otra, "convenio_propuesta", contraparte=mi_nombre, tipo=tipo,
+                  vacantes=vacantes, anos=anos, mensaje=(mensaje or "").strip())
+    return {"id": str(nueva), "estado": "pendiente"}
+
+
+async def responder(session: AsyncSession, lado: str, entidad: str, id_propuesta: str, accion: str, notas: Optional[str]) -> Dict[str, Any]:
+    """aceptar / rechazar (la parte que recibió) o retirar (la que propuso)."""
+    if accion not in ("aceptar", "rechazar", "retirar"):
+        raise HTTPException(status_code=422, detail="Acción inválida.")
+    notas = (notas or "").strip() or None
+    if accion == "rechazar" and not notas:
+        raise HTTPException(status_code=422, detail="Para rechazar escribe el motivo: la otra parte lo verá.")
+    mia, pid = _uuid(entidad), _uuid(id_propuesta)
+    columna = "id_empresa" if lado == "empresa" else "id_institucion"
+    p = (await session.execute(text(f"""
+        SELECT id_empresa, id_institucion, estado, iniciada_por, tipo_convenio, duracion_anos FROM solicitudes_convenio_ies
+        WHERE id = :p AND {columna} = :m FOR UPDATE"""), {"p": pid, "m": mia})).one_or_none()
+    if p is None:
+        raise HTTPException(status_code=404, detail="Propuesta no encontrada.")
+    if p[2] not in ABIERTAS:
+        raise HTTPException(status_code=409, detail="Esta propuesta ya fue resuelta.")
+    soy_quien_propuso = not puede_responder(p[3], lado)
+    if accion == "retirar" and not soy_quien_propuso:
+        raise HTTPException(status_code=403, detail="Solo quien envió la propuesta puede retirarla.")
+    if accion in ("aceptar", "rechazar") and soy_quien_propuso:
+        raise HTTPException(status_code=403, detail="Tu propia propuesta la responde la otra parte; si quieres cancelarla, retírala.")
+
+    nuevo = {"aceptar": "aprobada", "rechazar": "rechazada", "retirar": "retirada"}[accion]
+    id_convenio = None
+    if accion == "aceptar":
+        hoy = date.today()
+        id_convenio = (await session.execute(text("""
+            INSERT INTO convenios_interinstitucionales (id_empresa, id_institucion, codigo_convenio, modalidad, fecha_inicio, fecha_vencimiento, estado)
+            VALUES (:e, :i, :c, CAST(:m AS modalidad_convenio_enum), :ini, :fin, 'activo') RETURNING id"""),
+            {"e": p[0], "i": p[1], "c": f"CONV-{hoy.year}-{uuid.uuid4().hex[:6].upper()}", "m": p[4], "ini": hoy,
+             "fin": hoy + timedelta(days=365 * max(1, p[5] or 1))})).scalar()
+    await session.execute(text("""UPDATE solicitudes_convenio_ies SET estado = :e, notas_evaluador = :n, revisado_en = now(), id_convenio = :c
+                                  WHERE id = :p"""), {"e": nuevo, "n": notas, "c": id_convenio, "p": pid})
+    await session.commit()
+
+    if accion != "retirar":
+        otra = p[1] if lado == "empresa" else p[0]  # avisa a quien propuso
+        _, _, mi_nombre = await _correo_y_nombre(session, lado, mia)
+        await _avisar(session, p[3], otra, "convenio_respuesta", contraparte=mi_nombre, accion=accion, mensaje=notas or "")
+    return {"id": str(pid), "estado": nuevo, "id_convenio": str(id_convenio) if id_convenio else None}
+
+
+async def convenios_vigentes_de_empresa(session: AsyncSession, id_empresa: str) -> List[Dict[str, Any]]:
+    """Convenios vigentes con los que una empresa puede publicar vacantes exclusivas."""
+    rows = (await session.execute(text("""
+        SELECT c.id, i.nombre_oficial, c.fecha_vencimiento FROM convenios_interinstitucionales c JOIN instituciones i ON i.id = c.id_institucion
+        WHERE c.id_empresa = :e AND c.estado = 'activo' AND c.fecha_vencimiento >= CURRENT_DATE ORDER BY i.nombre_oficial"""),
+        {"e": _uuid(id_empresa)})).fetchall()
+    return [{"id": str(r[0]), "institucion": r[1], "vence": r[2]} for r in rows]
+
+
+async def validar_convenio_de_empresa(session: AsyncSession, id_empresa: uuid.UUID, id_convenio: Optional[str]) -> uuid.UUID:
+    """El convenio debe ser de la empresa y estar vigente; si no, la vacante no puede ser exclusiva de él."""
+    try:
+        cid = uuid.UUID(str(id_convenio))
+    except ValueError:
+        raise HTTPException(status_code=422, detail={"codigo": "CONVENIO_INVALIDO", "mensaje": "Convenio inválido."}) from None
+    ok = (await session.execute(text("""
+        SELECT 1 FROM convenios_interinstitucionales WHERE id = :c AND id_empresa = :e AND estado = 'activo' AND fecha_vencimiento >= CURRENT_DATE"""),
+        {"c": cid, "e": id_empresa})).first()
+    if not ok:
+        raise HTTPException(status_code=422, detail={"codigo": "CONVENIO_NO_VIGENTE",
+                                                      "mensaje": "Ese convenio no existe, no es de tu empresa o ya no está vigente."})
+    return cid

@@ -131,6 +131,7 @@ class Vacante(Base):
     requisitos = Column(PG_ARRAY(String), nullable=False)
     beneficios = Column(PG_ARRAY(String), nullable=True)
     estado = Column(EstadoVacanteEnum, default="abierta", nullable=False, index=True)
+    id_convenio = Column(UUID(as_uuid=True), nullable=True)  # exclusiva de los egresados de la IES de ese convenio
     publicado_en = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
     fecha_cierre = Column(SQLDate, nullable=False)
     creado_en = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

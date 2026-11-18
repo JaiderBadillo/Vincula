@@ -36,7 +36,7 @@ function mapApiToProposalJob(v) {
     companyShort: v.empresa_nombre || v.empresa?.nombre_comercial || '',
     companySlug: '',
     companyVerified: v.empresa_verificada === true,
-    partnershipType: v.etiqueta_badge || '',
+    partnershipType: v.id_convenio ? 'Exclusiva de tu institución' : (v.etiqueta_badge || ''),
     sector: 'private',
     sectorLabel: v.empresa_verificada ? 'Empresa verificada' : '',
     category: v.categoria || '',

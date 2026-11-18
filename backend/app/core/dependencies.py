@@ -58,6 +58,18 @@ async def get_current_user(
     return payload
 
 
+async def get_optional_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_bearer)
+) -> Optional[Dict[str, Any]]:
+    """Usuario autenticado si trae un token válido; None si es un visitante (catálogos públicos)."""
+    if not credentials:
+        return None
+    try:
+        return await get_current_user(credentials)
+    except HTTPException:
+        return None
+
+
 def require_role(allowed_roles: List[str]) -> Callable:
     """
     Fábrica de dependencias que comprueba si el rol del usuario autenticado

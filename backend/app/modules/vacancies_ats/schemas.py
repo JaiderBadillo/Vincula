@@ -72,6 +72,7 @@ class VacanteCreateRequest(BaseModel):
     programas_afines_ids: Optional[List[str]] = Field(default_factory=list)
     programas_afines_nombres: Optional[List[str]] = Field(default_factory=list)  # se resuelven a programas registrados
     publicar_inmediatamente: Optional[bool] = True  # compatibilidad
+    id_convenio: Optional[str] = Field(None, description="Convenio vigente: la vacante será exclusiva de los egresados de esa IES")
 
 
 class VacanteUpdateRequest(BaseModel):
@@ -98,6 +99,7 @@ class VacanteUpdateRequest(BaseModel):
     competencias: Optional[List[CompetenciaItem]] = None
     programas_afines_ids: Optional[List[str]] = None
     programas_afines_nombres: Optional[List[str]] = None
+    id_convenio: Optional[str] = None  # con valor: exclusiva del convenio; null explícito: abierta a todos
 
 
 class VacanteStatusUpdateRequest(BaseModel):
@@ -136,6 +138,7 @@ class VacanteResponse(BaseModel):
     competencias: List[CompetenciaResponse] = Field(default_factory=list)
     programas_afines_ids: List[str] = Field(default_factory=list)
     programas_afines_nombres: List[str] = Field(default_factory=list)
+    id_convenio: Optional[str] = None  # exclusiva de un convenio (solo la ven egresados de esa IES)
 
     # Campos de compatibilidad directa con Frontend React
     empresa_nombre: str

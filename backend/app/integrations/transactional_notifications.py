@@ -136,6 +136,18 @@ def build_message(kind, data):
             + ("" if data.get("accion") == "confirmo" else " Agenda una nueva cita desde Vincula."),
             [("Candidato", _clean(data.get("candidato"), "Egresado")), ("Vacante", vacancy), ("Fecha", _long_date(data.get("fecha"))),
              ("Hora", _clean(data.get("franja"))), ("Respuesta", "Confirmada" if data.get("accion") == "confirmo" else "Solicita reprogramar")]),
+        "convenio_propuesta": ("Propuesta de convenio · Vincula", "Propuesta de convenio", "CONVENIOS",
+            f"{_clean(data.get('contraparte'), 'Una entidad')} te propone un convenio",
+            f"{_clean(data.get('contraparte'), 'Una entidad')} te propone un convenio de {_clean(data.get('tipo'))} con {_clean(data.get('vacantes'))} vacante(s) proyectadas "
+            f"y duración de {_clean(data.get('anos'))} año(s)." + (f" Mensaje: {_clean(data.get('mensaje'))}." if data.get("mensaje") else "")
+            + " Ingresa a Vincula para aceptarla o rechazarla.",
+            [("Propone", _clean(data.get("contraparte"))), ("Tipo", _clean(data.get("tipo"))), ("Vacantes proyectadas", _clean(data.get("vacantes"))),
+             ("Duración", f"{_clean(data.get('anos'))} año(s)")]),
+        "convenio_respuesta": ("Respuesta a tu propuesta de convenio · Vincula", "Respuesta de convenio", "CONVENIOS",
+            f"{_clean(data.get('contraparte'), 'La otra parte')} " + ("aceptó tu propuesta de convenio" if data.get("accion") == "aceptar" else "rechazó tu propuesta de convenio"),
+            ("El convenio quedó vigente: ya pueden publicar vacantes exclusivas para sus egresados." if data.get("accion") == "aceptar"
+             else "La propuesta no fue aceptada.") + (f" Mensaje: {_clean(data.get('mensaje'))}." if data.get("mensaje") else ""),
+            [("Entidad", _clean(data.get("contraparte"))), ("Respuesta", "Aceptada" if data.get("accion") == "aceptar" else "Rechazada")]),
         "nueva_postulacion_empresa": ("Nueva postulación recibida · Vincula", "Nuevo candidato", "SEGUIMIENTO DE VACANTE",
             "Recibiste una nueva postulación",
             f"{_clean(data.get('candidato'), 'Un egresado')} se postuló a {vacancy}.",

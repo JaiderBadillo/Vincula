@@ -41,8 +41,9 @@ class VacancyService {
     if (params.nivel_experiencia) query.append('nivel_experiencia', params.nivel_experiencia);
 
     const url = `${API_BASE_URL}/vacantes${query.toString() ? `?${query.toString()}` : ''}`;
+    // Con sesión, el egresado también ve las vacantes exclusivas de su institución
     const res = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getAuthHeaders(),
     });
 
     if (!res.ok) {
@@ -62,8 +63,9 @@ class VacancyService {
 
   async getPublicVacancyDetail(vacancyId) {
     const url = `${API_BASE_URL}/vacantes/${vacancyId}`;
+    // Con sesión, el egresado también ve las vacantes exclusivas de su institución
     const res = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.getAuthHeaders(),
     });
 
     if (!res.ok) {
