@@ -6,7 +6,7 @@ import unittest
 
 from fastapi import HTTPException
 
-from app.modules.vacancies_ats.candidate_profile import build_profile, candidate_profile_async
+from app.modules.vacancies_ats.candidate_profile import build_profile, candidate_cv_url_async, candidate_profile_async
 
 TABLAS = {"competencias": [{"nombre": "SQL", "tipo": "tecnica", "nivel": 4, "validada": True}],
           "idiomas": [{"nombre": "Inglés", "nivel": "B2"}], "experiencias": [], "enlaces": {}, "hojas_de_vida": []}
@@ -60,6 +60,11 @@ class ScopeTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(HTTPException) as e:
                 await candidate_profile_async(None, pid, cid)
             self.assertEqual(e.exception.status_code, 404)
+
+    async def test_hoja_de_vida_con_ids_invalidos_da_404(self):
+        with self.assertRaises(HTTPException) as e:
+            await candidate_cv_url_async(None, "x", "y")
+        self.assertEqual(e.exception.status_code, 404)
 
 
 if __name__ == "__main__":

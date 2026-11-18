@@ -142,6 +142,16 @@ class ATSService {
     return await res.json();
   }
 
+  /** URL temporal de la hoja de vida del candidato. */
+  async getCandidateCvUrl(applicationId) {
+    const res = await fetch(`${API_BASE_URL}/reclutador/postulaciones/${encodeURIComponent(applicationId)}/hoja-de-vida-url`, { headers: this.getAuthHeaders() });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(extractErrorMessage(errorData, 'No se pudo abrir la hoja de vida.'));
+    }
+    return await res.json();
+  }
+
   async getCandidateDiplomaUrl(applicationId, expiresIn = 3600) {
     try {
       const res = await fetch(

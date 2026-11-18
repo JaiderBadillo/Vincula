@@ -2,15 +2,17 @@ import { useEffect, useState } from 'react';
 import { ATS_STAGES, DISCARD_REASONS } from '../../data/companyCandidatesData.js';
 import { atsService } from '../../services/atsService.js';
 import DocumentViewerModal from '../common/DocumentViewerModal.jsx';
-import CandidateProfileInfo, { RequiredSkills } from './CandidateProfileInfo.jsx';
+import CandidateProfileModal from './CandidateProfileModal.jsx';
+import { RequiredSkills } from './CandidateProfileInfo.jsx';
 
 const initialsOf = (name) => name.split(' ').slice(0, 2).map((part) => part[0]).join('').toUpperCase();
 const longDate = (iso, withYear = true) => new Date(`${iso}T12:00:00`).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', ...(withYear ? { year: 'numeric' } : {}) });
+const money = (n) => (n == null ? null : `$ ${(n / 1e6).toFixed(1).replace('.', ',')} M`);
+const range = (min, max) => (min && max && min !== max ? `${money(min)} – ${money(max)}` : money(min || max));
 
 const TABS = [
   { id: 'summary', label: 'Resumen' },
-  { id: 'info', label: 'Información' },
-  { id: 'degree', label: 'Título' },
+  { id: 'profile', label: 'Perfil' },
   { id: 'process', label: 'Proceso' },
 ];
 
@@ -38,7 +40,6 @@ function Section({ title, children, action }) {
   );
 }
 
-
 function InterviewCard({ text }) {
   const iv = parseInterview(text);
   if (!iv) return <p className="m-0 rounded-xl bg-cream/60 p-4 text-sm text-ink">{text}</p>;
@@ -64,6 +65,26 @@ function InterviewCard({ text }) {
   );
 }
 
+/** Un documento adjunto: no se muestra desplegado, se abre a pantalla completa al pulsar "Ver". */
+function DocumentRow({ icon, title, detail, onOpen, busy, disabled, error }) {
+  return (
+    <li>
+      <div className="flex items-center gap-3 rounded-xl border border-sand-line px-3.5 py-2.5">
+        <i className={`bx ${icon} text-xl text-terracotta`} aria-hidden="true" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-ink">{title}</span>
+          <span className="block truncate text-xs text-secondary">{detail}</span>
+        </span>
+        <button type="button" onClick={onOpen} disabled={busy || disabled}
+          className="rounded-lg border border-sand-line px-3 py-1.5 text-xs font-bold text-ink hover:bg-cream disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer">
+          {busy ? 'Abriendo…' : 'Ver'}
+        </button>
+      </div>
+      {error && <p className="m-0 mt-1 px-1 text-xs text-amber-800" role="alert">{error}</p>}
+    </li>
+  );
+}
+
 export default function CandidateDetailDrawer({ candidate, initialTab = 'summary', onClose, onMoveStage, onScheduleInterview, onDiscard, onSaveNotes }) {
   const [activeTab, setActiveTab] = useState('summary');
   const [notes, setNotes] = useState('');
@@ -71,24 +92,23 @@ export default function CandidateDetailDrawer({ candidate, initialTab = 'summary
   const [discardModalOpen, setDiscardModalOpen] = useState(false);
   const [selectedDiscardReason, setSelectedDiscardReason] = useState(DISCARD_REASONS[0]);
   const [discardNote, setDiscardNote] = useState('');
-  const [diplomaPdfUrl, setDiplomaPdfUrl] = useState(null);
-  const [loadingDiplomaPdf, setLoadingDiplomaPdf] = useState(false);
-  const [diplomaPdfError, setDiplomaPdfError] = useState(null);
-  const [showDiplomaModal, setShowDiplomaModal] = useState(false);
+  const [viewer, setViewer] = useState(null); // { url, title, subtitle, metadata }
+  const [opening, setOpening] = useState(null); // 'cv' | 'diploma' mientras se pide la URL firmada
+  const [docError, setDocError] = useState({});
   const [profile, setProfile] = useState({ data: null, loading: true, error: '' });
+  const [profileOpen, setProfileOpen] = useState(false);
   const open = Boolean(candidate);
 
   useEffect(() => {
     if (!open) return undefined;
     function handleKeyDown(e) {
-      if (e.key !== 'Escape') return;
-      if (showDiplomaModal) setShowDiplomaModal(false);
-      else if (discardModalOpen) setDiscardModalOpen(false);
+      if (e.key !== 'Escape' || viewer || profileOpen) return; // esos visores cierran con su propio Escape
+      if (discardModalOpen) setDiscardModalOpen(false);
       else onClose();
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose, discardModalOpen, showDiplomaModal]);
+  }, [open, onClose, discardModalOpen, viewer, profileOpen]);
 
   useEffect(() => {
     if (!candidate) return;
@@ -97,14 +117,14 @@ export default function CandidateDetailDrawer({ candidate, initialTab = 'summary
     setDiscardModalOpen(false);
     setSelectedDiscardReason(DISCARD_REASONS[0]);
     setDiscardNote('');
-    setDiplomaPdfUrl(null);
-    setDiplomaPdfError(null);
-    setLoadingDiplomaPdf(false);
-    setShowDiplomaModal(false);
-    setActiveTab(TABS.some((t) => t.id === initialTab) ? initialTab : initialTab === 'diploma' ? 'degree' : initialTab === 'cv' ? 'info' : 'summary');
+    setViewer(null);
+    setOpening(null);
+    setDocError({});
+    setProfileOpen(false);
+    setActiveTab(TABS.some((t) => t.id === initialTab) ? initialTab : 'summary');
   }, [candidate?.id, initialTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Perfil real del candidato: alimenta el resumen de habilidades y la pestaña Información
+  // Perfil real del candidato: alimenta las habilidades, la pestaña Perfil y el perfil completo
   useEffect(() => {
     if (!candidate?.id) return undefined;
     let alive = true;
@@ -117,21 +137,30 @@ export default function CandidateDetailDrawer({ candidate, initialTab = 'summary
 
   if (!candidate) return null;
   const stage = candidate.stage;
-  const skills = candidate.skillsMatch || [];
+  const p = profile.data;
+  const hasCv = p ? p.hojas_de_vida.length > 0 : null; // null = aún cargando
 
-  async function openDiploma() {
-    if (diplomaPdfUrl) { setShowDiplomaModal(true); return; }
-    setLoadingDiplomaPdf(true);
-    setDiplomaPdfError(null);
+  async function openDocument(kind) {
+    setOpening(kind);
+    setDocError((e) => ({ ...e, [kind]: '' }));
     try {
-      const res = await atsService.getCandidateDiplomaUrl(candidate.id, 3600);
-      if (!res?.url_segura) throw new Error('No se recibió el enlace firmado del diploma.');
-      setDiplomaPdfUrl(res.url_segura);
-      setShowDiplomaModal(true);
+      if (kind === 'cv') {
+        const res = await atsService.getCandidateCvUrl(candidate.id);
+        setViewer({ url: res.url_segura, title: `Hoja de vida — ${candidate.candidateName}`, subtitle: res.nombre_archivo, metadata: { egresado: candidate.candidateName } });
+      } else {
+        const res = await atsService.getCandidateDiplomaUrl(candidate.id, 3600);
+        if (!res?.url_segura) throw new Error('No se recibió el enlace del diploma.');
+        setViewer({
+          url: res.url_segura, title: `Título / Diploma — ${candidate.candidateName}`,
+          subtitle: `${candidate.program || 'Programa académico'} · ${candidate.institution || 'IES'}`,
+          metadata: { egresado: candidate.candidateName, programa: candidate.program, institucion: candidate.institution,
+            estado: candidate.degreeVerified ? 'Verificado por la IES' : 'En revisión IES', acta: candidate.actaNumber || undefined, folio: candidate.bookFolio || undefined },
+        });
+      }
     } catch (err) {
-      setDiplomaPdfError(err.message || 'El egresado aún no ha cargado el PDF de su título.');
+      setDocError((e) => ({ ...e, [kind]: err.message || 'No se pudo abrir el documento.' }));
     } finally {
-      setLoadingDiplomaPdf(false);
+      setOpening(null);
     }
   }
 
@@ -142,6 +171,7 @@ export default function CandidateDetailDrawer({ candidate, initialTab = 'summary
 
   const STEPS = ATS_STAGES.filter((s) => s.id !== 'discarded');
   const reached = STEPS.findIndex((s) => s.id === stage);
+  const salary = p && p.salario.aspiracion_compartida && range(p.salario.aspiracion_min, p.salario.aspiracion_max);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-cocoa/55 backdrop-blur-xs animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="candidate-drawer-name" onClick={onClose}>
@@ -169,14 +199,11 @@ export default function CandidateDetailDrawer({ candidate, initialTab = 'summary
             {candidate.phone && <a href={`tel:${candidate.phone}`} className="inline-flex items-center gap-1.5 text-secondary no-underline hover:text-ink"><i className="bx bx-phone text-sm" />{candidate.phone}</a>}
             <span className="ml-auto flex items-center gap-3">
               <span className="font-bold text-ink">{candidate.matchPercentage == null ? 'Sin puntaje' : `${candidate.matchPercentage}% afinidad`}</span>
-              <label className="flex items-center gap-1.5 text-secondary">
-                <span className="sr-only">Etapa del candidato</span>
-                <select value={stage} aria-label="Etapa del candidato"
-                  onChange={(e) => (e.target.value === 'discarded' ? setDiscardModalOpen(true) : onMoveStage(candidate.id, e.target.value))}
-                  className="cursor-pointer rounded-full border border-sand-line bg-white py-1 pl-3 pr-2 text-xs font-bold text-ink focus:border-terracotta focus:outline-none">
-                  {ATS_STAGES.map((st) => <option key={st.id} value={st.id}>{st.label}</option>)}
-                </select>
-              </label>
+              <select value={stage} aria-label="Etapa del candidato"
+                onChange={(e) => (e.target.value === 'discarded' ? setDiscardModalOpen(true) : onMoveStage(candidate.id, e.target.value))}
+                className="cursor-pointer rounded-full border border-sand-line bg-white py-1 pl-3 pr-2 text-xs font-bold text-ink focus:border-terracotta focus:outline-none">
+                {ATS_STAGES.map((st) => <option key={st.id} value={st.id}>{st.label}</option>)}
+              </select>
             </span>
           </div>
         </header>
@@ -203,7 +230,16 @@ export default function CandidateDetailDrawer({ candidate, initialTab = 'summary
               {candidate.interviewDate && <Section title="Entrevista"><InterviewCard text={candidate.interviewDate} /></Section>}
 
               <Section title="Habilidades que pide la vacante">
-                <RequiredSkills profile={profile.data} fallback={skills} />
+                <RequiredSkills profile={p} fallback={candidate.skillsMatch || []} />
+              </Section>
+
+              <Section title="Documentos adjuntos">
+                <ul className="m-0 list-none space-y-2 p-0">
+                  <DocumentRow icon="bx-file" title="Hoja de vida" busy={opening === 'cv'} disabled={hasCv === false} error={docError.cv}
+                    detail={hasCv === null ? 'Cargando…' : hasCv ? p.hojas_de_vida[0].nombre : 'El egresado no ha cargado una'} onOpen={() => openDocument('cv')} />
+                  <DocumentRow icon="bxs-graduation" title="Diploma" busy={opening === 'diploma'} error={docError.diploma}
+                    detail={candidate.degreeVerified ? 'Verificado por la IES' : 'En revisión por la IES'} onOpen={() => openDocument('diploma')} />
+                </ul>
               </Section>
 
               <Section title="Notas internas" action={!isEditingNotes && <button type="button" onClick={() => setIsEditingNotes(true)} className="text-xs font-bold text-terracotta hover:underline cursor-pointer">{notes ? 'Editar' : 'Añadir'}</button>}>
@@ -227,34 +263,24 @@ export default function CandidateDetailDrawer({ candidate, initialTab = 'summary
             </>
           )}
 
-          {activeTab === 'info' && <CandidateProfileInfo state={profile} candidate={candidate} />}
-
-          {activeTab === 'degree' && (
+          {activeTab === 'profile' && (
             <>
-              <Section title="Formación">
-                <div className="space-y-3 rounded-2xl border border-sand-line p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="m-0 text-sm font-bold text-ink">{candidate.program}</p>
-                      <p className="m-0 text-xs text-secondary">{[candidate.degreeLevel, candidate.institution, candidate.graduationYear].filter(Boolean).join(' · ')}</p>
-                    </div>
-                    <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[0.68rem] font-bold ${candidate.degreeVerified ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
-                      {candidate.degreeVerified ? 'Título verificado por la IES' : 'Título en revisión'}
-                    </span>
-                  </div>
-                  {(candidate.actaNumber || candidate.bookFolio || candidate.degreeDate) && (
-                    <dl className="m-0 grid grid-cols-3 gap-3 border-t border-sand-line/70 pt-3 text-xs">
-                      {[['Acta', candidate.actaNumber], ['Libro / folio', candidate.bookFolio], ['Fecha de grado', candidate.degreeDate]].filter(([, v]) => v).map(([k, v]) => (
-                        <div key={k}><dt className="text-secondary">{k}</dt><dd className="m-0 font-bold text-ink">{v}</dd></div>
-                      ))}
-                    </dl>
-                  )}
-                  <button type="button" onClick={openDiploma} disabled={loadingDiplomaPdf} className={`${ghost} inline-flex items-center gap-1.5 disabled:opacity-60`}>
-                    <i className="bx bxs-graduation text-base text-terracotta" aria-hidden="true" />{loadingDiplomaPdf ? 'Cargando…' : 'Ver diploma (PDF)'}
-                  </button>
-                  {diplomaPdfError && <p className="m-0 text-xs text-amber-800" role="alert">{diplomaPdfError}</p>}
+              {profile.error ? <p className="m-0 text-sm text-rose-700" role="alert">{profile.error}</p> : !p ? <p className="m-0 text-sm text-secondary">Cargando perfil…</p> : (
+                <div className="space-y-5">
+                  {p.titular && <p className="m-0 text-sm font-semibold text-ink">{p.titular}</p>}
+                  <p className="m-0 line-clamp-4 whitespace-pre-line text-sm leading-relaxed text-ink">{p.biografia || <span className="text-secondary">No ha escrito una presentación.</span>}</p>
+                  <dl className="m-0 divide-y divide-sand-line/70 text-sm">
+                    {[['Ubicación', [p.ciudad, p.departamento].filter(Boolean).join(', ')],
+                      ['Disponibilidad', p.disponibilidad.disponible ? `Disponible${p.disponibilidad.tipo ? ` · ${p.disponibilidad.tipo}` : ''}` : 'No marcó disponibilidad'],
+                      ['Aspiración salarial', p.salario.aspiracion_compartida ? salary : 'No la comparte']].filter(([, v]) => v).map(([k, v]) => (
+                      <div key={k} className="flex justify-between gap-4 py-2.5"><dt className="text-secondary">{k}</dt><dd className="m-0 text-right font-semibold text-ink">{v}</dd></div>
+                    ))}
+                  </dl>
                 </div>
-              </Section>
+              )}
+              <button type="button" onClick={() => setProfileOpen(true)} disabled={!p} className={`${ghost} inline-flex items-center gap-2 disabled:opacity-50`}>
+                <i className="bx bx-user-circle text-base text-terracotta" aria-hidden="true" />Ver perfil completo en Vincula
+              </button>
             </>
           )}
 
@@ -317,15 +343,9 @@ export default function CandidateDetailDrawer({ candidate, initialTab = 'summary
           </div>
         )}
 
-        <DocumentViewerModal
-          isOpen={showDiplomaModal}
-          onClose={() => setShowDiplomaModal(false)}
-          documentUrl={diplomaPdfUrl}
-          title={`Título / Diploma — ${candidate.candidateName}`}
-          subtitle={`${candidate.program || 'Programa académico'} · ${candidate.institution || 'IES'}`}
-          metadata={{ egresado: candidate.candidateName, programa: candidate.program, institucion: candidate.institution,
-            estado: candidate.degreeVerified ? 'Verificado por la IES' : 'En revisión IES', acta: candidate.actaNumber || undefined, folio: candidate.bookFolio || undefined }}
-        />
+        <DocumentViewerModal isOpen={Boolean(viewer)} onClose={() => setViewer(null)} documentUrl={viewer?.url} title={viewer?.title}
+          subtitle={viewer?.subtitle} metadata={viewer?.metadata || {}} />
+        <CandidateProfileModal isOpen={profileOpen} onClose={() => setProfileOpen(false)} candidate={candidate} state={profile} />
       </div>
     </div>
   );

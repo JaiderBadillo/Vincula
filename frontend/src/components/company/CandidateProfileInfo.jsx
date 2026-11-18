@@ -139,15 +139,14 @@ export default function CandidateProfileInfo({ state, candidate }) {
         </Section>
       )}
 
-      <Section title="Enlaces y hoja de vida">
-        {links.length === 0 && p.hojas_de_vida.length === 0 ? <Muted>No agregó enlaces ni hoja de vida.</Muted> : (
+      <Section title="Enlaces">
+        {links.length === 0 ? <Muted>No agregó enlaces.</Muted> : (
           <div className="flex flex-wrap items-center gap-2">
             {links.map(([label, url]) => (
               <a key={label} href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-sand-line px-3 py-2 text-xs font-bold text-ink no-underline hover:bg-cream">
                 {label}<i className="bx bx-link-external text-secondary" aria-hidden="true" />
               </a>
             ))}
-            {p.hojas_de_vida.length > 0 && <span className="text-xs text-secondary">{p.hojas_de_vida.length} hoja(s) de vida en su perfil</span>}
           </div>
         )}
       </Section>

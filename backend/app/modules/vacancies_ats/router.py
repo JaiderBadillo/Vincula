@@ -33,7 +33,7 @@ from app.modules.vacancies_ats.schemas import (
     EntrevistaResponse,
 )
 from app.modules.vacancies_ats.services import VacancyATSService
-from app.modules.vacancies_ats.candidate_profile import candidate_profile_async
+from app.modules.vacancies_ats.candidate_profile import candidate_cv_url_async, candidate_profile_async
 
 router = APIRouter(tags=["Vacantes y ATS Kanban"])
 
@@ -362,6 +362,16 @@ async def get_candidate_profile(
 ):
     """Perfil real del candidato (habilidades, condiciones, idiomas, experiencia) comparado con la vacante."""
     return await candidate_profile_async(db, application_id, current_user.get("id_entidad"))
+
+
+@router.get("/reclutador/postulaciones/{application_id}/hoja-de-vida-url")
+async def get_candidate_cv_url(
+    application_id: str,
+    current_user: Dict[str, Any] = Depends(require_approved_company),
+    db: AsyncSession = Depends(get_db),
+):
+    """URL firmada y temporal de la hoja de vida del candidato (solo la empresa a la que se postuló)."""
+    return await candidate_cv_url_async(db, application_id, current_user.get("id_entidad"))
 
 
 @router.get("/reclutador/postulaciones/{application_id}/diploma-url", response_model=CandidateDiplomaUrlResponse)

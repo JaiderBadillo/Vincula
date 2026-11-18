@@ -15,6 +15,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.skills_taxonomy import normalize_text
+from app.integrations.supabase_storage import SupabaseStorageService
 
 _URL = re.compile(r"https?://[^\s<>\"']{3,300}")
 
@@ -143,3 +144,32 @@ async def candidate_profile_async(session: AsyncSession, id_postulacion: str, co
     vacante = {"salario_min": base[2], "salario_max": base[3], "salario_confidencial": base[4], "modalidad": base[5],
                "tipo_contrato": base[6], "jornada": base[7], "experiencia": base[8]}
     return build_profile(egresado, tablas, e[9] or {}, vacante, requeridas)
+
+
+PRIVATE_CV_BUCKET = "vincula-hojas-de-vida"  # el mismo bucket privado donde el egresado sube su hoja de vida
+
+
+async def candidate_cv_url_async(session: AsyncSession, id_postulacion: str, company_id: Optional[str], expires_in: int = 900) -> Dict[str, Any]:
+    """URL temporal de la hoja de vida principal del candidato, solo para la empresa a la que se postuló."""
+    no_existe = HTTPException(status_code=404, detail={"codigo": "POSTULACION_NO_ENCONTRADA", "mensaje": "Postulación no encontrada."})
+    try:
+        pid, cid = uuid.UUID(str(id_postulacion)), uuid.UUID(str(company_id))
+    except (ValueError, TypeError):
+        raise no_existe from None
+    cv = (await session.execute(text("""
+        SELECT h.nombre_archivo, h.url_archivo FROM postulaciones po
+        JOIN vacantes v ON v.id = po.id_vacante
+        JOIN archivos_hoja_vida h ON h.id_egresado = po.id_egresado
+        WHERE po.id = :pid AND v.id_empresa = :cid
+        ORDER BY h.es_predeterminado DESC, h.subido_en DESC LIMIT 1"""), {"pid": pid, "cid": cid})).one_or_none()
+    if cv is None:
+        exists = (await session.execute(text("""SELECT 1 FROM postulaciones po JOIN vacantes v ON v.id = po.id_vacante
+                                                WHERE po.id = :pid AND v.id_empresa = :cid"""), {"pid": pid, "cid": cid})).first()
+        if not exists:
+            raise no_existe
+        raise HTTPException(status_code=404, detail={"codigo": "SIN_HOJA_DE_VIDA", "mensaje": "El egresado aún no ha cargado una hoja de vida."})
+    nombre, url = cv
+    prefix = f"/storage/v1/object/public/{PRIVATE_CV_BUCKET}/"
+    if prefix in url:
+        url = await SupabaseStorageService.create_signed_url(PRIVATE_CV_BUCKET, url.split(prefix, 1)[1], expires_in=expires_in)
+    return {"nombre_archivo": nombre, "url_segura": url, "expira_en_segundos": expires_in}
