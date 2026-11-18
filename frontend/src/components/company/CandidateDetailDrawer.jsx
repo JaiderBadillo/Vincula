@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import { ATS_STAGES, DISCARD_REASONS } from '../../data/companyCandidatesData.js';
 import { atsService } from '../../services/atsService.js';
 import DocumentViewerModal from '../common/DocumentViewerModal.jsx';
+import CandidateProfileInfo, { RequiredSkills } from './CandidateProfileInfo.jsx';
 
 const initialsOf = (name) => name.split(' ').slice(0, 2).map((part) => part[0]).join('').toUpperCase();
 const longDate = (iso, withYear = true) => new Date(`${iso}T12:00:00`).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', ...(withYear ? { year: 'numeric' } : {}) });
 
 const TABS = [
   { id: 'summary', label: 'Resumen' },
-  { id: 'profile', label: 'Perfil y título' },
+  { id: 'info', label: 'Información' },
+  { id: 'degree', label: 'Título' },
   { id: 'process', label: 'Proceso' },
 ];
 
@@ -36,7 +38,6 @@ function Section({ title, children, action }) {
   );
 }
 
-const Chip = ({ children, tone = 'bg-sand/60 text-cocoa' }) => <span className={`rounded-lg px-2.5 py-1 text-xs font-medium ${tone}`}>{children}</span>;
 
 function InterviewCard({ text }) {
   const iv = parseInterview(text);
@@ -74,6 +75,7 @@ export default function CandidateDetailDrawer({ candidate, initialTab = 'summary
   const [loadingDiplomaPdf, setLoadingDiplomaPdf] = useState(false);
   const [diplomaPdfError, setDiplomaPdfError] = useState(null);
   const [showDiplomaModal, setShowDiplomaModal] = useState(false);
+  const [profile, setProfile] = useState({ data: null, loading: true, error: '' });
   const open = Boolean(candidate);
 
   useEffect(() => {
@@ -99,13 +101,23 @@ export default function CandidateDetailDrawer({ candidate, initialTab = 'summary
     setDiplomaPdfError(null);
     setLoadingDiplomaPdf(false);
     setShowDiplomaModal(false);
-    setActiveTab(TABS.some((t) => t.id === initialTab) ? initialTab : initialTab === 'diploma' || initialTab === 'cv' ? 'profile' : 'summary');
+    setActiveTab(TABS.some((t) => t.id === initialTab) ? initialTab : initialTab === 'diploma' ? 'degree' : initialTab === 'cv' ? 'info' : 'summary');
   }, [candidate?.id, initialTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Perfil real del candidato: alimenta el resumen de habilidades y la pestaña Información
+  useEffect(() => {
+    if (!candidate?.id) return undefined;
+    let alive = true;
+    setProfile({ data: null, loading: true, error: '' });
+    atsService.getCandidateProfile(candidate.id)
+      .then((data) => alive && setProfile({ data, loading: false, error: '' }))
+      .catch((err) => alive && setProfile({ data: null, loading: false, error: err.message }));
+    return () => { alive = false; };
+  }, [candidate?.id]);
 
   if (!candidate) return null;
   const stage = candidate.stage;
   const skills = candidate.skillsMatch || [];
-  const missing = candidate.missingSkills || [];
 
   async function openDiploma() {
     if (diplomaPdfUrl) { setShowDiplomaModal(true); return; }
@@ -190,13 +202,8 @@ export default function CandidateDetailDrawer({ candidate, initialTab = 'summary
 
               {candidate.interviewDate && <Section title="Entrevista"><InterviewCard text={candidate.interviewDate} /></Section>}
 
-              <Section title={`Habilidades de la vacante · ${skills.length} coinciden`}>
-                {skills.length === 0 && missing.length === 0 ? <p className="m-0 text-xs text-secondary">La vacante no tiene habilidades registradas para comparar.</p> : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {skills.map((s) => <Chip key={s} tone="bg-emerald-50 text-emerald-900">✓ {s}</Chip>)}
-                    {missing.map((s) => <Chip key={s} tone="bg-amber-50 text-amber-900">{s}</Chip>)}
-                  </div>
-                )}
+              <Section title="Habilidades que pide la vacante">
+                <RequiredSkills profile={profile.data} fallback={skills} />
               </Section>
 
               <Section title="Notas internas" action={!isEditingNotes && <button type="button" onClick={() => setIsEditingNotes(true)} className="text-xs font-bold text-terracotta hover:underline cursor-pointer">{notes ? 'Editar' : 'Añadir'}</button>}>
@@ -220,12 +227,10 @@ export default function CandidateDetailDrawer({ candidate, initialTab = 'summary
             </>
           )}
 
-          {activeTab === 'profile' && (
-            <>
-              <Section title="Experiencia">
-                <p className="m-0 text-sm leading-relaxed text-ink">{candidate.experienceSummary || <span className="text-secondary">Sin experiencia laboral registrada.</span>}</p>
-              </Section>
+          {activeTab === 'info' && <CandidateProfileInfo state={profile} candidate={candidate} />}
 
+          {activeTab === 'degree' && (
+            <>
               <Section title="Formación">
                 <div className="space-y-3 rounded-2xl border border-sand-line p-4">
                   <div className="flex items-start justify-between gap-3">

@@ -33,6 +33,7 @@ from app.modules.vacancies_ats.schemas import (
     EntrevistaResponse,
 )
 from app.modules.vacancies_ats.services import VacancyATSService
+from app.modules.vacancies_ats.candidate_profile import candidate_profile_async
 
 router = APIRouter(tags=["Vacantes y ATS Kanban"])
 
@@ -351,6 +352,16 @@ async def schedule_candidate_interview(
         payload=payload,
         company_id=current_user.get("id_entidad")
     )
+
+
+@router.get("/reclutador/postulaciones/{application_id}/perfil")
+async def get_candidate_profile(
+    application_id: str,
+    current_user: Dict[str, Any] = Depends(require_approved_company),
+    db: AsyncSession = Depends(get_db),
+):
+    """Perfil real del candidato (habilidades, condiciones, idiomas, experiencia) comparado con la vacante."""
+    return await candidate_profile_async(db, application_id, current_user.get("id_entidad"))
 
 
 @router.get("/reclutador/postulaciones/{application_id}/diploma-url", response_model=CandidateDiplomaUrlResponse)

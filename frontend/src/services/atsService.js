@@ -132,6 +132,16 @@ class ATSService {
   /**
    * Obtiene la URL firmada temporal para visualizar el diploma / título en PDF del candidato.
    */
+  /** Perfil real del candidato comparado con la vacante (habilidades, condiciones, idiomas, experiencia). */
+  async getCandidateProfile(applicationId) {
+    const res = await fetch(`${API_BASE_URL}/reclutador/postulaciones/${encodeURIComponent(applicationId)}/perfil`, { headers: this.getAuthHeaders() });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(extractErrorMessage(errorData, 'No se pudo cargar el perfil del candidato.'));
+    }
+    return await res.json();
+  }
+
   async getCandidateDiplomaUrl(applicationId, expiresIn = 3600) {
     try {
       const res = await fetch(
