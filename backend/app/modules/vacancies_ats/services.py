@@ -25,6 +25,7 @@ from app.core.skills_taxonomy import normalize_text
 from app.modules.graduates.models import Egresado, AcademicoEgresado
 from app.integrations.supabase_storage import SupabaseStorageService
 from app.integrations.meetings import generate_meeting_link
+from app.modules.vacancies_ats.interview_response import make_response_url
 from app.integrations.transactional_notifications import send_vincula_email
 from app.modules.vacancies_ats.models import (
     Vacante,
@@ -65,6 +66,10 @@ def _slugify(text: str) -> str:
 
 
 logger = logging.getLogger(__name__)
+
+ESTADO_ENTREVISTA = {"programada": "Pendiente de confirmar", "confirmada": "Confirmada por el egresado",
+                     "reprogramada": "El egresado pide otra fecha", "cancelada": "Cancelada", "realizada": "Realizada"}
+
 
 class VacancyATSService:
 
@@ -851,6 +856,7 @@ class VacancyATSService:
             interview_info = f"{first_ent.fecha_entrevista.strftime('%Y-%m-%d')} · {first_ent.franja_horaria} ({first_ent.modalidad})"
             if first_ent.url_reunion:
                 interview_info += f" — {first_ent.url_reunion}"
+            interview_info += f" · {ESTADO_ENTREVISTA.get(first_ent.estado, first_ent.estado)}"
 
         # Habilidades requeridas de la vacante para el match visual
         skills_match = []
@@ -1444,7 +1450,8 @@ class VacancyATSService:
                     "entrevista_programada", egr.correo_personal, nombre=egr.nombre_completo,
                     vacante=vac_titulo, empresa=emp_nombre, fecha=entrevista.fecha_entrevista.isoformat(),
                     franja=entrevista.franja_horaria, modalidad=entrevista.modalidad, enlace=entrevista.url_reunion,
-                    objetivo=entrevista.objetivo, reclutador=rec.nombre_completo)
+                    objetivo=entrevista.objetivo, reclutador=rec.nombre_completo,
+                    responder_url=make_response_url(entrevista.id))
             except Exception as exc:  # noqa: BLE001  la cita ya quedó registrada
                 logger.warning("Correo de entrevista no enviado: tipo=%s", type(exc).__name__)
 

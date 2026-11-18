@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Citar a un egresado: modalidad virtual o presencial, enlace automático y correo con los datos."""
 
+import app.main  # noqa: F401  carga los módulos en el orden de producción (evita un ciclo de importación)
 import unittest
 import uuid
 from datetime import datetime, timedelta, timezone

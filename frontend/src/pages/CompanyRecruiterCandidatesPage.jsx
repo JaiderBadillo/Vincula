@@ -187,7 +187,7 @@ export default function CompanyRecruiterCandidatesPage() {
     const name = schedulingCandidate?.candidateName || 'el candidato';
     setSchedulingId(null);
     setToast(result.correo_enviado
-      ? `Entrevista agendada. Se envió un correo a ${name} con los datos de la cita.`
+      ? `Entrevista agendada. Le enviamos un correo a ${name} para que confirme; te avisaremos por correo cuando responda.`
       : `Entrevista agendada, pero el correo a ${name} no salió: avísale por otro medio.`);
   }
 

@@ -17,6 +17,7 @@ from app.modules.companies.router import router as companies_router
 from app.modules.institutions.router import router as institutions_router
 from app.modules.graduates.router import router as graduates_router
 from app.modules.vacancies_ats.router import router as vacancies_router
+from app.modules.vacancies_ats.interview_response import router as interview_response_router
 from app.modules.ai_engine.router import router as ai_engine_router
 from app.api.endpoints.traceability import router as legacy_traceability_router
 from app.modules.moderation.router import router as moderation_router
@@ -78,6 +79,7 @@ app.include_router(companies_router, prefix="/api/v1")
 app.include_router(institutions_router, prefix="/api/v1")
 app.include_router(graduates_router, prefix="/api/v1")
 app.include_router(vacancies_router, prefix="/api/v1")
+app.include_router(interview_response_router, prefix="/api/v1")
 app.include_router(ai_engine_router, prefix="/api/v1")
 
 # Compatibilidad hacia atrás con endpoints previos de trazabilidad

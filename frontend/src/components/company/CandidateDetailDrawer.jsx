@@ -774,7 +774,7 @@ export default function CandidateDetailDrawer({
                 </button>
               )}
 
-              {candidate.stage === 'evaluation' && (
+              {['preselected', 'evaluation'].includes(candidate.stage) && (
                 <button
                   type="button"
                   onClick={() => (onScheduleInterview ? onScheduleInterview(candidate) : onMoveStage(candidate.id, 'interview'))}

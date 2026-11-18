@@ -26,6 +26,7 @@ import InstitutionDashboardPage from './pages/InstitutionDashboardPage.jsx';
 import InstitutionGraduateValidationPage from './pages/InstitutionGraduateValidationPage.jsx';
 import InstitutionLaborMarketPage from './pages/InstitutionLaborMarketPage.jsx';
 import InstitutionPlaceholderPage from './pages/InstitutionPlaceholderPage.jsx';
+import InterviewResponsePage from './pages/InterviewResponsePage.jsx';
 import InstitutionPlacementStatsPage from './pages/InstitutionPlacementStatsPage.jsx';
 import InstitutionProgramDetailPage from './pages/InstitutionProgramDetailPage.jsx';
 import InstitutionStudentTrackingPage from './pages/InstitutionStudentTrackingPage.jsx';
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/recuperar-contrasena" element={<PasswordRecoveryPage />} />
+        <Route path="/entrevista/responder" element={<InterviewResponsePage />} />
         <Route path="/registro-egresado" element={<GraduateRegistrationPage />} />
         <Route path="/registro-empresa" element={<CompanyRegistrationPage />} />
         <Route path="/registro-institucion" element={<InstitutionRegistrationPage />} />

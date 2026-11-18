@@ -30,6 +30,16 @@ def _long_date(value):
     return f"{_DIAS[d.weekday()]} {d.day} de {_MESES[d.month - 1]} de {d.year}"
 
 
+FRONTEND_URL = "https://vincula-henna.vercel.app"
+
+
+def _response_url(data):
+    """Enlace para que el egresado confirme; solo se acepta el de nuestra propia página, sin caracteres raros."""
+    url = str(data.get("responder_url") or "")
+    ok = url.startswith(f"{FRONTEND_URL}/entrevista/responder?token=") and re.fullmatch(r"[A-Za-z0-9._:/?=-]+", url)
+    return url if ok else None
+
+
 def _interview_content(data, company, vacancy):
     """Texto y filas de la cita: enlace si es virtual, lugar si es presencial."""
     virtual = str(data.get("modalidad", "")).strip().lower() == "virtual"
@@ -43,12 +53,16 @@ def _interview_content(data, company, vacancy):
         text += f" Lugar: {_clean(where)}."
     if data.get("objetivo"):
         text += f" Objetivo: {_clean(data.get('objetivo'))}."
-    text += " Si no puedes asistir, avísale a la empresa con tiempo."
+    respuesta = _response_url(data)
+    text += (f" Confirma si asistirás o pide otra fecha aquí: {respuesta}" if respuesta
+             else " Si no puedes asistir, avísale a la empresa con tiempo.")
     rows = [("Vacante", vacancy), ("Empresa", company), ("Fecha", _long_date(data.get("fecha"))),
             ("Hora", _clean(data.get("franja"))), ("Modalidad", "Virtual" if virtual else "Presencial")]
     rows.append(("Enlace", link) if link else ("Lugar", _clean(where, "Por confirmar")))
     if data.get("reclutador"):
         rows.append(("Te entrevista", _clean(data.get("reclutador"))))
+    if respuesta:
+        rows.append(("Estado", "Pendiente de tu confirmación"))
     return text, rows, link
 
 
@@ -114,6 +128,14 @@ def build_message(kind, data):
             [("Vacante", vacancy), ("Empresa", company), ("Estado", "Inhabilitada")]),
         "entrevista_programada": ("Te citaron a una entrevista · Vincula", "Entrevista programada", "ENTREVISTA DE SELECCIÓN",
             f"{company} te cita a una entrevista", *_interview_content(data, company, vacancy)[:2]),
+        "entrevista_respuesta": ("Respuesta a tu cita de entrevista · Vincula", "Respuesta del candidato", "SEGUIMIENTO DE ENTREVISTA",
+            f"{_clean(data.get('candidato'), 'El egresado')} " + ("confirmó su asistencia" if data.get("accion") == "confirmo" else "no podrá asistir"),
+            f"{_clean(data.get('candidato'), 'El egresado')} " + ("confirmó que asistirá" if data.get("accion") == "confirmo" else "avisó que no puede asistir y pide otra fecha")
+            + f" a la entrevista de {vacancy} del {_long_date(data.get('fecha'))} a las {_clean(data.get('franja'))}."
+            + (f" Motivo: {_clean(data.get('motivo'))}." if data.get("motivo") else "")
+            + ("" if data.get("accion") == "confirmo" else " Agenda una nueva cita desde Vincula."),
+            [("Candidato", _clean(data.get("candidato"), "Egresado")), ("Vacante", vacancy), ("Fecha", _long_date(data.get("fecha"))),
+             ("Hora", _clean(data.get("franja"))), ("Respuesta", "Confirmada" if data.get("accion") == "confirmo" else "Solicita reprogramar")]),
         "nueva_postulacion_empresa": ("Nueva postulación recibida · Vincula", "Nuevo candidato", "SEGUIMIENTO DE VACANTE",
             "Recibiste una nueva postulación",
             f"{_clean(data.get('candidato'), 'Un egresado')} se postuló a {vacancy}.",
@@ -127,7 +149,9 @@ def build_message(kind, data):
     seguridad = kind in ("recuperacion_contrasena", "contrasena_actualizada")
     if kind == "entrevista_programada":
         link = _interview_content(data, company, vacancy)[2]
-        cta = ("Unirme a la reunión", escape(link, quote=True)) if link else (None, None)
+        respuesta = _response_url(data)
+        cta = (("Confirmar asistencia", escape(respuesta, quote=True)) if respuesta
+               else ("Unirme a la reunión", escape(link, quote=True)) if link else (None, None))
     elif seguridad:
         cta = (None, None)
     else:

@@ -125,7 +125,7 @@ export default function ScheduleInterviewModal({ candidate, onClose, onSubmit })
 
           <p className="m-0 rounded-xl bg-cream px-3.5 py-2.5 text-xs text-secondary">
             <i className="bx bx-envelope mr-1 align-middle text-sm text-terracotta" aria-hidden="true" />
-            Se enviará un correo a <strong className="text-ink">{candidate.email || 'el egresado'}</strong> con la fecha, la hora y {virtual ? 'el enlace para unirse' : 'el lugar'}.
+            Se enviará un correo a <strong className="text-ink">{candidate.email || 'el egresado'}</strong> con la fecha, la hora y {virtual ? 'el enlace para unirse' : 'el lugar'}, y un botón para que <strong className="text-ink">confirme su asistencia</strong>. Tú recibirás un correo con su respuesta.
           </p>
           {(error || (problem && date)) && <p className="m-0 text-sm font-semibold text-rose-700" role="alert">{error || problem}</p>}
         </div>
