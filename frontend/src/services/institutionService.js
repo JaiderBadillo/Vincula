@@ -601,6 +601,26 @@ class InstitutionService {
     }
     return await res.json();
   }
+
+  // ── Vistas del asesor: datos reales calculados por el backend ──
+  async #request(path, options = {}, fallback = 'No se pudo completar la consulta.') {
+    const res = await fetch(`${API_BASE_URL}/instituciones/${path}`, { headers: this.getAuthHeaders(), ...options });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(extractErrorMessage(errorData, fallback));
+    }
+    return await res.json();
+  }
+
+  getPanel() { return this.#request('panel', {}, 'No se pudo cargar el panel.'); }
+  getGraduatesTracking() { return this.#request('seguimiento-egresados', {}, 'No se pudo cargar el seguimiento de egresados.'); }
+  getCompaniesTracking() { return this.#request('seguimiento-empresas', {}, 'No se pudo cargar el seguimiento de empresas.'); }
+  getAgreementRequests() { return this.#request('solicitudes-convenio', {}, 'No se pudieron cargar las solicitudes.'); }
+  resolveAgreementRequest(id, estado, notas = null) {
+    return this.#request(`solicitudes-convenio/${id}/resolver`, {
+      method: 'POST', body: JSON.stringify({ estado, notas }),
+    }, 'No se pudo resolver la solicitud.');
+  }
 }
 
 export const institutionService = new InstitutionService();

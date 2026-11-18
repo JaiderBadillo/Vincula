@@ -4,54 +4,7 @@ import InstitutionPortalLayout from '../components/institution/InstitutionPortal
 import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
 import { advisorPhotos } from '../data/institutionImages.js';
 import { aiService } from '../services/aiService.js';
-
-const money = (v) => (v == null ? 'Sin datos' : `$ ${(v / 1e6).toFixed(2)}M`);
-const pct = (v) => (v == null ? 'Sin datos' : `${v}%`);
-const days = (v) => (v == null ? 'Sin datos' : `${v} días`);
-
-function Card({ title, note, children }) {
-  return (
-    <section className="rounded-2xl border border-line bg-white p-6 shadow-2xs space-y-4">
-      <div className="border-b border-line pb-3">
-        <h2 className="m-0 font-display text-base font-bold text-ink">{title}</h2>
-        {note && <p className="m-0 mt-0.5 text-xs text-secondary">{note}</p>}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-const Empty = ({ children }) => <p className="m-0 rounded-xl bg-page/60 px-4 py-6 text-center text-xs text-secondary">{children}</p>;
-
-/** Barras horizontales: [{ etiqueta, cantidad, porcentaje }] */
-function Bars({ rows, empty }) {
-  if (!rows?.length) return <Empty>{empty}</Empty>;
-  return (
-    <div className="space-y-2.5">
-      {rows.map((r) => (
-        <div key={r.etiqueta}>
-          <div className="mb-1 flex justify-between text-xs">
-            <span className="font-semibold text-ink">{r.etiqueta}</span>
-            <span className="text-secondary"><strong className="text-ink">{r.cantidad}</strong> · {r.porcentaje}%</span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full border border-line/60 bg-page">
-            <div className="h-full rounded-full bg-green-dark" style={{ width: `${r.porcentaje}%` }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Kpi({ label, value, hint }) {
-  return (
-    <div className="rounded-2xl border border-line bg-white p-5 shadow-2xs">
-      <span className="text-xs font-semibold text-secondary">{label}</span>
-      <p className="m-0 mt-2 font-display text-3xl font-bold tracking-tight text-ink">{value}</p>
-      {hint && <p className="m-0 mt-1.5 text-xs text-body-muted">{hint}</p>}
-    </div>
-  );
-}
+import { Bars, Card, Empty, Kpi, days, money, pct } from '../components/institution/ui.jsx';
 
 export default function InstitutionPlacementStatsPage() {
   const [data, setData] = useState(null);

@@ -46,6 +46,7 @@ from app.modules.institutions.schemas import (
     DiplomaSecureUrlResponse,
     SubsanarDocumentoIESRequest,
 )
+from app.modules.institutions import advisor_views
 from app.modules.institutions.placement_stats import placement_stats_async
 from app.modules.institutions.services import InstitutionService
 from app.modules.institutions.models import Institucion
@@ -571,3 +572,48 @@ async def get_placement_stats(
     es_superadmin = current_user.get("rol") in ("superadmin_vincula", "superadmin")
     ies_id = None if es_superadmin and not current_user.get("id_entidad") else _resolve_ies_id(current_user)
     return await placement_stats_async(db, ies_id)
+
+
+_IES_ROLES = ['admin_ies', 'ies_admin', 'asesor_ies', 'ies_asesor', 'superadmin_vincula', 'superadmin']
+
+
+class ResolverConvenioRequest(BaseModel):
+    estado: str
+    notas: Optional[str] = Field(None, max_length=1000)
+
+
+@router.get("/panel")
+async def get_advisor_panel(current_user: Dict[str, Any] = Depends(require_role(_IES_ROLES)), db: AsyncSession = Depends(get_db)):
+    """Indicadores del panel del asesor, calculados con registros reales."""
+    return await advisor_views.panel_async(db, str(_resolve_ies_id(current_user)))
+
+
+@router.get("/seguimiento-egresados")
+async def get_graduates_tracking(current_user: Dict[str, Any] = Depends(require_role(_IES_ROLES)), db: AsyncSession = Depends(get_db)):
+    """Egresados de la IES con su estado laboral y postulaciones."""
+    return await advisor_views.seguimiento_egresados_async(db, str(_resolve_ies_id(current_user)))
+
+
+@router.get("/seguimiento-empresas")
+async def get_companies_tracking(current_user: Dict[str, Any] = Depends(require_role(_IES_ROLES)), db: AsyncSession = Depends(get_db)):
+    """Empresas con vacantes para los programas de la IES y resultados de sus egresados en ellas."""
+    return await advisor_views.seguimiento_empresas_async(db, str(_resolve_ies_id(current_user)))
+
+
+@router.get("/solicitudes-convenio")
+async def list_agreement_requests(
+    estado: Optional[str] = Query(None),
+    current_user: Dict[str, Any] = Depends(require_role(_IES_ROLES)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await advisor_views.solicitudes_convenio_async(db, str(_resolve_ies_id(current_user)), estado)
+
+
+@router.post("/solicitudes-convenio/{solicitud_id}/resolver")
+async def resolve_agreement_request(
+    solicitud_id: str,
+    payload: ResolverConvenioRequest,
+    current_user: Dict[str, Any] = Depends(require_role(_IES_ROLES)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await advisor_views.resolver_solicitud_async(db, str(_resolve_ies_id(current_user)), solicitud_id, payload.estado, payload.notas)
