@@ -241,7 +241,7 @@ erDiagram
 
 ## 4. Dominio 3 — Ecosistema Empresarial y Convenios IES
 
-Tablas: `empresas`, `documentos_empresa`, `sedes_empresa`, `areas_sede_empresa`, `reclutadores_empresa`, `asignacion_reclutadores_sedes`, `convenios_interinstitucionales`, `solicitudes_convenio_ies`, `interacciones_seguimiento_empresa`, `bitacora_actividad_empresa`.
+Tablas: `empresas`, `documentos_empresa`, `sedes_empresa`, `areas_sede_empresa`, `reclutadores_empresa`, `asignacion_reclutadores_sedes`, `convenios_interinstitucionales`, `solicitudes_convenio_ies` (propuestas en ambas direcciones: `iniciada_por` empresa o ies), `interacciones_seguimiento_empresa`, `bitacora_actividad_empresa`.
 
 ```mermaid
 erDiagram
@@ -350,6 +350,7 @@ erDiagram
     empresas ||--o{ convenios_interinstitucionales : "firma"
     empresas ||--o{ solicitudes_convenio_ies : "solicita"
     convenios_interinstitucionales ||--o{ interacciones_seguimiento_empresa : "registra"
+    convenios_interinstitucionales ||--o{ vacantes : "habilita vacantes exclusivas"
     empresas ||--o{ bitacora_actividad_empresa : "audita"
 ```
 
@@ -456,6 +457,7 @@ erDiagram
         uuid id_empresa FK
         uuid id_sede FK
         uuid id_reclutador_responsable FK
+        uuid id_convenio FK "exclusiva de ese convenio"
         varchar codigo_vacante UK
         varchar titulo
         varchar categoria

@@ -8,7 +8,7 @@ recomendadas y copiloto), para que ninguno la olvide.
 import uuid
 from typing import Any, Dict, Optional
 
-from sqlalchemy import column, func, or_, select, table, text
+from sqlalchemy import column, func, literal_column, or_, select, table, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _convenios = table("convenios_interinstitucionales", column("id"), column("id_institucion"), column("estado"), column("fecha_vencimiento"))
@@ -28,7 +28,9 @@ def visible_para(col_convenio, id_egresado: Optional[uuid.UUID]):
     propios = (
         select(_convenios.c.id)
         .select_from(_convenios.join(_academicos, _academicos.c.id_institucion == _convenios.c.id_institucion))
-        .where(_academicos.c.id_egresado == id_egresado, _convenios.c.estado == "activo", _convenios.c.fecha_vencimiento >= func.current_date())
+        # estado se compara con un literal: un parámetro de texto no se puede comparar con el enum de Postgres
+        .where(_academicos.c.id_egresado == id_egresado, _convenios.c.estado == literal_column("'activo'"),
+               _convenios.c.fecha_vencimiento >= func.current_date())
     )
     return or_(abiertas, col_convenio.in_(propios))
 

@@ -605,6 +605,9 @@ Table solicitudes_convenio_ies {
   notas_evaluador text [null]
   solicitado_en timestamptz
   revisado_en timestamptz [null]
+  iniciada_por varchar(10)
+  mensaje text [null]
+  id_convenio uuid [null]
 }
 
 Table taxonomia_competencias {
@@ -655,6 +658,7 @@ Table vacantes {
   fecha_cierre date
   creado_en timestamptz
   actualizado_en timestamptz
+  id_convenio uuid [null]
 }
 
 Ref: academicos_egresado.id_egresado > egresados.id
@@ -726,8 +730,10 @@ Ref: reportes_vacante.id_vacante > vacantes.id
 Ref: reportes_vacante.resuelto_por > usuarios.id
 Ref: sedes_empresa.id_empresa > empresas.id
 Ref: sedes_institucion.id_institucion > instituciones.id
+Ref: solicitudes_convenio_ies.id_convenio > convenios_interinstitucionales.id
 Ref: solicitudes_convenio_ies.id_empresa > empresas.id
 Ref: solicitudes_convenio_ies.id_institucion > instituciones.id
+Ref: vacantes.id_convenio > convenios_interinstitucionales.id
 Ref: vacantes.id_empresa > empresas.id
 Ref: vacantes.id_reclutador_responsable > reclutadores_empresa.id
 Ref: vacantes.id_sede > sedes_empresa.id
