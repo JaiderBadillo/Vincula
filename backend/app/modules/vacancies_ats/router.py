@@ -86,6 +86,7 @@ async def list_public_vacancies(
     q: Optional[str] = Query(None, description="Búsqueda por texto en título, descripción o empresa"),
     salario_min: Optional[float] = Query(None, description="Salario mínimo pretendido"),
     nivel_experiencia: Optional[str] = Query(None, description="Nivel de experiencia requerido"),
+    viewer: Optional[Dict[str, Any]] = Depends(get_optional_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
