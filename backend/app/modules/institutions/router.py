@@ -46,6 +46,7 @@ from app.modules.institutions.schemas import (
     DiplomaSecureUrlResponse,
     SubsanarDocumentoIESRequest,
 )
+from app.modules.institutions.placement_stats import placement_stats_async
 from app.modules.institutions.services import InstitutionService
 from app.modules.institutions.models import Institucion
 
@@ -559,3 +560,14 @@ async def subsanar_documento_form(
         file_bytes=file_bytes,
         observaciones=observaciones
     )
+
+
+@router.get("/estadisticas-colocacion")
+async def get_placement_stats(
+    current_user: Dict[str, Any] = Depends(require_role(['admin_ies', 'ies_admin', 'asesor_ies', 'ies_asesor', 'superadmin_vincula', 'superadmin'])),
+    db: AsyncSession = Depends(get_db),
+):
+    """Colocación real de los egresados de la IES (contrataciones registradas en Vincula)."""
+    es_superadmin = current_user.get("rol") in ("superadmin_vincula", "superadmin")
+    ies_id = None if es_superadmin and not current_user.get("id_entidad") else _resolve_ies_id(current_user)
+    return await placement_stats_async(db, ies_id)

@@ -124,4 +124,3 @@ export const quickActionModules = [
 ];
 
 export { graduatesTrackingData } from './institutionTrackingData.js';
-export * from './institutionPlacementStats.js';

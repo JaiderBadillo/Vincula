@@ -142,6 +142,18 @@ class AIService {
   }
 
   /**
+   * Colocación real de los egresados de la IES (contrataciones registradas en Vincula).
+   */
+  async getPlacementStats() {
+    const res = await fetch(`${API_BASE_URL}/instituciones/estadisticas-colocacion`, { headers: this.getAuthHeaders() });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(extractErrorMessage(errorData, 'No se pudieron cargar las estadísticas de colocación.'));
+    }
+    return await res.json();
+  }
+
+  /**
    * Guarda la malla confirmada por la IES (asignaturas y herramientas declaradas) y devuelve el informe.
    */
   async savePensum(programId, pensum) {
