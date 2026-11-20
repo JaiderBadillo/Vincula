@@ -167,9 +167,6 @@ export default function CompanySidebar({
                     <p className="m-0 truncate text-sm font-semibold text-ink leading-tight">
                       {recruiterName}
                     </p>
-                    <span className="text-[0.62rem] text-secondary">
-                      {recruiter?.title || 'Reclutador'}
-                    </span>
                   </div>
                 )}
               </div>
