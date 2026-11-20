@@ -11,11 +11,11 @@ const navItems = [
 
 function Brand() {
   return (
-    <a className="flex items-center gap-3 text-white no-underline" href="#inicio" aria-label="Vincula, inicio">
-      <BrandMark className="h-9" onDark />
-      <span className="grid gap-0.5">
-        <span className="font-display text-sm font-bold tracking-[0.12em]">VINCULA</span>
-        <span className="text-xs text-white/55">Red de talento universitario</span>
+    <a className="flex shrink-0 items-center gap-4 text-white no-underline lg:mr-10" href="#inicio" aria-label="Vincula, inicio">
+      <BrandMark className="h-12" onDark />
+      <span className="grid gap-1">
+        <span className="font-display text-base font-bold leading-none tracking-[0.14em]">VINCULA</span>
+        <span className="text-xs leading-none text-white/60">Red de talento universitario</span>
       </span>
     </a>
   );
