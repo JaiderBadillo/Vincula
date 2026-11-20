@@ -14,7 +14,7 @@ function Brand({ collapsed = false }) {
       aria-label="Vincula, panel de egresados"
       title={collapsed ? 'Vincula' : undefined}
     >
-      <BrandMark className="h-9" />
+      <BrandMark className="h-7" />
       <span className={collapsed ? 'sr-only' : 'grid gap-0.5'}>
         <span className="font-display text-[0.8rem] font-bold tracking-[0.14em]">VINCULA</span>
         <span className="text-[0.6rem] font-medium tracking-wide text-secondary">

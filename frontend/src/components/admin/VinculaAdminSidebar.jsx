@@ -10,7 +10,7 @@ function Brand({ collapsed }) {
       aria-label="Vincula Plataforma"
       title={collapsed ? 'Vincula Plataforma' : undefined}
     >
-      <BrandMark className="h-9" />
+      <BrandMark className="h-7" />
       <span className={collapsed ? 'sr-only' : 'grid gap-0.5'}>
         <span className="font-display text-[0.8rem] font-bold tracking-[0.14em] flex items-center gap-1.5">
           VINCULA{' '}
