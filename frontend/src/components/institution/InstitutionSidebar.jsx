@@ -5,6 +5,7 @@ import { useInstitutionProfile } from '../../hooks/useInstitutionProfile.js';
 import { authService } from '../../services/authService.js';
 import { institutionService } from '../../services/institutionService.js';
 import { useVerificationStatus } from '../../hooks/useVerificationStatus.js';
+import BrandMark from '../common/BrandMark.jsx';
 
 function Brand({ collapsed = false, role = 'advisor' }) {
   const isAdmin = role === 'admin';
@@ -15,16 +16,7 @@ function Brand({ collapsed = false, role = 'advisor' }) {
       aria-label="Vincula IES, portal institucional"
       title={collapsed ? 'Vincula IES' : undefined}
     >
-      <span
-        className={`grid size-10 shrink-0 place-items-center rounded-xl border text-2xl shadow-xs ${
-          isAdmin
-            ? 'border-sand-line bg-sand/70 text-terracotta'
-            : 'border-green/20 bg-green/10 text-green-dark'
-        }`}
-        aria-hidden="true"
-      >
-        <i className="bx bxs-institution" />
-      </span>
+      <BrandMark className="h-9" />
       <span className={collapsed ? 'sr-only' : 'grid gap-0.5'}>
         <span className="font-display text-[0.8rem] font-bold tracking-[0.14em] flex items-center gap-1.5">
           VINCULA{' '}

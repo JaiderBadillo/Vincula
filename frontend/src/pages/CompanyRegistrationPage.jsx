@@ -6,6 +6,7 @@ import { COMPANY_SECTORS, COMPANY_SIZES } from '../data/companyAdminData.js';
 import { useCompanyProfile } from '../hooks/useCompanyProfile.js';
 import { companyPhotos } from '../data/companyImages.js';
 import { authService } from '../services/authService.js';
+import BrandMark from '../components/common/BrandMark.jsx';
 
 const carouselSlides = [
   {
@@ -313,9 +314,7 @@ export default function CompanyRegistrationPage() {
       <header className="sticky top-0 z-30 border-b border-line/80 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
           <Link to="/" className="flex items-center gap-3 no-underline" aria-label="Vincula, volver al inicio">
-            <span className="grid size-10 place-items-center rounded-xl bg-[#051F26] text-xl text-amber-400 shadow-xs">
-              <i className="bx bx-buildings" />
-            </span>
+            <BrandMark className="h-9" />
             <div className="flex flex-col">
               <span className="font-display text-base font-bold tracking-tight text-[#051F26]">VINCULA</span>
               <span className="text-[0.68rem] font-semibold text-secondary">Portal Empleadores & Empresas</span>

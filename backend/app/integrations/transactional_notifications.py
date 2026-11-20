@@ -174,9 +174,6 @@ def build_message(kind, data):
         pipeline_stage=pipeline_stage,
         cta_text=cta[0], cta_url=cta[1],
     )
-    # El logo CID de la plantilla SMTP no se adjunta al enviar con Gmail API.
-    html = html.replace('<img src="cid:vincula_logo" width="300" height="64" alt="Vincula" style="display: block; margin: 0 auto; border: 0;" />',
-                        '<span style="font-size:30px;font-weight:800;color:#FFFFFF;letter-spacing:.02em">Vincula</span>')
     return subject, paragraph, html
 
 

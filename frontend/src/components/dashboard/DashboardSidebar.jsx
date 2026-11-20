@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { getInitials, useProfile } from '../../hooks/useProfile.js';
 import { authService } from '../../services/authService.js';
 import { useVerificationStatus } from '../../hooks/useVerificationStatus.js';
+import BrandMark from '../common/BrandMark.jsx';
 
 /* ─── Brand Logo ─── */
 
@@ -13,12 +14,7 @@ function Brand({ collapsed = false }) {
       aria-label="Vincula, panel de egresados"
       title={collapsed ? 'Vincula' : undefined}
     >
-      <span
-        className="grid size-10 shrink-0 place-items-center rounded-xl border border-green/20 bg-green/10 text-2xl text-green-dark shadow-xs"
-        aria-hidden="true"
-      >
-        <i className="bx bx-briefcase" />
-      </span>
+      <BrandMark className="h-9" />
       <span className={collapsed ? 'sr-only' : 'grid gap-0.5'}>
         <span className="font-display text-[0.8rem] font-bold tracking-[0.14em]">VINCULA</span>
         <span className="text-[0.6rem] font-medium tracking-wide text-secondary">

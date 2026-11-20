@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useVinculaAdmin } from '../../hooks/useVinculaAdmin.js';
+import BrandMark from '../common/BrandMark.jsx';
 
 function Brand({ collapsed }) {
   return (
@@ -9,12 +10,7 @@ function Brand({ collapsed }) {
       aria-label="Vincula Plataforma"
       title={collapsed ? 'Vincula Plataforma' : undefined}
     >
-      <span
-        className="grid size-10 shrink-0 place-items-center rounded-xl border border-terracotta/30 bg-terracotta text-2xl text-white shadow-xs"
-        aria-hidden="true"
-      >
-        <i className="bx bxs-shield-check" />
-      </span>
+      <BrandMark className="h-9" />
       <span className={collapsed ? 'sr-only' : 'grid gap-0.5'}>
         <span className="font-display text-[0.8rem] font-bold tracking-[0.14em] flex items-center gap-1.5">
           VINCULA{' '}

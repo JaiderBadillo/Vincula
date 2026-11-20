@@ -251,7 +251,9 @@ def _generate_vincula_email_html(
             {body}
         </div>"""
 
-    logo = """<img src="cid:vincula_logo" width="300" height="64" alt="Vincula" style="display: block; margin: 0 auto; border: 0;" />"""
+    # Logo alojado en el frontend (los clientes de correo no cargan imágenes adjuntas CID de forma fiable);
+    # va dentro de una insignia blanca porque el encabezado del correo es oscuro.
+    logo = f"""<span style="display: inline-block; background-color: #FFFFFF; border-radius: 14px; padding: 8px 16px;"><img src="{LOGO_URL}" width="76" height="54" alt="Vincula" style="display: block; border: 0;" /></span>"""
 
     return f"""<!DOCTYPE html>
 <html lang="es">
@@ -312,6 +314,8 @@ def _generate_vincula_email_html(
 </body>
 </html>"""
 
+
+LOGO_URL = "https://vincula-henna.vercel.app/logo-vincula.png"  # public/logo-vincula.png del frontend
 
 class EmailService:
     """Servicio para enviar correos transaccionales de Vincula vía Gmail SMTP."""

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { primaryButton } from '../utils/classes.js';
 import { useAuthCredentials } from '../hooks/useAuthCredentials.js';
 import { authService } from '../services/authService.js';
+import BrandMark from '../components/common/BrandMark.jsx';
 
 const GOOGLE_CLIENT_ID =
   import.meta.env?.VITE_GOOGLE_CLIENT_ID ||
@@ -287,12 +288,7 @@ export default function LoginPage() {
           className="inline-flex items-center gap-3 text-ink no-underline transition-opacity hover:opacity-90"
           aria-label="Vincula, volver al inicio"
         >
-          <span
-            className="grid size-10 place-items-center rounded-xl border border-ink/10 bg-ink text-2xl text-lime shadow-sm"
-            aria-hidden="true"
-          >
-            <i className="bx bx-briefcase" />
-          </span>
+          <BrandMark className="h-9" />
           <span className="grid gap-0.5 text-left">
             <span className="font-display text-sm font-bold tracking-[0.12em]">VINCULA</span>
             <span className="text-xs text-body-muted">Red de talento universitario</span>

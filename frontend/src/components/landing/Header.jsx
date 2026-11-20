@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { primaryButton } from '../../utils/classes.js';
+import BrandMark from '../common/BrandMark.jsx';
 
 const navItems = [
   { label: 'Egresados', href: '#egresados' },
@@ -11,9 +12,7 @@ const navItems = [
 function Brand() {
   return (
     <a className="flex items-center gap-3 text-white no-underline" href="#inicio" aria-label="Vincula, inicio">
-      <span className="grid size-10 place-items-center rounded-xl border border-white/20 bg-white/5 text-2xl text-lime" aria-hidden="true">
-        <i className="bx bx-briefcase" />
-      </span>
+      <BrandMark className="h-9" onDark />
       <span className="grid gap-0.5">
         <span className="font-display text-sm font-bold tracking-[0.12em]">VINCULA</span>
         <span className="text-xs text-white/55">Red de talento universitario</span>

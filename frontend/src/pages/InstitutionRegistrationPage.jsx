@@ -5,6 +5,7 @@ import { COLOMBIAN_LOCATIONS } from '../data/profile.js';
 import { useInstitutionProfile } from '../hooks/useInstitutionProfile.js';
 import { institutionPhotos } from '../data/institutionImages.js';
 import { authService } from '../services/authService.js';
+import BrandMark from '../components/common/BrandMark.jsx';
 
 const ACADEMIC_CHARACTERS = [
   'Institución Universitaria / Escuela Tecnológica',
@@ -336,9 +337,7 @@ export default function InstitutionRegistrationPage() {
       <header className="sticky top-0 z-30 border-b border-line/80 bg-white/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6 lg:px-8">
           <Link to="/" className="flex items-center gap-3 no-underline" aria-label="Vincula, volver al inicio">
-            <span className="grid size-10 place-items-center rounded-xl bg-emerald-800 text-xl text-white shadow-xs">
-              <i className="bx bx-library" />
-            </span>
+            <BrandMark className="h-9" />
             <div className="flex flex-col">
               <span className="font-display text-base font-bold tracking-tight text-[#051F26]">VINCULA</span>
               <span className="text-[0.68rem] font-semibold text-secondary">Portal Instituciones de Educación Superior</span>

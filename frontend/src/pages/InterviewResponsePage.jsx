@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { extractErrorMessage } from '../services/authService.js';
+import BrandMark from '../components/common/BrandMark.jsx';
 
 const API = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -65,7 +66,8 @@ export default function InterviewResponsePage() {
   return (
     <main className="grid min-h-screen place-items-center bg-cream px-4 py-10">
       <section className="w-full max-w-lg rounded-2xl border border-sand-line bg-white p-6 shadow-xl sm:p-8">
-        <p className="m-0 font-display text-lg font-extrabold text-terracotta">Vincula</p>
+        <BrandMark className="h-10" />
+        <p className="sr-only">Vincula</p>
         <h1 className="m-0 mt-1 font-display text-2xl font-bold text-ink">Tu entrevista</h1>
 
         {error && <p className="m-0 mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700" role="alert">{error}</p>}

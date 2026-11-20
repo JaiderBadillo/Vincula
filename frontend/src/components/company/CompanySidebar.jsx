@@ -5,6 +5,7 @@ import { useCompanyRecruiters } from '../../hooks/useCompanyRecruiters.js';
 import { useCompanyVacancies } from '../../hooks/useCompanyVacancies.js';
 import { authService } from '../../services/authService.js';
 import { useVerificationStatus } from '../../hooks/useVerificationStatus.js';
+import BrandMark from '../common/BrandMark.jsx';
 
 export const companyNavSections = [
   {
@@ -78,12 +79,7 @@ function Brand({ collapsed, role = 'admin' }) {
       aria-label="Vincula Empresas"
       title={collapsed ? 'Vincula Empresas' : undefined}
     >
-      <span
-        className="grid size-10 shrink-0 place-items-center rounded-xl border border-terracotta/25 bg-terracotta/10 text-2xl text-terracotta shadow-xs"
-        aria-hidden="true"
-      >
-        <i className="bx bxs-business" />
-      </span>
+      <BrandMark className="h-9" />
       <span className={collapsed ? 'sr-only' : 'grid gap-0.5'}>
         <span className="font-display text-[0.8rem] font-bold tracking-[0.14em] flex items-center gap-1.5">
           VINCULA{' '}
