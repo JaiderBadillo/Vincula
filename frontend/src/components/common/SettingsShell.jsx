@@ -41,8 +41,7 @@ export default function SettingsShell({ open, onClose, titleId, user, tabs, acti
           <nav aria-label="Secciones de configuración" className="-mx-1 mt-4 flex gap-1 overflow-x-auto px-1 md:mx-0 md:mt-6 md:flex-col md:overflow-visible md:px-0">
             {tabs.map((tab) => (
               <button key={tab.id} type="button" aria-current={active === tab.id ? 'page' : undefined} onClick={() => onChange(tab.id)}
-                className={`flex shrink-0 cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition-colors ${active === tab.id ? 'bg-white text-green-dark shadow-xs ring-1 ring-sand-line' : 'text-secondary hover:bg-white/70 hover:text-ink'}`}>
-                <i className={`bx ${tab.icon} text-lg`} aria-hidden="true" />
+                className={`flex shrink-0 cursor-pointer items-center rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors ${active === tab.id ? 'bg-white text-green-dark shadow-xs ring-1 ring-sand-line' : 'text-secondary hover:bg-white/70 hover:text-ink'}`}>
                 <span>{tab.title}</span>
               </button>
             ))}

@@ -67,15 +67,13 @@ export default function InstitutionDashboardPage() {
 
           <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-label="Módulos del asesor">
             {modules.map((m) => (
-              <Link key={m.to} to={m.to} className="group flex flex-col justify-between rounded-2xl border border-line bg-white p-5 no-underline shadow-xs transition-all hover:-translate-y-0.5 hover:border-green/40 hover:shadow-card">
-                <div>
-                  <div className="mb-3 flex items-start justify-between gap-3">
-                    <span className="grid size-11 place-items-center rounded-xl bg-green/15 text-2xl text-green-dark"><i className={`bx ${m.icon}`} /></span>
-                    {m.badge && <span className="rounded-full border border-line bg-page px-2.5 py-0.5 text-[0.68rem] font-bold text-ink">{m.badge}</span>}
-                  </div>
-                  <h3 className="m-0 font-display text-base font-bold text-ink">{m.title}</h3>
-                  <p className="m-0 mt-1.5 text-xs leading-relaxed text-body-muted">{m.text}</p>
+              <Link key={m.to} to={m.to} className="group flex flex-col rounded-xl border border-line bg-white p-5 no-underline transition-colors hover:border-ink/40">
+                <div className="flex items-baseline justify-between gap-3">
+                  <h3 className="m-0 font-display text-base font-semibold text-ink">{m.title}</h3>
+                  <span className="text-lg text-secondary transition-transform group-hover:translate-x-1 group-hover:text-ink" aria-hidden="true">→</span>
                 </div>
+                {m.badge && <p className="m-0 mt-4 font-display text-2xl font-semibold tracking-tight text-green-dark">{m.badge}</p>}
+                <p className={`m-0 text-sm leading-relaxed text-body-muted ${m.badge ? 'mt-1' : 'mt-4'}`}>{m.text}</p>
               </Link>
             ))}
           </section>

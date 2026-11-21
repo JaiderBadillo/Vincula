@@ -6,18 +6,17 @@ const field = 'w-full rounded-xl border border-sand-line bg-white px-3 py-2.5 te
 const primary = 'rounded-xl bg-green-dark px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50 cursor-pointer';
 const ghost = 'rounded-xl border border-sand-line bg-white px-3.5 py-2 text-xs font-semibold text-ink hover:bg-sand/50 cursor-pointer disabled:opacity-50';
 
-function Row({ icon, title, value, action, open, children }) {
+function Row({ title, value, action, open, children }) {
   return (
-    <div className="rounded-2xl border border-sand-line bg-white">
-      <div className="flex items-center gap-3 p-4">
-        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-green/10 text-xl text-green-dark"><i className={`bx ${icon}`} aria-hidden="true" /></span>
+    <div className="py-5">
+      <div className="flex items-center gap-4">
         <div className="min-w-0 flex-1">
-          <p className="m-0 text-sm font-bold text-ink">{title}</p>
-          <p className="m-0 mt-0.5 truncate text-xs text-secondary">{value}</p>
+          <p className="m-0 text-sm font-semibold text-ink">{title}</p>
+          <p className="m-0 mt-0.5 truncate text-sm text-secondary">{value}</p>
         </div>
         {action}
       </div>
-      {open && <div className="border-t border-sand-line p-4">{children}</div>}
+      {open && <div className="mt-4 rounded-xl bg-cream/60 p-4">{children}</div>}
     </div>
   );
 }
@@ -102,8 +101,8 @@ export default function SecurityPanel({ request, account, setAccount, notify }) 
   const toggleButton = (id, label) => <button type="button" className={ghost} aria-expanded={open === id} onClick={() => toggle(id)}>{open === id ? 'Cancelar' : label}</button>;
 
   return (
-    <div className="grid gap-3">
-      <Row icon="bx-envelope" title="Correo de acceso" value={account.correo} open={open === 'correo'} action={toggleButton('correo', 'Cambiar')}>
+    <div className="divide-y divide-sand-line border-y border-sand-line">
+      <Row title="Correo de acceso" value={account.correo} open={open === 'correo'} action={toggleButton('correo', 'Cambiar')}>
         {account.google_vinculado
           ? <p className="m-0 text-xs text-secondary">Tu cuenta está vinculada con Google. Desvincúlala aquí abajo antes de cambiar el correo.</p>
           : <form onSubmit={saveEmail} className="grid gap-3">
@@ -115,7 +114,7 @@ export default function SecurityPanel({ request, account, setAccount, notify }) 
           </form>}
       </Row>
 
-      <Row icon="bx-lock-alt" title="Contraseña" value="Mínimo 10 caracteres" open={open === 'clave'} action={toggleButton('clave', 'Cambiar')}>
+      <Row title="Contraseña" value="Mínimo 10 caracteres" open={open === 'clave'} action={toggleButton('clave', 'Cambiar')}>
         <form onSubmit={savePassword} className="grid gap-3">
           {passwordField}
           <div className="grid gap-3 sm:grid-cols-2">
@@ -130,7 +129,7 @@ export default function SecurityPanel({ request, account, setAccount, notify }) 
         </form>
       </Row>
 
-      <Row icon="bxl-google" title="Inicio de sesión con Google" value={account.google_vinculado ? 'Cuenta vinculada' : 'Sin vincular'} open={open === 'google'}
+      <Row title="Inicio de sesión con Google" value={account.google_vinculado ? 'Cuenta vinculada' : 'Sin vincular'} open={open === 'google'}
         action={toggleButton('google', account.google_vinculado ? 'Desvincular' : 'Vincular')}>
         {account.google_vinculado
           ? <form onSubmit={unlinkGoogle} className="grid gap-3">
@@ -144,7 +143,7 @@ export default function SecurityPanel({ request, account, setAccount, notify }) 
           </div>}
       </Row>
 
-      <Row icon="bx-devices" title="Sesión en este navegador"
+      <Row title="Sesión en este navegador"
         value={account.ultimo_acceso ? `Último acceso: ${formatDateTime(account.ultimo_acceso)}` : 'Sesión activa'}
         action={<button type="button" className={ghost} onClick={() => { authService.logout(); window.location.assign('/login?logout=1'); }}>Cerrar sesión</button>} />
     </div>

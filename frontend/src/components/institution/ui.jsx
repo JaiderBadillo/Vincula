@@ -43,13 +43,10 @@ export function Card({ title, note, children, action }) {
   );
 }
 
-export function Kpi({ label, value, hint, icon }) {
+export function Kpi({ label, value, hint }) {
   return (
     <div className="rounded-2xl border border-line bg-white p-5 shadow-2xs">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-secondary">{label}</span>
-        {icon && <i className={`bx ${icon} text-xl text-green-dark`} aria-hidden="true" />}
-      </div>
+      <span className="text-sm font-semibold text-secondary">{label}</span>
       <p className="m-0 mt-2 font-display text-3xl font-bold tracking-tight text-ink">{value}</p>
       {hint && <p className="m-0 mt-1.5 text-xs text-body-muted">{hint}</p>}
     </div>
