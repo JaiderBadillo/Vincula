@@ -168,33 +168,16 @@ export default function GridVacancyDetailModal({
             </div>
           </div>
 
-          {/* 2. Franja Rápida de Condiciones (Pills) */}
-          <div className="border-b border-line bg-page/50 px-5 sm:px-8 py-2.5 flex flex-wrap items-center justify-between gap-2.5 text-xs">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-xl bg-emerald-50 px-2.5 py-1 font-display text-xs font-bold text-emerald-800 border border-emerald-200">
-                <i className="bx bx-credit-card-front text-sm text-green-dark" />
-                {job.salaryFormatted}
-              </span>
-
-              <span className="inline-flex items-center gap-1 rounded-xl bg-white px-2.5 py-1 font-semibold text-ink border border-line shadow-2xs">
-                <i className="bx bx-map-pin text-sm text-green-dark" />
-                {job.city} · {job.mode}
-              </span>
-
-              <span className="inline-flex items-center gap-1 rounded-xl bg-white px-2.5 py-1 font-semibold text-ink border border-line shadow-2xs">
-                <i className="bx bx-briefcase text-sm text-green-dark" />
-                {job.contractType}
-              </span>
-
-              <span className="inline-flex items-center gap-1 rounded-xl bg-white px-2.5 py-1 font-semibold text-ink border border-line shadow-2xs">
-                <i className="bx bx-layer text-sm text-green-dark" />
-                {job.seniority}
-              </span>
-            </div>
-
-            <span className="text-[0.72rem] text-secondary flex items-center gap-1">
-              <i className="bx bx-time text-sm" />
-              <strong>{formatClosingLabel(job.daysRemaining)}</strong> ({job.applicantsCount} postulados)
+          {/* 2. Condiciones de la vacante: texto simple separado por líneas */}
+          <div className="border-b border-line px-5 py-3 sm:px-8 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-sm">
+            <p className="m-0 flex flex-wrap items-center gap-x-4 gap-y-1 text-secondary">
+              <span className="font-semibold text-ink">{job.salaryFormatted}</span>
+              <span>{job.city} · {job.mode}</span>
+              <span>{job.contractType}</span>
+              <span>{job.seniority}</span>
+            </p>
+            <span className="text-xs text-secondary">
+              <strong className="text-ink">{formatClosingLabel(job.daysRemaining)}</strong> · {job.applicantsCount} postulados
             </span>
           </div>
 

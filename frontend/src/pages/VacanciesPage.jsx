@@ -902,37 +902,15 @@ export default function VacanciesPage() {
                           {job.title}
                         </h2>
 
-                        {/* Metrics Badges */}
-                        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-bold text-emerald-800">
-                            <i className="bx bx-wallet text-sm" />
-                            {job.salaryFormatted}
-                          </span>
-
-                          <span className="inline-flex items-center gap-1 rounded-full bg-panel border border-line px-2.5 py-1 text-xs font-semibold text-blue-muted">
-                            <i className="bx bx-buildings text-sm" />
-                            {job.mode}
-                          </span>
-
-                          <span className="inline-flex items-center gap-1 rounded-full bg-page border border-line-soft px-2.5 py-1 text-xs text-secondary">
-                            <i className="bx bx-map-pin text-sm" />
-                            {job.city}
-                          </span>
-                        </div>
-
-                        {/* Key Stack chips */}
-                        <div className="mt-3 flex flex-wrap gap-1">
-                          {job.stack.slice(0, 4).map((tech) => (
-                            <span key={tech} className="rounded-md bg-page px-2 py-0.5 text-[0.68rem] font-semibold text-ink border border-line-soft">
-                              {tech}
-                            </span>
-                          ))}
-                          {job.stack.length > 4 && (
-                            <span className="text-[0.68rem] font-semibold text-secondary self-center px-1">
-                              +{job.stack.length - 4} más
-                            </span>
-                          )}
-                        </div>
+                        {/* Condiciones: texto simple, sin etiquetas */}
+                        <p className="m-0 mt-2 text-sm text-secondary">
+                          <span className="font-semibold text-ink">{job.salaryFormatted}</span> · {job.mode} · {job.city}
+                        </p>
+                        {job.stack.length > 0 && (
+                          <p className="m-0 mt-1.5 line-clamp-2 text-xs leading-relaxed text-body-muted">
+                            {job.stack.slice(0, 4).join(' · ')}{job.stack.length > 4 ? ` · +${job.stack.length - 4} más` : ''}
+                          </p>
+                        )}
 
                         {/* Footer status */}
                         <div className="mt-4 pt-3 border-t border-line-soft flex items-center justify-between text-xs text-secondary">
@@ -1127,12 +1105,6 @@ export default function VacanciesPage() {
                                     </h4>
                                     <span className="text-xs font-medium text-secondary">/ mes bruto</span>
                                   </div>
-                                </div>
-                                <div className="self-start sm:self-auto">
-                                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100/70 border border-emerald-300/80 px-3 py-1 text-xs font-bold text-emerald-800">
-                                    <i className="bx bx-check-circle text-sm" />
-                                    Salario en moneda legal (COP)
-                                  </span>
                                 </div>
                               </div>
 
@@ -1549,21 +1521,16 @@ export default function VacanciesPage() {
                           {job.summary}
                         </p>
 
-                        <div className="mt-4 pt-3 border-t border-line-soft flex items-center justify-between">
-                          <span className="font-display text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                            {job.salaryFormatted}
-                          </span>
-                          <span className="text-[0.7rem] text-secondary">
-                            {job.contractType}
-                          </span>
-                        </div>
-
-                        <div className="mt-3 flex flex-wrap gap-1">
-                          {job.stack.slice(0, 3).map((s) => (
-                            <span key={s} className="rounded-md bg-page px-2 py-0.5 text-[0.65rem] font-semibold text-ink border border-line-soft">
-                              {s}
-                            </span>
-                          ))}
+                        <div className="mt-4 border-t border-line-soft pt-3">
+                          <p className="m-0 flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
+                            <span className="font-semibold text-ink">{job.salaryFormatted}</span>
+                            <span className="text-secondary">{job.contractType}</span>
+                          </p>
+                          {job.stack.length > 0 && (
+                            <p className="m-0 mt-2 line-clamp-2 text-xs leading-relaxed text-body-muted">
+                              {job.stack.slice(0, 3).join(' · ')}{job.stack.length > 3 ? ` · +${job.stack.length - 3} más` : ''}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
