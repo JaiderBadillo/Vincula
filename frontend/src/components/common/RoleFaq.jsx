@@ -3,7 +3,7 @@ import { useState } from 'react';
 const common = [
   {
     question: '¿Cómo cambio mi correo o contraseña?',
-    answer: 'En Configuración, abre Cuenta para cambiar tu correo o Seguridad para actualizar tu contraseña. Confirma el cambio con tu contraseña actual.',
+    answer: 'En Configuración, abre Seguridad para cambiar tu correo de acceso o tu contraseña. Confirma el cambio con tu contraseña actual.',
   },
   {
     question: '¿Qué hago si olvidé mi contraseña?',
