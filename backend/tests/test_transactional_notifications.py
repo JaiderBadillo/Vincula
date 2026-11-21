@@ -57,8 +57,8 @@ class TransactionalNotificationTests(unittest.IsolatedAsyncioTestCase):
         session = AsyncMock()
         session.execute = AsyncMock(return_value=exec_res)
         empresa = SimpleNamespace(nombre_comercial="Acme", razon_social="Acme SAS", correo_contacto="admin@empresa.com", persona_contacto="Admin")
-        vacante = SimpleNamespace(titulo="Analista", codigo_vacante="VAC-10", id_reclutador_responsable="rec-uuid")
-        egresado = SimpleNamespace(nombre_completo="Ana Egresada", correo_personal="ana@uts.edu.co")
+        vacante = SimpleNamespace(titulo="Analista", codigo_vacante="VAC-10", id_reclutador_responsable="rec-uuid", id_empresa="emp-uuid")
+        egresado = SimpleNamespace(nombre_completo="Ana Egresada", correo_personal="ana@uts.edu.co", id_usuario="usr-uuid")
         sender = AsyncMock(return_value=True)
         with patch("app.modules.vacancies_ats.services.send_vincula_email", sender):
             await VacancyATSService._notify_application_created(session, empresa, vacante, egresado)

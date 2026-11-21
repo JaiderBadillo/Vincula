@@ -1,6 +1,7 @@
 import { getInitials, useProfile } from '../../hooks/useProfile.js';
 import { authService } from '../../services/authService.js';
 import UserAccountDropdown from '../common/UserAccountDropdown.jsx';
+import NotificationBell from '../common/NotificationBell.jsx';
 
 function formatDashboardDate(date) {
   const formattedDate = new Intl.DateTimeFormat('es-CO', {
@@ -46,14 +47,17 @@ export default function DashboardTopbar({ onMenuToggle, mobileMenuOpen, menuButt
         </div>
 
         {/* Menú de cuenta con desplegable (Configuración y Salir) */}
-        <UserAccountDropdown
-          role="graduate"
-          userName={displayName}
-          userSubtitle="Cuenta de Egresado"
-          userAvatar={profile?.photo}
-          userInitials={getInitials(displayName)}
-          borderClass="border-line-soft"
-        />
+        <div className="flex items-center gap-3">
+          <NotificationBell borderClass="border-line-soft" />
+          <UserAccountDropdown
+            role="graduate"
+            userName={displayName}
+            userSubtitle="Cuenta de Egresado"
+            userAvatar={profile?.photo}
+            userInitials={getInitials(displayName)}
+            borderClass="border-line-soft"
+          />
+        </div>
       </div>
     </header>
   );

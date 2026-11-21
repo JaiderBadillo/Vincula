@@ -23,8 +23,8 @@ DATA = {"nombre": "Laura", "vacante": "Analista", "empresa": "Acme", "fecha": MA
 def entrevista(estado="programada", fecha=MANANA):
     emp = SimpleNamespace(nombre_comercial="Acme", razon_social="Acme SAS")
     vac = SimpleNamespace(titulo="Analista", empresa=emp)
-    post = SimpleNamespace(vacante=vac, egresado=SimpleNamespace(nombre_completo="Laura Rincón"))
-    rec = SimpleNamespace(nombre_completo="Carlos Pérez", correo_corporativo="carlos@acme.test")
+    post = SimpleNamespace(vacante=vac, egresado=SimpleNamespace(nombre_completo="Laura Rincón", id_usuario=uuid.uuid4()))
+    rec = SimpleNamespace(nombre_completo="Carlos Pérez", correo_corporativo="carlos@acme.test", id_usuario=uuid.uuid4())
     return SimpleNamespace(id=uuid.uuid4(), estado=estado, fecha_entrevista=fecha, franja_horaria="10:00 AM - 11:00 AM",
                            modalidad="Virtual", url_reunion="https://meet.jit.si/x", objetivo="Técnica", postulacion=post, reclutador=rec)
 

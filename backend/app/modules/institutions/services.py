@@ -19,6 +19,7 @@ from app.core.security import get_password_hash
 from app.integrations.supabase_storage import SupabaseStorageService
 from app.modules.iam.models import Usuario
 from app.integrations.transactional_notifications import send_vincula_email
+from app.modules.notifications import services as avisos
 from app.modules.graduates.models import Egresado, AcademicoEgresado
 from app.modules.institutions.models import (
     Institucion,
@@ -1441,6 +1442,11 @@ class InstitutionService:
         await session.commit()
         await session.refresh(acad)
 
+        await avisos.notificar(
+            session, [egr.id_usuario], "titulo_aprobado", "Tu título fue aprobado",
+            f"{ies.nombre_oficial} validó tu diploma de {prog.nombre} y emitió tu sello digital.",
+            "/dashboard/verificacion", commit=True)
+
         await send_vincula_email(
             "egresado_verificado", egr.correo_personal,
             nombre=egr.nombre_completo, institucion=ies.nombre_oficial,
@@ -1531,6 +1537,10 @@ class InstitutionService:
                 pass
 
         await session.commit()
+
+        await avisos.notificar(
+            session, await avisos.de_egresado(session, acad.id_egresado), "titulo_observado", "Tu diploma tiene observaciones",
+            f"Tu institución observó el diploma: {payload.motivo_rechazo.strip()}", "/dashboard/verificacion", commit=True)
 
         return RejectDiplomaResponse(
             success=True,

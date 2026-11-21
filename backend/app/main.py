@@ -22,6 +22,7 @@ from app.modules.convenios.router import router as convenios_router
 from app.modules.ai_engine.router import router as ai_engine_router
 from app.api.endpoints.traceability import router as legacy_traceability_router
 from app.modules.moderation.router import router as moderation_router
+from app.modules.notifications.router import router as notifications_router
 
 @asynccontextmanager
 async def lifespan(_app):
@@ -76,6 +77,7 @@ async def add_security_headers(request, call_next):
 app.include_router(iam_router, prefix="/api/v1")
 app.include_router(superadmin_router, prefix="/api/v1")
 app.include_router(moderation_router, prefix="/api/v1")
+app.include_router(notifications_router, prefix="/api/v1")
 app.include_router(companies_router, prefix="/api/v1")
 app.include_router(institutions_router, prefix="/api/v1")
 app.include_router(graduates_router, prefix="/api/v1")

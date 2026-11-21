@@ -17,6 +17,7 @@ from app.core.config import settings
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.integrations.supabase_storage import SupabaseStorageService
 from app.integrations.transactional_notifications import send_vincula_email
+from app.modules.notifications import services as avisos
 from app.modules.iam.models import Usuario
 from app.modules.companies.models import Empresa, ReclutadorEmpresa, DocumentoEmpresa
 from app.modules.institutions.models import (
@@ -450,6 +451,14 @@ class IAMService:
 
         await session.commit()
 
+        await avisos.notificar(
+            session, await avisos.de_institucion(session, target_ies.id), "egresado_por_validar", "Nuevo egresado por validar",
+            f"{data.nombre_completo} radicó su diploma de {data.carrera}.", "/institucion/estudiantes/solicitudes", commit=True)
+        await avisos.notificar(
+            session, [nuevo_usuario.id], "registro_egresado", "Registro recibido",
+            f"{target_ies.nombre_oficial} revisará tu diploma. Te avisamos cuando tu título esté validado.",
+            "/dashboard/verificacion", commit=True)
+
         await send_vincula_email("registro_egresado", data.correo.lower(),
                                  nombre=data.nombre_completo, carrera=data.carrera)
 
@@ -599,6 +608,13 @@ class IAMService:
         await session.commit()
 
         radicado = f"RAD-EMP-2026-{str(nueva_empresa.id)[:8].upper()}"
+
+        await avisos.notificar(
+            session, await avisos.superadmins(session), "empresa_por_verificar", "Nueva empresa por verificar",
+            f"{data.razon_social or data.nombre_comercial} radicó su documentación.", "/admin/empresas", commit=True)
+        await avisos.notificar(
+            session, [nuevo_usuario.id], "registro_empresa", "Registro recibido",
+            "Revisaremos tus documentos en un máximo de 72 horas hábiles.", "/empresa/admin/verificacion", commit=True)
 
         await send_vincula_email("registro_empresa", data.correo_contacto.lower(),
                                  empresa=data.razon_social or data.nombre_comercial, radicado=radicado)
@@ -752,6 +768,13 @@ class IAMService:
         await session.commit()
 
         radicado = f"RAD-IES-2026-{str(nueva_ies.id)[:8].upper()}"
+
+        await avisos.notificar(
+            session, await avisos.superadmins(session), "ies_por_verificar", "Nueva institución por verificar",
+            f"{data.nombre_institucion} radicó su documentación.", "/admin/instituciones", commit=True)
+        await avisos.notificar(
+            session, [nuevo_usuario.id], "registro_ies", "Registro recibido",
+            "Revisaremos tus documentos en un máximo de 72 horas hábiles.", "/institucion/admin/verificacion", commit=True)
 
         await send_vincula_email("registro_ies", data.correo_institucional.lower(),
                                  institucion=data.nombre_institucion, radicado=radicado)

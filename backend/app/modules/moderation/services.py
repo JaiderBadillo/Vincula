@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import restore_sessions, revoke_sessions
 from app.integrations.transactional_notifications import send_vincula_email
+from app.modules.notifications import services as avisos
 from app.modules.moderation.schemas import MOTIVO_ETIQUETA, ReportRequest
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,8 @@ async def report_vacancy(session: AsyncSession, user: Dict[str, Any], vacancy_id
         {"id": uuid.uuid4(), "v": vid, "u": uid, "m": payload.motivo, "d": payload.detalle or None})).first()
     if creado is None:
         raise _error(409, "YA_REPORTADA", "Ya reportaste esta vacante; el equipo de Vincula la está revisando.")
+    await avisos.notificar(session, await avisos.superadmins(session), "vacante_reportada", "Nueva denuncia de vacante",
+                           f"Un usuario reportó una vacante por: {MOTIVO_ETIQUETA.get(payload.motivo, payload.motivo)}.", "/admin/moderacion")
     await session.commit()
     return {"mensaje": "Gracias. Recibimos tu reporte y el equipo de Vincula lo revisará."}
 
@@ -133,6 +136,9 @@ async def disable_vacancy(session: AsyncSession, admin: Dict[str, Any], vacancy_
         SELECT u.correo_electronico FROM reclutadores_empresa r JOIN usuarios u ON u.id = r.id_usuario WHERE r.id = :r"""),
         {"r": id_reclutador})).scalar()
     await session.commit()
+    await avisos.notificar(session, await avisos.de_empresa_de_vacante(session, vid), "vacante_inhabilitada",
+                           "Tu vacante fue inhabilitada", f"«{titulo}» dejó de ser visible. Motivo: {motivo}",
+                           "/empresa/reclutador/vacantes", commit=True)
     await _notify_company(correo, titulo, empresa)
     return {"mensaje": "Vacante inhabilitada: ya no es visible para los egresados."}
 

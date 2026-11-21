@@ -18,6 +18,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.integrations.transactional_notifications import send_vincula_email
+from app.modules.notifications import services as avisos
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +123,17 @@ async def _correo_y_nombre(session: AsyncSession, lado: str, entidad: uuid.UUID)
 
 
 async def _avisar(session: AsyncSession, receptor: str, id_receptor: uuid.UUID, kind: str, **data) -> None:
+    quien = data.get("contraparte") or "La otra parte"
+    if kind == "convenio_propuesta":
+        titulo, mensaje = "Nueva propuesta de convenio", f"{quien} te propone un convenio de {data.get('tipo')}."
+    else:
+        resultado = "aceptó" if data.get("accion") == "aceptar" else "rechazó"
+        titulo, mensaje = f"Tu propuesta de convenio fue {'aceptada' if resultado == 'aceptó' else 'rechazada'}", f"{quien} {resultado} tu propuesta de convenio."
+        if data.get("mensaje"):
+            mensaje += f" {data['mensaje']}"
+    destinatarios = await (avisos.de_empresa(session, id_receptor) if receptor == "empresa" else avisos.de_institucion(session, id_receptor))
+    await avisos.notificar(session, destinatarios, kind, titulo, mensaje,
+                           "/empresa/admin/convenios" if receptor == "empresa" else "/institucion/empresas/solicitudes", commit=True)
     try:
         correo, nombre, _ = await _correo_y_nombre(session, receptor, id_receptor)
         if correo:

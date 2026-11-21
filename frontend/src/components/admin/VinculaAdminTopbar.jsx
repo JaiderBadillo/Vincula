@@ -1,4 +1,5 @@
 import UserAccountDropdown from '../common/UserAccountDropdown.jsx';
+import NotificationBell from '../common/NotificationBell.jsx';
 import { authService } from '../../services/authService.js';
 
 function formatDashboardDate(date) {
@@ -52,6 +53,7 @@ export default function VinculaAdminTopbar({
 
         {/* Cuenta y Perfil Super Admin */}
         <div className="flex items-center gap-3">
+          <NotificationBell borderClass="border-sand-line" />
           <UserAccountDropdown
             role="vincula_admin"
             userName={currentUser?.nombre || "Super Administrador"}

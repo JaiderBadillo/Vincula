@@ -29,6 +29,7 @@ from app.modules.superadmin.schemas import (
 )
 from app.integrations.supabase_storage import SupabaseStorageService
 from app.integrations.transactional_notifications import send_vincula_email
+from app.modules.notifications import services as avisos
 
 
 class SuperAdminService:
@@ -355,6 +356,10 @@ class SuperAdminService:
 
         await session.commit()
 
+        await avisos.notificar(
+            session, await avisos.de_empresa(session, emp.id), "empresa_aprobada", "Tu empresa fue aprobada",
+            "Ya puedes publicar vacantes y recibir postulaciones.", "/empresa/admin/vacantes", commit=True)
+
         await send_vincula_email("empresa_aprobada", emp.correo_contacto,
                                  empresa=emp.razon_social or emp.nombre_comercial)
 
@@ -417,6 +422,10 @@ class SuperAdminService:
 
         await session.commit()
 
+        await avisos.notificar(
+            session, await avisos.de_empresa(session, emp.id), "empresa_correccion", "Tu empresa tiene documentos por corregir",
+            f"Vincula pidió correcciones: {action.motivo}", "/empresa/admin/verificacion", commit=True)
+
         return {
             "success": True,
             "empresa_id": str(emp.id),
@@ -469,6 +478,10 @@ class SuperAdminService:
 
         await session.commit()
 
+        await avisos.notificar(
+            session, await avisos.de_empresa(session, emp.id), "empresa_rechazada", "Tu solicitud fue rechazada",
+            f"Motivo: {action.motivo_rechazo}", "/empresa/admin/verificacion", commit=True)
+
         return {
             "success": True,
             "empresa_id": str(emp.id),
@@ -518,6 +531,10 @@ class SuperAdminService:
         session.add(audit)
 
         await session.commit()
+
+        await avisos.notificar(
+            session, await avisos.de_institucion(session, ies.id), "ies_aprobada", "Tu institución fue aprobada",
+            "Ya puedes validar egresados y gestionar convenios con empresas.", "/institucion/estudiantes/solicitudes", commit=True)
 
         await send_vincula_email("ies_aprobada", ies.correo_institucional,
                                  institucion=ies.nombre_oficial or ies.nombre_corto)
@@ -574,6 +591,10 @@ class SuperAdminService:
 
         await session.commit()
 
+        await avisos.notificar(
+            session, await avisos.de_institucion(session, ies.id), "ies_correccion", "Tu institución tiene documentos por corregir",
+            f"Vincula pidió correcciones: {action.motivo}", "/institucion/admin/verificacion", commit=True)
+
         return {
             "success": True,
             "institucion_id": str(ies.id),
@@ -611,6 +632,10 @@ class SuperAdminService:
         session.add(audit)
 
         await session.commit()
+
+        await avisos.notificar(
+            session, await avisos.de_institucion(session, ies.id), "ies_rechazada", "Tu solicitud fue rechazada",
+            f"Motivo: {action.motivo_rechazo}", "/institucion/admin/verificacion", commit=True)
 
         return {
             "success": True,

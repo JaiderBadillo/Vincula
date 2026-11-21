@@ -2,6 +2,7 @@ import { useCompanyProfile } from '../../hooks/useCompanyProfile.js';
 import { useCompanyRecruiters } from '../../hooks/useCompanyRecruiters.js';
 import { authService } from '../../services/authService.js';
 import UserAccountDropdown from '../common/UserAccountDropdown.jsx';
+import NotificationBell from '../common/NotificationBell.jsx';
 
 function formatDashboardDate(date) {
   const formattedDate = new Intl.DateTimeFormat('es-CO', {
@@ -75,25 +76,28 @@ export default function CompanyTopbar({
         </div>
 
         {/* Menú de cuenta en la esquina superior derecha */}
-        {role === 'recruiter' ? (
-          <UserAccountDropdown
-            role="company_recruiter"
-            userName={recruiterName}
-            userSubtitle={`Reclutador(a) · ${companyProfile.name}`}
-            userAvatar={activeRecruiter?.avatar || null}
-            userInitials={recruiterInitials}
-            borderClass="border-sand-line"
-          />
-        ) : (
-          <UserAccountDropdown
-            role="company_admin"
-            userName={companyAdminName}
-            userSubtitle={`Cuenta Empresarial · NIT ${companyProfile.nit}`}
-            userAvatar={companyProfile.logo}
-            userInitials={companyInitials}
-            borderClass="border-sand-line"
-          />
-        )}
+        <div className="flex items-center gap-3">
+          <NotificationBell borderClass="border-sand-line" />
+          {role === 'recruiter' ? (
+            <UserAccountDropdown
+              role="company_recruiter"
+              userName={recruiterName}
+              userSubtitle={`Reclutador(a) · ${companyProfile.name}`}
+              userAvatar={activeRecruiter?.avatar || null}
+              userInitials={recruiterInitials}
+              borderClass="border-sand-line"
+            />
+          ) : (
+            <UserAccountDropdown
+              role="company_admin"
+              userName={companyAdminName}
+              userSubtitle={`Cuenta Empresarial · NIT ${companyProfile.nit}`}
+              userAvatar={companyProfile.logo}
+              userInitials={companyInitials}
+              borderClass="border-sand-line"
+            />
+          )}
+        </div>
       </div>
     </header>
   );

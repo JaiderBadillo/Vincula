@@ -29,6 +29,8 @@ from app.modules.convenios.services import validar_convenio_de_empresa
 from app.modules.convenios.visibility import egresado_id_de, puede_ver, visible_para
 from app.modules.vacancies_ats.interview_response import make_response_url
 from app.integrations.transactional_notifications import send_vincula_email
+from app.integrations.email_service import get_stage_display_info
+from app.modules.notifications import services as avisos
 from app.modules.vacancies_ats.models import (
     Vacante,
     TaxonomiaCompetencia,
@@ -567,7 +569,11 @@ class VacancyATSService:
 
     @classmethod
     async def _notify_vacancy_published(cls, session: AsyncSession, id_empresa, vacante) -> None:
-        """Avisa por correo a la empresa que su vacante quedó publicada; un fallo nunca bloquea la publicación."""
+        """Avisa en la plataforma y por correo a la empresa que su vacante quedó publicada; un fallo nunca bloquea la publicación."""
+        await avisos.notificar(
+            session, await avisos.de_empresa(session, id_empresa, vacante.id_reclutador_responsable), "vacante_publicada",
+            "Vacante publicada", f"«{vacante.titulo}» ya está abierta para recibir postulaciones.",
+            "/empresa/reclutador/vacantes", commit=True)
         try:
             emp = (await session.execute(select(Empresa).where(Empresa.id == id_empresa))).scalar_one_or_none()
             if emp and emp.correo_contacto:
@@ -585,6 +591,12 @@ class VacancyATSService:
     ) -> None:
         """Envía confirmación al egresado y aviso al reclutador/empresa por Brevo (sin bloquear el registro)."""
         emp_nombre = (empresa.nombre_comercial or empresa.razon_social) if empresa else ""
+        await avisos.notificar(session, [egresado.id_usuario], "postulacion_enviada", "Postulación enviada",
+                               f"Te postulaste a «{vacante.titulo}» en {emp_nombre}.", "/dashboard/postulaciones", commit=True)
+        await avisos.notificar(
+            session, await avisos.de_empresa(session, vacante.id_empresa, vacante.id_reclutador_responsable), "nueva_postulacion",
+            "Nueva postulación", f"{egresado.nombre_completo} se postuló a «{vacante.titulo}».",
+            "/empresa/reclutador/candidatos", commit=True)
         try:
             grad_email = egresado.correo_personal or fallback_email
             if grad_email:
@@ -1293,6 +1305,12 @@ class VacancyATSService:
         emp_nombre = (vac.empresa.nombre_comercial or vac.empresa.razon_social) if (vac and vac.empresa) else ""
         vac_titulo = vac.titulo if vac else ""
 
+        if egr:
+            await avisos.notificar(
+                session, [egr.id_usuario], "fase_postulacion", "Actualización de tu postulación",
+                f"{vac_titulo} · {emp_nombre}: ahora está en «{get_stage_display_info(db_fase)['label']}».",
+                "/dashboard/postulaciones", commit=True)
+
         # Enviar correo de avance de fase al egresado vía Brevo
         if egr and egr.correo_personal:
             await send_vincula_email("fase_postulacion", egr.correo_personal,
@@ -1465,6 +1483,11 @@ class VacancyATSService:
         vac = postulacion.vacante
         emp_nombre = (vac.empresa.nombre_comercial or vac.empresa.razon_social) if (vac and vac.empresa) else ""
         vac_titulo = vac.titulo if vac else ""
+        if egr:
+            await avisos.notificar(
+                session, [egr.id_usuario], "entrevista_programada", "Te citaron a una entrevista",
+                f"{emp_nombre} te cita para «{vac_titulo}» el {entrevista.fecha_entrevista.isoformat()} a las "
+                f"{entrevista.franja_horaria} ({entrevista.modalidad}).", "/dashboard/postulaciones", commit=True)
         # Un solo correo, con lo que el egresado necesita: cuándo, cómo y dónde (sustituye al aviso genérico de fase)
         correo_enviado = False
         if egr and egr.correo_personal:

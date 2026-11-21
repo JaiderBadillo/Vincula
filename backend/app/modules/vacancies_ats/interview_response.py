@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.security import create_access_token, decode_access_token
 from app.integrations.transactional_notifications import FRONTEND_URL, send_vincula_email
+from app.modules.notifications import services as avisos
 from app.modules.vacancies_ats.models import EntrevistaPostulacion, Postulacion, Vacante
 
 logger = logging.getLogger(__name__)
@@ -84,6 +85,17 @@ async def respond(session: AsyncSession, token: str, accion: str, motivo: Option
     await session.commit()
 
     rec, egr = e.reclutador, e.postulacion.egresado
+    if rec:
+        candidato = egr.nombre_completo if egr else "El egresado"
+        cuando = f"el {e.fecha_entrevista.isoformat()} a las {e.franja_horaria}"
+        if accion == "confirmar":
+            titulo, mensaje = "Entrevista confirmada", f"{candidato} confirmó la entrevista de «{e.postulacion.vacante.titulo}» {cuando}."
+        else:
+            titulo, mensaje = "El candidato pidió otra fecha", f"{candidato} no puede asistir a la entrevista de «{e.postulacion.vacante.titulo}» {cuando}."
+            if (motivo or "").strip():
+                mensaje += f" Motivo: {motivo.strip()}"
+        await avisos.notificar(session, [rec.id_usuario], "entrevista_respuesta", titulo, mensaje,
+                               "/empresa/reclutador/candidatos", commit=True)
     if rec and rec.correo_corporativo:
         try:
             await send_vincula_email(

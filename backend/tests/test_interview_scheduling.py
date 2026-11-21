@@ -105,7 +105,7 @@ class FakeSession:
 def escenario(empresa="e1"):
     empresa_obj = SimpleNamespace(nombre_comercial="Acme", razon_social="Acme SAS")
     vacante = SimpleNamespace(id_empresa=empresa, titulo="Analista de Calidad", empresa=empresa_obj, id_reclutador_responsable=uuid.uuid4())
-    egresado = SimpleNamespace(correo_personal="egresado@example.com", nombre_completo="Laura Rincón")
+    egresado = SimpleNamespace(correo_personal="egresado@example.com", nombre_completo="Laura Rincón", id_usuario=uuid.uuid4())
     post = SimpleNamespace(id=uuid.uuid4(), vacante=vacante, egresado=egresado, fase_actual="prueba_tecnica")
     return post, SimpleNamespace(id=uuid.uuid4(), nombre_completo="Carlos Pérez")
 
