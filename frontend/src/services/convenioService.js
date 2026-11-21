@@ -21,7 +21,17 @@ export const convenioService = {
   /** { lado, propuestas, convenios } de la empresa o institución de la sesión. */
   getMine: () => request('mios', {}, 'No se pudieron cargar los convenios.'),
   /** Instituciones (si eres empresa) o empresas (si eres IES) aprobadas. */
-  searchCounterparts: (q = '') => request(`contrapartes?q=${encodeURIComponent(q)}`, {}, 'No se pudo buscar.'),
+  searchCounterparts: ({ q = '', ciudad = '', sector = '', programa = '', soloVacantes = false } = {}) => {
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (ciudad) params.set('ciudad', ciudad);
+    if (sector) params.set('sector', sector);
+    if (programa) params.set('programa', programa);
+    if (soloVacantes) params.set('con_vacantes', 'true');
+    return request(`contrapartes?${params}`, {}, 'No se pudo buscar.');
+  },
+  /** Ciudades (y sectores) disponibles para filtrar. */
+  getCounterpartFilters: () => request('contrapartes/filtros', {}, 'No se pudieron cargar los filtros.'),
   propose: (payload) => request('propuestas', { method: 'POST', body: JSON.stringify(payload) }, 'No se pudo enviar la propuesta.'),
   respond: (id, accion, notas = null) => request(`propuestas/${id}/responder`, { method: 'POST', body: JSON.stringify({ accion, notas }) }, 'No se pudo responder la propuesta.'),
   /** Convenios vigentes de la empresa, para publicar vacantes exclusivas. */

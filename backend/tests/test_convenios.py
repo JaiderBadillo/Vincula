@@ -80,6 +80,57 @@ class ProponerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(correo.call_args.kwargs["contraparte"], "Acme")
 
 
+class BuscarContrapartesTests(unittest.IsolatedAsyncioTestCase):
+    async def test_ies_ve_empresas_con_vacantes_y_su_relacion(self):
+        rows = [(uuid.uuid4(), "Acme", "Tecnología", "Bucaramanga", 3, "vigente"), (uuid.uuid4(), "Beta", None, "Floridablanca", 0, None)]
+        s = Session(rows)
+        out = await svc.contrapartes(s, "ies", " ac ", ciudad="Bucaramanga", sector="Tecnología", con_vacantes=True, entidad=IES)
+        self.assertEqual([(o["nombre"], o["vacantes_abiertas"], o["relacion"]) for o in out], [("Acme", 3, "vigente"), ("Beta", 0, None)])
+        self.assertEqual(out[0]["detalle"], "Tecnología · Bucaramanga")
+        self.assertEqual(out[1]["detalle"], "Floridablanca")  # sin sector no deja un separador suelto
+        _, params = s.sql[0]
+        self.assertEqual((params["ciudad"], params["sector"], params["abiertas"], params["q"]), ("Bucaramanga", "Tecnología", True, "%ac%"))
+        self.assertEqual(str(params["me"]), IES)  # la relación se calcula contra la entidad de quien busca
+
+    async def test_empresa_ve_instituciones_con_programas_y_filtra_por_programa(self):
+        s = Session([(uuid.uuid4(), "UTS", "Bucaramanga", 4, 36, "propuesta")])
+        out = await svc.contrapartes(s, "empresa", "", programa="Sistemas", entidad=EMP)
+        self.assertEqual((out[0]["programas"], out[0]["egresados"], out[0]["relacion"]), (4, 36, "propuesta"))
+        self.assertEqual(s.sql[0][1]["prog"], "%Sistemas%")
+        self.assertIsNone(s.sql[0][1]["ciudad"])  # sin filtro: no se restringe
+
+    async def test_filtros_reales_segun_el_lado(self):
+        self.assertEqual(await svc.filtros_contrapartes(Session([("Bucaramanga",)]), "empresa"), {"ciudades": ["Bucaramanga"], "sectores": []})
+        self.assertEqual(await svc.filtros_contrapartes(Session([("Bucaramanga",)], [("Salud",)]), "ies"), {"ciudades": ["Bucaramanga"], "sectores": ["Salud"]})
+
+
+class CondicionesTests(unittest.IsolatedAsyncioTestCase):
+    def sesion(self):
+        return Session(("aprobado", "aprobado"), None, uuid.uuid4(), ("Acme", "x", "Acme"), ("rector@uts.co", "Rector", "UTS"))
+
+    async def test_guarda_las_condiciones_sin_repetir_compromisos(self):
+        s = self.sesion()
+        detalle = {"modalidad": "hibrido", "remuneracion": "con_auxilio", "compromisos": ["ferias_visitas", "ferias_visitas", "charlas_empleabilidad"],
+                   "responsable_nombre": "  Ana Ruiz ", "responsable_contacto": "ana@acme.co"}
+        with patch.object(svc, "send_vincula_email", new_callable=AsyncMock, return_value=True):
+            await svc.proponer(s, "empresa", EMP, IES, "Pasantía", 2, 1, [], None, detalle)
+        p = s.sql[2][1]
+        self.assertEqual((p["mod"], p["rem"], p["comp"], p["rn"], p["rc"]), ("hibrido", "con_auxilio", ["ferias_visitas", "charlas_empleabilidad"], "Ana Ruiz", "ana@acme.co"))
+
+    async def test_condiciones_son_opcionales(self):
+        s = self.sesion()
+        with patch.object(svc, "send_vincula_email", new_callable=AsyncMock, return_value=True):
+            await svc.proponer(s, "empresa", EMP, IES, "Pasantía", 2, 1, [], None)
+        p = s.sql[2][1]
+        self.assertEqual((p["mod"], p["rem"], p["comp"], p["rn"], p["rc"]), (None, None, [], None, None))
+
+    async def test_valores_fuera_de_la_lista_se_rechazan(self):
+        for malo in ({"modalidad": "volando"}, {"remuneracion": "mucha"}, {"compromisos": ["regalar_un_carro"]}):
+            with self.assertRaises(HTTPException) as ctx:
+                await svc.proponer(Session(), "empresa", EMP, IES, "Pasantía", 1, 1, [], None, malo)
+            self.assertEqual(ctx.exception.status_code, 422)
+
+
 class ResponderTests(unittest.IsolatedAsyncioTestCase):
     def propuesta(self, estado="pendiente", iniciada_por="empresa"):
         return (uuid.UUID(EMP), uuid.UUID(IES), estado, iniciada_por, "Pasantía", 2)

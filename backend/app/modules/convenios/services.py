@@ -26,6 +26,9 @@ ROLES_EMPRESA = ("admin_empresa",)
 ROLES_IES = ("admin_ies", "ies_admin", "asesor_ies", "ies_asesor")
 TIPOS = ("Pasantía", "Aprendizaje", "Laboral")  # mismos valores que modalidad_convenio_enum
 ABIERTAS = ("pendiente", "en_revision")
+MODALIDADES = ("presencial", "hibrido", "remoto")
+REMUNERACIONES = ("a_convenir", "remunerada", "con_auxilio", "sin_remuneracion")
+COMPROMISOS = ("prioridad_egresados", "charlas_empleabilidad", "ferias_visitas", "seguimiento_conjunto")
 _ID = re.compile(r"[0-9a-fA-F-]{36}")
 
 
@@ -68,6 +71,7 @@ async def listar(session: AsyncSession, lado: str, entidad: str) -> Dict[str, An
     props = (await session.execute(text(f"""
         SELECT s.id, s.estado, s.iniciada_por, s.tipo_convenio, s.vacantes_proyectadas, s.duracion_anos, s.programas_objetivo,
                s.mensaje, s.notas_evaluador, s.solicitado_en, s.revisado_en,
+               s.modalidad_trabajo, s.remuneracion, s.compromisos, s.responsable_nombre, s.responsable_contacto,
                e.id AS id_empresa, COALESCE(e.nombre_comercial, e.razon_social) AS nombre_empresa, e.nit, e.sector_economico AS sector,
                e.ciudad AS ciudad_empresa, e.persona_contacto, i.id AS id_ies, i.nombre_oficial AS nombre_ies, i.ciudad AS ciudad_ies
         FROM solicitudes_convenio_ies s JOIN empresas e ON e.id = s.id_empresa JOIN instituciones i ON i.id = s.id_institucion
@@ -87,6 +91,8 @@ async def listar(session: AsyncSession, lado: str, entidad: str) -> Dict[str, An
             "id": str(r["id"]), "estado": r["estado"], "direccion": "enviada" if r["iniciada_por"] == lado else "recibida",
             "tipo": r["tipo_convenio"], "vacantes_proyectadas": r["vacantes_proyectadas"], "duracion_anos": r["duracion_anos"],
             "programas": list(r["programas_objetivo"] or []), "mensaje": r["mensaje"], "respuesta": r["notas_evaluador"],
+            "modalidad": r["modalidad_trabajo"], "remuneracion": r["remuneracion"], "compromisos": list(r["compromisos"] or []),
+            "responsable": {"nombre": r["responsable_nombre"], "contacto": r["responsable_contacto"]} if r["responsable_nombre"] or r["responsable_contacto"] else None,
             "creada_en": r["solicitado_en"], "respondida_en": r["revisado_en"], "contraparte": _contraparte(lado, r),
         } for r in props],
         "convenios": [{
@@ -98,18 +104,62 @@ async def listar(session: AsyncSession, lado: str, entidad: str) -> Dict[str, An
     }
 
 
-async def contrapartes(session: AsyncSession, lado: str, q: Optional[str]) -> List[Dict[str, Any]]:
-    """Entidades aprobadas a las que se les puede proponer un convenio."""
-    termino = f"%{(q or '').strip()[:60]}%"
-    if lado == "empresa":
-        rows = (await session.execute(text("""
-            SELECT id, nombre_oficial, ciudad FROM instituciones WHERE estado = 'aprobado' AND nombre_oficial ILIKE :q
-            ORDER BY nombre_oficial LIMIT 20"""), {"q": termino})).fetchall()
-        return [{"id": str(r[0]), "nombre": r[1], "detalle": r[2]} for r in rows]
-    rows = (await session.execute(text("""
-        SELECT id, COALESCE(nombre_comercial, razon_social), sector_economico, ciudad FROM empresas
-        WHERE estado = 'aprobado' AND COALESCE(nombre_comercial, razon_social) ILIKE :q ORDER BY 2 LIMIT 20"""), {"q": termino})).fetchall()
-    return [{"id": str(r[0]), "nombre": r[1], "detalle": " · ".join(x for x in (r[2], r[3]) if x)} for r in rows]
+def _relacion_sql(lado: str) -> str:
+    """'vigente' si ya hay convenio activo, 'propuesta' si hay una abierta, NULL si nada: se calcula contra la entidad de quien busca."""
+    mia, otra = ("id_empresa", "id_institucion") if lado == "empresa" else ("id_institucion", "id_empresa")
+    # `{otra}` se compara con la fila candidata (c.id) y `{mia}` con :me; los nombres de columna son fijos, nunca del usuario
+    return f"""CASE
+        WHEN EXISTS (SELECT 1 FROM convenios_interinstitucionales c WHERE c.{otra} = x.id AND c.{mia} = :me
+                     AND c.estado = 'activo' AND c.fecha_vencimiento >= CURRENT_DATE) THEN 'vigente'
+        WHEN EXISTS (SELECT 1 FROM solicitudes_convenio_ies s WHERE s.{otra} = x.id AND s.{mia} = :me
+                     AND s.estado IN ('pendiente', 'en_revision')) THEN 'propuesta' END"""
+
+
+async def contrapartes(session: AsyncSession, lado: str, q: Optional[str], ciudad: Optional[str] = None, sector: Optional[str] = None,
+                       programa: Optional[str] = None, con_vacantes: bool = False, entidad: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Entidades aprobadas a las que se les puede proponer un convenio, con filtros y su relación actual con quien busca."""
+    params: Dict[str, Any] = {
+        "q": f"%{(q or '').strip()[:60]}%", "ciudad": (ciudad or "").strip()[:100] or None, "sector": (sector or "").strip()[:100] or None,
+        "prog": f"%{(programa or '').strip()[:80]}%" if (programa or "").strip() else None, "abiertas": bool(con_vacantes),
+        "me": _uuid(entidad) if entidad else uuid.UUID(int=0),
+    }
+    if lado == "empresa":  # la contraparte es una IES
+        rows = (await session.execute(text(f"""
+            SELECT x.id, x.nombre_oficial, x.ciudad,
+                   (SELECT COUNT(*) FROM programas_academicos p WHERE p.id_institucion = x.id) AS programas,
+                   (SELECT COUNT(*) FROM academicos_egresado a WHERE a.id_institucion = x.id AND a.estado_verificacion = 'aprobado') AS egresados,
+                   {_relacion_sql(lado)} AS relacion
+            FROM instituciones x
+            WHERE x.estado = 'aprobado' AND (x.nombre_oficial ILIKE :q OR x.nombre_corto ILIKE :q)
+              AND (CAST(:ciudad AS text) IS NULL OR x.ciudad = CAST(:ciudad AS text))
+              AND (CAST(:prog AS text) IS NULL OR EXISTS (SELECT 1 FROM programas_academicos p WHERE p.id_institucion = x.id AND p.nombre ILIKE CAST(:prog AS text)))
+            ORDER BY x.nombre_oficial LIMIT 30"""), params)).fetchall()
+        return [{"id": str(r[0]), "nombre": r[1], "detalle": r[2], "ciudad": r[2], "programas": int(r[3] or 0),
+                 "egresados": int(r[4] or 0), "relacion": r[5]} for r in rows]
+    rows = (await session.execute(text(f"""
+        SELECT x.id, COALESCE(x.nombre_comercial, x.razon_social) AS nombre, x.sector_economico, x.ciudad,
+               (SELECT COUNT(*) FROM vacantes v WHERE v.id_empresa = x.id AND v.estado::text = 'abierta') AS vacantes_abiertas,
+               {_relacion_sql(lado)} AS relacion
+        FROM empresas x
+        WHERE x.estado = 'aprobado' AND (COALESCE(x.nombre_comercial, x.razon_social) ILIKE :q OR x.razon_social ILIKE :q)
+          AND (CAST(:ciudad AS text) IS NULL OR x.ciudad = CAST(:ciudad AS text))
+          AND (CAST(:sector AS text) IS NULL OR x.sector_economico = CAST(:sector AS text))
+          AND (NOT :abiertas OR EXISTS (SELECT 1 FROM vacantes v WHERE v.id_empresa = x.id AND v.estado::text = 'abierta'))
+        ORDER BY 2 LIMIT 30"""), params)).fetchall()
+    return [{"id": str(r[0]), "nombre": r[1], "detalle": " · ".join(p for p in (r[2], r[3]) if p), "sector": r[2], "ciudad": r[3],
+             "vacantes_abiertas": int(r[4] or 0), "relacion": r[5]} for r in rows]
+
+
+async def filtros_contrapartes(session: AsyncSession, lado: str) -> Dict[str, List[str]]:
+    """Valores reales para los filtros: ciudades (y sectores, si la contraparte es una empresa) de las entidades aprobadas."""
+    tabla = "instituciones" if lado == "empresa" else "empresas"  # fijo: no viene del usuario
+    ciudades = [r[0] for r in (await session.execute(text(
+        f"SELECT DISTINCT ciudad FROM {tabla} WHERE estado = 'aprobado' AND ciudad IS NOT NULL ORDER BY ciudad"))).fetchall()]
+    sectores: List[str] = []
+    if lado != "empresa":
+        sectores = [r[0] for r in (await session.execute(text(
+            "SELECT DISTINCT sector_economico FROM empresas WHERE estado = 'aprobado' AND sector_economico IS NOT NULL ORDER BY sector_economico"))).fetchall()]
+    return {"ciudades": ciudades, "sectores": sectores}
 
 
 # ───────────────────────────────────────────────────────────── acciones
@@ -143,9 +193,17 @@ async def _avisar(session: AsyncSession, receptor: str, id_receptor: uuid.UUID, 
 
 
 async def proponer(session: AsyncSession, lado: str, entidad: str, id_contraparte: str, tipo: str, vacantes: int,
-                   anos: int, programas: List[str], mensaje: Optional[str]) -> Dict[str, Any]:
+                   anos: int, programas: List[str], mensaje: Optional[str], detalle: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     if tipo not in TIPOS:
         raise HTTPException(status_code=422, detail="Tipo de convenio inválido.")
+    d = detalle or {}
+    modalidad, remuneracion = d.get("modalidad") or None, d.get("remuneracion") or None
+    compromisos = [c for c in dict.fromkeys(d.get("compromisos") or [])]
+    if (modalidad and modalidad not in MODALIDADES) or (remuneracion and remuneracion not in REMUNERACIONES) \
+            or any(c not in COMPROMISOS for c in compromisos):
+        raise HTTPException(status_code=422, detail="Las condiciones del convenio no son válidas.")
+    responsable_nombre = (d.get("responsable_nombre") or "").strip()[:150] or None
+    responsable_contacto = (d.get("responsable_contacto") or "").strip()[:200] or None
     mia, otra = _uuid(entidad), _uuid(id_contraparte)
     id_empresa, id_ies = (mia, otra) if lado == "empresa" else (otra, mia)
 
@@ -163,9 +221,11 @@ async def proponer(session: AsyncSession, lado: str, entidad: str, id_contrapart
     try:
         nueva = (await session.execute(text("""
             INSERT INTO solicitudes_convenio_ies (id_empresa, id_institucion, tipo_convenio, vacantes_proyectadas, duracion_anos,
-                                                  programas_objetivo, mensaje, iniciada_por, estado)
-            VALUES (:e, :i, :t, :v, :a, :p, :m, :lado, 'pendiente') RETURNING id"""),
-            {"e": id_empresa, "i": id_ies, "t": tipo, "v": vacantes, "a": anos, "p": programas, "m": (mensaje or "").strip() or None, "lado": lado})).scalar()
+                                                  programas_objetivo, mensaje, iniciada_por, estado, modalidad_trabajo, remuneracion,
+                                                  compromisos, responsable_nombre, responsable_contacto)
+            VALUES (:e, :i, :t, :v, :a, :p, :m, :lado, 'pendiente', :mod, :rem, :comp, :rn, :rc) RETURNING id"""),
+            {"e": id_empresa, "i": id_ies, "t": tipo, "v": vacantes, "a": anos, "p": programas, "m": (mensaje or "").strip() or None, "lado": lado,
+             "mod": modalidad, "rem": remuneracion, "comp": compromisos, "rn": responsable_nombre, "rc": responsable_contacto})).scalar()
         await session.commit()
     except IntegrityError:
         await session.rollback()
