@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../../services/authService.js';
 import { normalizeRole } from '../auth/ProtectedRoute.jsx';
@@ -272,6 +272,14 @@ const PORTAL_PREFIX_BY_TOUR = {
  * Solo monta el tour si el rol del usuario coincide ESTRICTAMENTE con el portal en el que se encuentra.
  * Evita cualquier cruce entre portales (por ejemplo, Super Admin jamás verá tour de Egresado ni será redirigido a /dashboard).
  */
+/** Lleva el elemento a la vista: centrado, o pegado arriba (bajo el encabezado) si es muy alto o la pantalla es angosta. */
+function focusTarget(el, behavior = 'smooth') {
+  const tall = el.getBoundingClientRect().height > window.innerHeight * 0.5;
+  const narrow = window.innerWidth < 640;
+  el.style.scrollMarginTop = '96px';
+  el.scrollIntoView({ behavior, block: tall || narrow ? 'start' : 'center', inline: 'nearest' });
+}
+
 export default function OnboardingTour({ showLauncher = true, autoStart = true }) {
   const location = useLocation();
   const isAuthenticated = authService.isAuthenticated();
@@ -362,6 +370,8 @@ function OnboardingTourContent({
 
   const [targetRect, setTargetRect] = useState(null);
   const [isNavigating, setIsNavigating] = useState(false);
+  const popoverRef = useRef(null);
+  const [popSize, setPopSize] = useState({ w: 340, h: 190 });
   const locateIntervalRef = useRef(null);
 
   const activeStep = steps[currentStep] || steps[0];
@@ -406,7 +416,7 @@ function OnboardingTourContent({
         clearInterval(locateIntervalRef.current);
         locateIntervalRef.current = null;
         try {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+          focusTarget(el);
         } catch {
           // noop
         }
@@ -526,7 +536,7 @@ function OnboardingTourContent({
       const el = document.querySelector(activeStep.targetSelector);
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      if (rect.bottom < 0 || rect.top > window.innerHeight) el.scrollIntoView({ block: 'center' });
+      if (rect.bottom < 0 || rect.top > window.innerHeight) focusTarget(el, 'auto');
       updateTargetRect();
     }, 500);
     return () => clearInterval(timer);
@@ -598,57 +608,54 @@ function OnboardingTourContent({
     }
   }
 
+  // Se mide la tarjeta ya dibujada para ubicarla con su altura real (no una estimada)
+  useLayoutEffect(() => {
+    if (!isOpen || isNavigating || !popoverRef.current) return;
+    const r = popoverRef.current.getBoundingClientRect();
+    setPopSize((p) => (Math.abs(p.w - r.width) < 1 && Math.abs(p.h - r.height) < 1 ? p : { w: Math.round(r.width), h: Math.round(r.height) }));
+  });
+
   // Si no hay pasos definidos para este tipo de tour, no renderizar nada
   if (!steps || steps.length === 0) {
     return null;
   }
 
-  // Cálculo de posición suave del Popover tooltip flotante
+  // Posición de la tarjeta: debajo, encima, a la derecha o a la izquierda del elemento, según donde quepa.
+  // Si no cabe en ningún lado (elemento muy grande) o la pantalla es angosta, va anclada abajo.
   const popoverStyle = (() => {
-    if (!targetRect || typeof window === 'undefined') {
-      return {
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: 'min(440px, calc(100vw - 32px))',
-        zIndex: 10001,
-      };
-    }
-
-    const POPOVER_WIDTH = 420;
-    const POPOVER_EST_HEIGHT = 270;
     const MARGIN = 16;
     const GAP = 14;
+    if (typeof window === 'undefined') return {};
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const narrow = vw < 640;
+    const width = Math.min(340, vw - MARGIN * 2);
+    const base = { position: 'fixed', zIndex: 10001, transition: 'top 0.3s ease, left 0.3s ease' };
+    const docked = narrow
+      ? { ...base, left: MARGIN, right: MARGIN, bottom: MARGIN }
+      : { ...base, right: MARGIN, bottom: MARGIN, width };
 
-    const viewportW = window.innerWidth;
-    const viewportH = window.innerHeight;
-
-    const spaceBelow = viewportH - targetRect.bottom;
-    const spaceAbove = targetRect.top;
-    const placeBelow = spaceBelow >= POPOVER_EST_HEIGHT || spaceBelow >= spaceAbove;
-
-    let top = placeBelow ? targetRect.bottom + GAP : targetRect.top - POPOVER_EST_HEIGHT - GAP;
-    if (top < MARGIN) top = MARGIN;
-    if (top + POPOVER_EST_HEIGHT > viewportH - MARGIN) {
-      top = viewportH - POPOVER_EST_HEIGHT - MARGIN;
+    if (!targetRect) {
+      return { ...base, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: Math.min(380, vw - MARGIN * 2) };
     }
+    if (narrow) return docked;
 
-    const targetCenterX = targetRect.left + targetRect.width / 2;
-    let left = targetCenterX - POPOVER_WIDTH / 2;
-    if (left < MARGIN) left = MARGIN;
-    if (left + POPOVER_WIDTH > viewportW - MARGIN) {
-      left = viewportW - POPOVER_WIDTH - MARGIN;
-    }
+    const h = popSize.h;
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+    const centerX = targetRect.left + targetRect.width / 2;
+    const spaceBelow = vh - targetRect.bottom - GAP - MARGIN;
+    const spaceAbove = targetRect.top - GAP - MARGIN;
+    const spaceRight = vw - targetRect.right - GAP - MARGIN;
+    const spaceLeft = targetRect.left - GAP - MARGIN;
+    const at = (top, left) => ({ ...base, width, top: Math.round(top), left: Math.round(left) });
+    const alignedLeft = clamp(centerX - width / 2, MARGIN, vw - width - MARGIN);
+    const alignedTop = clamp(targetRect.top, MARGIN, vh - h - MARGIN);
 
-    return {
-      position: 'fixed',
-      top: `${Math.round(top)}px`,
-      left: `${Math.round(left)}px`,
-      width: `min(${POPOVER_WIDTH}px, calc(100vw - 32px))`,
-      zIndex: 10001,
-      transition: 'top 0.3s ease, left 0.3s ease',
-    };
+    if (spaceBelow >= h) return at(targetRect.bottom + GAP, alignedLeft);
+    if (spaceAbove >= h) return at(targetRect.top - GAP - h, alignedLeft);
+    if (spaceRight >= width) return at(alignedTop, targetRect.right + GAP);
+    if (spaceLeft >= width) return at(alignedTop, targetRect.left - GAP - width);
+    return docked;
   })();
 
   return (
@@ -724,22 +731,16 @@ function OnboardingTourContent({
           {/* Popover con información del paso y botones */}
           {!isNavigating && (
             <div
+              ref={popoverRef}
               style={popoverStyle}
-              className="rounded-3xl border border-line bg-white p-5 sm:p-6 shadow-2xl animate-in fade-in duration-200"
+              className="max-h-[calc(100vh-32px)] overflow-y-auto rounded-2xl border border-line bg-white p-4 shadow-2xl animate-in fade-in duration-200"
             >
-              {/* Header del Popover */}
-              <div className="flex items-center justify-between border-b border-line pb-3.5 mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-ink px-2.5 py-0.5 text-[0.68rem] font-bold text-lime">
-                    <i className="bx bx-navigation text-xs" />
-                    {activeStep.badge}
-                  </span>
-                </div>
-
+              <div className="flex items-start justify-between gap-3">
+                <p className="m-0 text-xs font-semibold text-secondary">{activeStep.badge}</p>
                 <button
                   type="button"
                   onClick={handleClose}
-                  className="grid size-7 place-items-center rounded-lg text-secondary hover:bg-page hover:text-ink transition-colors cursor-pointer"
+                  className="-mr-1 -mt-1 grid size-7 shrink-0 cursor-pointer place-items-center rounded-lg text-secondary transition-colors hover:bg-page hover:text-ink"
                   title="Cerrar tutorial"
                   aria-label="Cerrar"
                 >
@@ -747,76 +748,35 @@ function OnboardingTourContent({
                 </button>
               </div>
 
-              {/* Título y Descripción con Énfasis en el Botón/Sección */}
-              <div>
-                <h3
-                  id="spotlight-tour-title"
-                  className="m-0 font-display text-base sm:text-lg font-bold text-ink leading-snug"
-                >
-                  {activeStep.title}
-                </h3>
-
-                <p className="mt-2 text-xs leading-relaxed text-body-muted font-medium">
-                  {activeStep.description}
+              <h3 id="spotlight-tour-title" className="m-0 mt-1 font-display text-base font-semibold leading-snug text-ink">
+                {activeStep.title}
+              </h3>
+              <p className="m-0 mt-1.5 text-sm leading-relaxed text-body-muted">{activeStep.description}</p>
+              {activeStep.actionHint && (
+                <p className="m-0 mt-2.5 border-l-2 border-lime pl-3 text-xs font-semibold leading-relaxed text-green-dark">
+                  {activeStep.actionHint}
                 </p>
+              )}
 
-                {/* Tip o Recordatorio de Acción */}
-                {activeStep.actionHint && (
-                  <div className="mt-3 flex items-start gap-2 rounded-xl bg-lime/15 border border-lime/40 px-3 py-2 text-[0.7rem] font-bold text-green-dark">
-                    <i className="bx bx-bulb text-sm shrink-0 mt-0.5" />
-                    <span>{activeStep.actionHint}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Footer con Progreso y Botones de Navegación */}
-              <div className="mt-5 pt-3 border-t border-line flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="text-xs font-bold text-secondary hover:text-ink transition-colors cursor-pointer"
-                >
+              <div className="mt-4 flex items-center justify-between gap-2 border-t border-line pt-3">
+                <button type="button" onClick={handleClose} className="cursor-pointer border-none bg-transparent p-0 text-xs font-semibold text-secondary transition-colors hover:text-ink">
                   Omitir
                 </button>
-
-                <div className="flex items-center gap-1.5">
-                  {/* Pastillas de progreso */}
-                  <div className="hidden sm:flex items-center gap-1 mr-2">
-                    {steps.map((_, idx) => (
-                      <span
-                        key={idx}
-                        className={`size-1.5 rounded-full transition-all ${
-                          idx === currentStep ? 'bg-ink w-3' : 'bg-line'
-                        }`}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Botón Anterior */}
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handlePrev}
                     disabled={currentStep === 0}
-                    className="inline-flex items-center gap-1 rounded-xl border border-line bg-white px-3 py-1.5 text-xs font-bold text-ink shadow-2xs hover:bg-page disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                    className="cursor-pointer rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-page disabled:cursor-not-allowed disabled:opacity-30"
                   >
-                    <i className="bx bx-left-arrow-alt text-base" />
-                    <span>Anterior</span>
+                    Anterior
                   </button>
-
-                  {/* Botón Siguiente */}
                   <button
                     type="button"
                     onClick={handleNext}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-ink hover:bg-ink-soft text-white px-4 py-1.5 text-xs font-bold shadow-xs hover:scale-102 cursor-pointer transition-all"
+                    className="cursor-pointer rounded-lg border-none bg-ink px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-ink-soft"
                   >
-                    <span>
-                      {currentStep === steps.length - 1 ? '¡Finalizar!' : 'Siguiente'}
-                    </span>
-                    <i
-                      className={`bx ${
-                        currentStep === steps.length - 1 ? 'bx-check text-lime' : 'bx-right-arrow-alt text-lime'
-                      } text-base`}
-                    />
+                    {currentStep === steps.length - 1 ? 'Finalizar' : 'Siguiente'}
                   </button>
                 </div>
               </div>
