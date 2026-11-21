@@ -372,14 +372,16 @@ function OnboardingTourContent({
     const el = document.querySelector(activeStep.targetSelector);
     if (el) {
       const rect = el.getBoundingClientRect();
-      setTargetRect({
+      const next = {
         top: Math.round(rect.top),
         left: Math.round(rect.left),
         width: Math.round(rect.width),
         height: Math.round(rect.height),
         bottom: Math.round(rect.bottom),
         right: Math.round(rect.right),
-      });
+      };
+      // Si no cambió, se conserva el mismo objeto para no volver a dibujar
+      setTargetRect((prev) => (prev && Object.keys(next).every((k) => prev[k] === next[k]) ? prev : next));
     } else {
       setTargetRect(null);
     }
@@ -431,12 +433,13 @@ function OnboardingTourContent({
           superadmin: '/admin/dashboard',
           institution_admin: '/institucion/admin/perfil',
           institution_advisor: '/institucion/dashboard',
-          company_admin: '/empresa/admin/perfil',
+          // Una empresa en revisión aterriza en Actividad, no en Perfil
+          company_admin: ['/empresa/admin/perfil', '/empresa/admin/actividad'],
           company_recruiter: '/empresa/reclutador/dashboard',
           graduate: '/dashboard',
         };
-        const expectedRoot = portalRoots[tourType];
-        if (expectedRoot && location.pathname === expectedRoot) {
+        const expectedRoot = [].concat(portalRoots[tourType] || []);
+        if (expectedRoot.includes(location.pathname)) {
           const timer = setTimeout(() => {
             setIsOpen(true);
           }, 800);
@@ -514,6 +517,20 @@ function OnboardingTourContent({
       window.removeEventListener('resize', handleScrollOrResize);
     };
   }, [isOpen, isNavigating, updateTargetRect]);
+
+  // La página puede cambiar de tamaño al terminar de cargar (imágenes, datos): mientras la guía está abierta,
+  // se vuelve a enfocar el elemento si quedó fuera de pantalla y se reajusta el reflector.
+  useEffect(() => {
+    if (!isOpen || isNavigating || !activeStep?.targetSelector) return undefined;
+    const timer = setInterval(() => {
+      const el = document.querySelector(activeStep.targetSelector);
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > window.innerHeight) el.scrollIntoView({ block: 'center' });
+      updateTargetRect();
+    }, 500);
+    return () => clearInterval(timer);
+  }, [isOpen, isNavigating, activeStep, updateTargetRect]);
 
   // Navegación con teclado accesible
   useEffect(() => {

@@ -42,6 +42,8 @@ import VinculaAdminCompaniesPage from './pages/VinculaAdminCompaniesPage.jsx';
 import VinculaAdminInstitutionsPage from './pages/VinculaAdminInstitutionsPage.jsx';
 import VinculaAdminModerationPage from './pages/VinculaAdminModerationPage.jsx';
 import AccountVerificationPage from './pages/AccountVerificationPage.jsx';
+import NotificationsPage from './pages/NotificationsPage.jsx';
+import OnboardingTour from './components/common/OnboardingTour.jsx';
 
 export default function App() {
   return (
@@ -153,9 +155,16 @@ export default function App() {
           <Route path="/admin/moderacion" element={<VinculaAdminModerationPage />} />
         </Route>
 
+        {/* ─── Notificaciones: cualquier usuario con sesión, dentro de su propio portal ─── */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/notificaciones" element={<NotificationsPage />} />
+        </Route>
+
         {/* ─── Redirección global para rutas no existentes ─── */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      {/* La guía se abre sola en el primer ingreso de cada usuario y después solo con "Ver tutorial guiado" (menú de usuario). */}
+      <OnboardingTour showLauncher={false} />
     </BrowserRouter>
   );
 }
