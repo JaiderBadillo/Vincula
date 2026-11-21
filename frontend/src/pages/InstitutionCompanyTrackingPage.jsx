@@ -22,7 +22,6 @@ export default function InstitutionCompanyTrackingPage() {
       <main className="w-full pb-16">
         <div className="mx-auto max-w-7xl space-y-8 px-5 pt-8 sm:px-8 lg:px-10">
           <InstitutionPageHero
-            eyebrow="Trazabilidad empresarial"
             title="Seguimiento a empresas"
             subtitle="Empresas con vacantes dirigidas a los programas de la institución y qué ha pasado con los egresados en esos procesos."
             photo={advisorPhotos.companyTracking}

@@ -16,7 +16,6 @@ const STEPS = [
 ];
 
 const COPY = {
-  eyebrow: 'Registro de empresas',
   headline: 'Contrata talento con título verificado.',
   intro: 'Registra tu organización en tres pasos. Revisamos tus documentos antes de habilitar la publicación de vacantes.',
   benefits: [

@@ -37,7 +37,6 @@ export default function InstitutionDashboardPage() {
       <main className="w-full pb-20">
         <div className="mx-auto max-w-7xl space-y-8 px-5 pt-8 sm:px-8 lg:px-10">
           <InstitutionPageHero
-            eyebrow="Observatorio de empleabilidad"
             title={`¡Bienvenido(a), ${advisorName}!`}
             subtitle="Supervisa la inserción laboral de los egresados, valida solicitudes en cola y revisa las empresas que contratan."
             photo={advisorPhotos.dashboard}

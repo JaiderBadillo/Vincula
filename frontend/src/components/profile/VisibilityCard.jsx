@@ -16,8 +16,8 @@ export default function VisibilityCard({ profile, updateProfile, notify }) {
         <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/50 to-transparent" aria-hidden="true" />
         <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-5 text-white">
           <div>
-            <p className="m-0 mb-1 inline-flex items-center gap-2 text-[0.62rem] font-bold uppercase tracking-[0.16em] text-white/80">
-              <span className={`size-2 rounded-full ${profile.openToWork ? 'animate-pulse bg-lime' : 'bg-white/40'}`} aria-hidden="true" />
+            <p className="m-0 mb-1 inline-flex items-center gap-2 text-xs font-semibold text-white/85">
+              <span className={`size-2 rounded-full ${profile.openToWork ? 'bg-lime' : 'bg-white/40'}`} aria-hidden="true" />
               {profile.openToWork ? 'Visible para empresas' : 'No disponible'}
             </p>
             <h2 id="visibility-title" className="m-0 font-display text-lg font-semibold leading-tight">Disponible para trabajar</h2>

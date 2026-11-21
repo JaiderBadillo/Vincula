@@ -228,7 +228,6 @@ export default function InstitutionAdminProfilePage() {
         <form onSubmit={handleSave} noValidate className="mx-auto max-w-6xl px-5 pt-6 sm:px-8 lg:px-10">
           <InstitutionPageHero
             photo={institutionPhotos.perfil}
-            eyebrow="Mi institución"
             title="Datos de la Institución"
             subtitle="Esta información oficial identifica a la institución en convenios empresariales, títulos y auditorías curriculares."
             stats={[

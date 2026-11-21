@@ -34,7 +34,6 @@ export default function InstitutionStudentTrackingPage() {
       <main className="w-full pb-16">
         <div className="mx-auto max-w-7xl space-y-8 px-5 pt-8 sm:px-8 lg:px-10">
           <InstitutionPageHero
-            eyebrow="Trazabilidad y colocación laboral"
             title="Seguimiento laboral de egresados"
             subtitle="Estado de inserción, empresa contratante y avance en los procesos de selección de cada egresado, según los registros de Vincula."
             photo={advisorPhotos.studentTracking}

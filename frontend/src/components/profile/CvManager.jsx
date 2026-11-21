@@ -73,10 +73,7 @@ export default function CvManager({ profile, updateProfile, notify }) {
           <img src="/images/profile/cv-review.jpg" alt="" className="profile-zoom-img absolute inset-0 size-full object-cover object-[70%_center]" loading="lazy" decoding="async" />
           <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-ink/5" aria-hidden="true" />
           <div className="relative flex h-full flex-col justify-end p-6 text-white">
-            <p className="mb-2 inline-flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-[0.16em] text-white/85">
-              <span className="size-2 rounded-full bg-lime" aria-hidden="true" />
-              Hoja de vida
-            </p>
+            <p className="mb-1 text-sm font-semibold text-white/85">Hoja de vida</p>
             <h2 id="cv-title" className="m-0 font-display text-2xl font-semibold leading-tight tracking-[-0.03em]">
               Tu CV es tu primera entrevista.
             </h2>

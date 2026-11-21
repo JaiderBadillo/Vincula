@@ -29,7 +29,6 @@ export default function InstitutionPlacementStatsPage() {
       <main className="w-full pb-20">
         <div className="mx-auto max-w-7xl space-y-8 px-4 pt-8 sm:px-6 lg:px-8">
           <InstitutionPageHero
-            eyebrow="Indicadores de empleabilidad"
             title="Estadísticas de colocación"
             subtitle="Contrataciones de egresados registradas en Vincula: tasa de colocación, tiempo del proceso, salario publicado y empresas que contratan."
             photo={advisorPhotos.placementStats}

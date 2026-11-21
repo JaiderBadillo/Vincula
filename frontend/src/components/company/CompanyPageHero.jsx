@@ -4,7 +4,7 @@
  * - `stats`: [{ value, label }] se muestran sobre la foto con fondo translúcido
  * - `actions`: nodo con botones, alineado abajo a la derecha
  */
-export default function CompanyPageHero({ photo, eyebrow, title, subtitle, stats = [], actions = null }) {
+export default function CompanyPageHero({ photo, title, subtitle, stats = [], actions = null }) {
   return (
     <section
       className="showcase-card relative isolate flex min-h-[15rem] w-full items-end overflow-hidden rounded-card bg-cocoa text-white sm:min-h-[17rem]"
@@ -22,11 +22,6 @@ export default function CompanyPageHero({ photo, eyebrow, title, subtitle, stats
 
       <div className="relative z-20 flex w-full flex-col gap-5 p-6 sm:p-8 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-xl">
-          {eyebrow && (
-            <span className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-white/85">
-              {eyebrow}
-            </span>
-          )}
           <h1 className="m-0 font-display text-2xl font-semibold leading-tight sm:text-3xl">{title}</h1>
           {subtitle && <p className="m-0 mt-2 text-sm leading-relaxed text-white/80">{subtitle}</p>}
         </div>

@@ -277,7 +277,6 @@ export default function InstitutionGraduateValidationPage() {
           {/* ─── Hero Fotográfico con Identidad Asesor UTS ─── */}
           <InstitutionPageHero
             photo={advisorPhotos.graduateValidation}
-            eyebrow="Validación de Títulos & Egresados"
             title="Validar Egresados Institucionales"
             subtitle="Revisa la autenticidad académica, folios de acta y documentos oficiales en Supabase Storage para expedir el Sello Digital Institucional."
             stats={[

@@ -102,8 +102,8 @@ export default function GraduateDashboard() {
             <section data-tour="grad-perfil-kpi" aria-label="Resumen de tu perfil">
               <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-blue-muted">Tu punto de partida</p>
-                  <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Resumen de actividad</h2>
+                  <h2 className="m-0 font-display text-xl font-semibold tracking-tight text-ink">Resumen de actividad</h2>
+                  <p className="m-0 mt-1 text-sm text-body-muted">Cómo va tu perfil y tu búsqueda de empleo.</p>
                 </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">

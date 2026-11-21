@@ -49,10 +49,7 @@ export default function ProfileStrength({ score, checks, onAction }) {
       <div className="pointer-events-none absolute -bottom-20 -left-10 size-48 rounded-full bg-sky-400/15 blur-3xl" aria-hidden="true" />
 
       <div className="relative">
-        <p className="m-0 inline-flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-[0.16em] text-white/60">
-          <span className="size-1.5 rounded-full bg-lime" aria-hidden="true" />
-          Fortaleza del perfil
-        </p>
+        <p className="m-0 text-sm font-semibold text-white/70">Fortaleza del perfil</p>
 
         <div className="mt-4 flex items-center gap-5">
           <div className="relative size-32 shrink-0">

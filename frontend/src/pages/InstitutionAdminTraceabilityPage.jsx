@@ -136,7 +136,6 @@ export default function InstitutionAdminTraceabilityPage() {
       <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         <InstitutionPageHero
           photo={institutionPhotos.trazabilidad}
-          eyebrow="Observatorio de Pertinencia Curricular"
           title="Trazabilidad de Programas y Demanda del Mercado"
           subtitle="Compara la malla de cada programa con las competencias que exigen las vacantes abiertas dirigidas a él."
           stats={report ? [

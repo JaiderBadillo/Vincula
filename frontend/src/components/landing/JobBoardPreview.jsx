@@ -39,7 +39,7 @@ function FeaturedVacancyCard({ job, onOpen }) {
     <article className="relative isolate flex min-h-[340px] flex-col overflow-hidden rounded-card bg-ink p-6 text-white sm:p-8 lg:min-h-[390px]">
       <div className="featured-rings pointer-events-none absolute inset-0" aria-hidden="true"><span /><span /></div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.15em] text-lime">
+        <span className="inline-flex items-center gap-2 text-sm font-semibold text-lime">
           <span className="size-2 rounded-full bg-lime" aria-hidden="true" />
           Vacante activa
         </span>
@@ -82,7 +82,7 @@ function FeaturedVacancyCard({ job, onOpen }) {
 function SecondaryVacancyCard({ job, onOpen }) {
   return (
     <article className="flex min-h-[13.5rem] flex-col rounded-card border border-line bg-white p-5 sm:p-6">
-      <div className="flex items-center justify-between gap-3 text-[0.68rem] font-bold uppercase tracking-[0.14em] text-blue-muted">
+      <div className="flex items-center justify-between gap-3 text-xs font-semibold text-blue-muted">
         <span className="truncate">{job.category} · {job.location}</span>
         <i className={`bx ${job.sector === 'public' ? 'bx-buildings' : 'bx-briefcase-alt-2'} text-xl shrink-0`} aria-hidden="true" />
       </div>
@@ -115,7 +115,7 @@ function VacancyDetailContent({ job }) {
           Convocatoria activa
         </span>
       </div>
-      <p className="mb-2 mt-6 text-xs font-bold uppercase tracking-[0.14em] text-blue-muted">
+      <p className="mb-2 mt-6 text-sm font-semibold text-blue-muted">
         {job.sectorLabel} · {job.category}
       </p>
       <h2 className="font-display text-2xl font-semibold leading-tight tracking-[-0.035em] text-ink">

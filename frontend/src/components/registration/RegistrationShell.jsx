@@ -91,7 +91,7 @@ export function ApiError({ message }) {
 /**
  * Marco común de los registros (egresado, empresa e IES): panel de marca a la izquierda y, a la derecha,
  * encabezado de paso + indicador de avance + el formulario (children).
- * `copy` = { eyebrow, headline, intro, benefits: [{title, text}], footnote, stepTitles: [], stepIntros: [] }
+ * `copy` = { headline, intro, benefits: [{title, text}], footnote, stepTitles: [], stepIntros: [] }
  */
 export default function RegistrationShell({ copy, steps, step, onGoStep, banner, children }) {
   return (
@@ -105,7 +105,6 @@ export default function RegistrationShell({ copy, steps, step, onGoStep, banner,
           </Link>
 
           <div>
-            <p className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.16em] text-lime">{copy.eyebrow}</p>
             <h2 className="font-display text-3xl font-extrabold leading-tight tracking-tight xl:text-4xl">{copy.headline}</h2>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/70">{copy.intro}</p>
 
@@ -154,7 +153,7 @@ export default function RegistrationShell({ copy, steps, step, onGoStep, banner,
         <main className="flex flex-1 items-start justify-center px-5 pb-12 pt-2 sm:px-8 lg:items-center lg:px-12">
           <div className="w-full max-w-2xl">
             <div className="mb-7">
-              <p className="m-0 text-xs font-bold uppercase tracking-[0.14em] text-green">
+              <p className="m-0 text-sm font-semibold text-green">
                 Paso {step + 1} de {steps.length}
               </p>
               <h1 className="mt-1.5 font-display text-3xl font-extrabold tracking-tight text-[#051F26]">{copy.stepTitles[step]}</h1>

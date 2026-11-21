@@ -17,7 +17,6 @@ const STEPS = [
 ];
 
 const COPY = {
-  eyebrow: 'Registro de egresados',
   headline: 'Tu título, respaldado por tu universidad.',
   intro: 'Crea tu cuenta en tres pasos y empieza a postularte a vacantes de empresas aliadas.',
   benefits: [

@@ -419,10 +419,7 @@ export default function ProfilePage() {
                   <div className="absolute inset-0 bg-gradient-to-r from-ink/95 via-ink/75 to-transparent sm:to-ink/30" />
                   <div className="relative flex flex-col sm:flex-row items-start sm:items-end justify-between gap-5 p-6 sm:p-8">
                     <div className="max-w-xl">
-                      <span className="mb-2.5 inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-white">
-                        <span className="size-2 rounded-full bg-lime animate-pulse" aria-hidden="true" />
-                        Perfil profesional
-                      </span>
+                      <span className="mb-2 block text-sm font-semibold text-white/85">Perfil profesional</span>
                       <h3 className="font-display text-xl sm:text-2xl lg:text-[1.7rem] font-bold leading-snug text-white mt-1">
                         Conecta lo que sabes con nuevas oportunidades.
                       </h3>

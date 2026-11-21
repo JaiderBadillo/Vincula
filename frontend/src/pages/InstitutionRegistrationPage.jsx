@@ -24,7 +24,6 @@ const STEPS = [
 ];
 
 const COPY = {
-  eyebrow: 'Registro de instituciones',
   headline: 'Que el título de tus egresados llegue a las empresas.',
   intro: 'Registra tu institución en tres pasos. Verificamos el reconocimiento ante el MEN antes de habilitar el portal.',
   benefits: [

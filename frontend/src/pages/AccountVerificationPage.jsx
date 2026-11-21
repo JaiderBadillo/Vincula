@@ -17,8 +17,7 @@ export default function AccountVerificationPage({ kind }) {
 
   const content = <main className="mx-auto max-w-5xl px-5 py-8 sm:py-10">
     <div className="mb-7">
-      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-secondary">Mi expediente</p>
-      <h1 className="mt-2 font-display text-2xl font-bold text-ink sm:text-3xl">Verificación de mi cuenta</h1>
+      <h1 className="m-0 font-display text-2xl font-bold text-ink sm:text-3xl">Verificación de mi cuenta</h1>
       <p className="mt-2 text-sm text-secondary">Consulta el estado de tus documentos y las observaciones de quienes los revisan.</p>
     </div>
     {status?.estado !== 'aprobado' && <DocumentCorrections kind={kind} />}

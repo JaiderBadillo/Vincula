@@ -42,7 +42,6 @@ export default function InstitutionLaborMarketPage() {
       <main className="w-full pb-16">
         <div className="mx-auto max-w-7xl space-y-8 px-5 pt-8 sm:px-8 lg:px-10">
           <InstitutionPageHero
-            eyebrow="Observatorio de brecha de cualificaciones"
             title="Programas y demanda del mercado laboral"
             subtitle="Compara el plan de estudios de cada programa con las competencias que piden las vacantes abiertas en Vincula."
             photo={advisorPhotos.laborMarket}
