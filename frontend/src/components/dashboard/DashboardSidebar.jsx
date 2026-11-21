@@ -100,7 +100,7 @@ function NavigationItems({ activePage, onNavigate, collapsed = false }) {
                   collapsed ? 'justify-center px-0' : 'gap-3 px-3'
                 } ${
                   isActive
-                    ? 'bg-green/10 font-bold text-green-dark shadow-xs'
+                    ? 'bg-green-dark font-bold text-white shadow-sm'
                     : 'font-medium text-secondary hover:bg-page hover:text-ink'
                 }`}
                 aria-current={isActive ? 'page' : undefined}
@@ -111,7 +111,7 @@ function NavigationItems({ activePage, onNavigate, collapsed = false }) {
                 {/* Active accent */}
                 {isActive && (
                   <span
-                    className="absolute left-0 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-r-full bg-green"
+                    className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-lime"
                     aria-hidden="true"
                   />
                 )}
@@ -119,7 +119,7 @@ function NavigationItems({ activePage, onNavigate, collapsed = false }) {
                 <i
                   className={`bx ${item.icon} shrink-0 text-lg ${
                     isActive
-                      ? 'text-green-dark'
+                      ? 'text-lime'
                       : item.badge
                       ? 'text-green-dark'
                       : 'text-secondary group-hover:text-green-dark'

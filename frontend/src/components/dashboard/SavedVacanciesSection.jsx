@@ -21,7 +21,7 @@ export default function SavedVacanciesSection({ onOpenJob, onApplyJob, appliedJo
             >
               Vacantes Guardadas
             </h2>
-            <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-800 border border-amber-200">
+            <span className="rounded-full bg-lime/25 px-2.5 py-0.5 text-xs font-bold text-green-dark border border-lime/50">
               {savedCount} {savedCount === 1 ? 'favorita' : 'favoritas'}
             </span>
           </div>
@@ -78,7 +78,7 @@ export default function SavedVacanciesSection({ onOpenJob, onApplyJob, appliedJo
                     <button
                       type="button"
                       onClick={() => removeSaved(job.id)}
-                      className="grid size-8 shrink-0 place-items-center rounded-lg text-amber-500 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
+                      className="grid size-8 shrink-0 place-items-center rounded-lg text-green hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
                       title="Quitar de vacantes guardadas"
                     >
                       <i className="bx bxs-bookmark-star text-lg" />

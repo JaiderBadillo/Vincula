@@ -1,3 +1,4 @@
+import { graduatePhotos } from '../data/graduateImages.js';
 import { useEffect, useMemo, useState } from 'react';
 import GraduatePortalLayout from '../components/dashboard/GraduatePortalLayout.jsx';
 import GridVacancyDetailModal from '../components/dashboard/GridVacancyDetailModal.jsx';
@@ -375,14 +376,14 @@ export default function VacanciesPage() {
       <main className="w-full pb-20">
         {/* ─── Hero Header con Estadísticas Clave ─── */}
         <section className="relative isolate overflow-hidden bg-ink py-10 px-5 sm:px-8 lg:px-10 text-white">
-          <div className="pointer-events-none absolute inset-0 z-0 opacity-25">
+          <div className="pointer-events-none absolute inset-0 z-0" aria-hidden="true">
             <img
-              src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1920&q=80"
+              src={graduatePhotos.vacantes.src}
               alt=""
-              className="size-full object-cover"
+              className={`size-full object-cover ${graduatePhotos.vacantes.position}`}
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/90 to-ink/70" />
-            <div className="hero-grid absolute inset-0 opacity-40" />
+            <div className="absolute inset-0 bg-gradient-to-r from-ink/90 via-ink/70 to-ink/30" />
+            <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-transparent" />
           </div>
 
           <div className="relative z-10 max-w-7xl mx-auto">

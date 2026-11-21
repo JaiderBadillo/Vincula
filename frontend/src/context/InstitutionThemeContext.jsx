@@ -10,10 +10,10 @@ export const PORTAL_THEMES = [
     name: 'Verde Institucional',
     badge: 'Por defecto',
     description: 'Verde bosque y verde claro institucional, identidad base de Víncula.',
-    primary: '#1b4d2e',
+    primary: '#336f24',
     accent: '#b1cc74',
     bg: '#fbfcf9',
-    cocoa: '#12281c',
+    cocoa: '#001a23',
   },
   {
     id: 'verde-esmeralda',

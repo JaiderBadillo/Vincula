@@ -1,3 +1,5 @@
+import GraduatePageHero from '../components/dashboard/GraduatePageHero.jsx';
+import { graduatePhotos } from '../data/graduateImages.js';
 import { useEffect, useMemo, useState } from 'react';
 import GraduatePortalLayout from '../components/dashboard/GraduatePortalLayout.jsx';
 import { phaseDefinitions, proposalApplications, proposalInterviews } from '../data/proposalApplications.js';
@@ -153,26 +155,21 @@ export default function MyApplicationsPage() {
   return (
     <GraduatePortalLayout activePage="applications">
       <main className="w-full pb-16">
-        {/* ─── Header Limpio y Espacioso ─── */}
-        <header className="border-b border-line-soft bg-white px-5 py-6 sm:px-8 lg:px-10">
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="m-0 font-display text-2xl sm:text-3xl font-bold tracking-tight text-ink">
-                  Mis Postulaciones
-                </h1>
-                <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
+        {/* ─── Banner con foto ─── */}
+        <div className="mx-auto max-w-7xl px-5 pt-8 sm:px-8 lg:px-10">
+          <GraduatePageHero
+            photo={graduatePhotos.postulaciones}
+            title={(
+              <>
+                Mis Postulaciones{' '}
+                <span className="ml-1 align-middle rounded-full border border-white/30 bg-white/15 px-2.5 py-0.5 text-xs font-bold text-white">
                   {activeApplications.length} activas
                 </span>
-              </div>
-              <p className="m-0 mt-1 text-xs sm:text-sm text-body-muted">
-                Seguimiento en tiempo real de tus procesos de selección en empresas aliadas.
-              </p>
-            </div>
-
-            {/* Cápsula interactiva de actividad en el pipeline (Diseño orgánico y no formulaico) */}
-            <div className="flex items-center">
-              <nav
+              </>
+            )}
+            subtitle="Seguimiento de tus procesos de selección en empresas aliadas."
+            actions={
+<nav
                 aria-label="Resumen rápido de fases activas"
                 className="inline-flex items-center rounded-2xl border border-line bg-page/90 p-1 shadow-2xs backdrop-blur-xs divide-x divide-line/60"
               >
@@ -256,9 +253,9 @@ export default function MyApplicationsPage() {
                   </span>
                 </button>
               </nav>
-            </div>
-          </div>
-        </header>
+            }
+          />
+        </div>
 
         {/* ─── Contenedor Principal ─── */}
         <div className="max-w-7xl mx-auto px-5 pt-5 sm:px-8 lg:px-10 space-y-5">

@@ -46,12 +46,12 @@
   --color-green-dark: #28571d !important;
   --color-lime: #b1cc74 !important;
   --color-page: #fbfcf9 !important;
-  --color-terracotta: #1b4d2e !important;
-  --color-terracotta-dark: #113820 !important;
+  --color-terracotta: #336f24 !important;
+  --color-terracotta-dark: #28571d !important;
   --color-sand: #e6eee3 !important;
   --color-sand-line: #cadac6 !important;
   --color-cream: #f6faf5 !important;
-  --color-cocoa: #12281c !important;
+  --color-cocoa: #001a23 !important;
   --color-ochre: #b1cc74 !important;
 }
 
@@ -518,4 +518,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .benefit-enter { animation: none; }
+}
+
+/* El banner con foto del egresado sombrea con el negro de marca (sin tema, cocoa sería marrón) */
+[data-portal="graduate"] {
+  --color-cocoa: #001a23;
 }
