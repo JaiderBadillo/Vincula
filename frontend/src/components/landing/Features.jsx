@@ -1,4 +1,4 @@
-import { sectionEyebrow, sectionTitle } from '../../utils/classes.js';
+import { sectionTitle } from '../../utils/classes.js';
 
 const audiences = [
   {
@@ -30,7 +30,6 @@ export default function Features() {
       <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[.72fr_1.28fr] lg:gap-16">
         {/* Intro column */}
         <div className="lg:pt-2">
-          <p className={sectionEyebrow}>Capacidades por audiencia</p>
           <h2 className={sectionTitle} id="capabilities-title">Cada vínculo tiene herramientas propias.</h2>
           <p className="mt-5 max-w-md text-base leading-7 text-body-muted">Una experiencia que acompaña a quienes buscan, ofrecen y fortalecen oportunidades laborales.</p>
           <div className="mt-8 flex items-center gap-3 rounded-control border border-line bg-page p-4">

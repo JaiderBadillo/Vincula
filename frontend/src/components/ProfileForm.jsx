@@ -272,9 +272,6 @@ export default function ProfileForm() {
         <div>
           <div className="mb-5 flex items-start justify-between gap-3">
             <div>
-              <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-[0.16em] text-blue-muted">
-                Talento Universitario · IES
-              </p>
               <h2 className="font-display text-xl font-semibold leading-tight tracking-tight sm:text-2xl text-ink">
                 Pre-registro de Egresado
               </h2>
@@ -400,9 +397,6 @@ export default function ProfileForm() {
         <div>
           <div className="mb-5 flex items-start justify-between gap-3">
             <div>
-              <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-[0.16em] text-amber-700">
-                Portal Empleadores
-              </p>
               <h2 className="font-display text-xl font-semibold leading-tight tracking-tight sm:text-2xl text-ink">
                 Registra tu empresa
               </h2>
@@ -493,9 +487,6 @@ export default function ProfileForm() {
         <div>
           <div className="mb-5 flex items-start justify-between gap-3">
             <div>
-              <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-[0.16em] text-emerald-800">
-                Gestión Universitaria
-              </p>
               <h2 className="font-display text-xl font-semibold leading-tight tracking-tight sm:text-2xl text-ink">
                 Portal Institucional IES
               </h2>

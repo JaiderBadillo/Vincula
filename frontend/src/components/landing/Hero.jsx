@@ -16,10 +16,6 @@ export default function Hero() {
       <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-5 md:px-6 lg:grid-cols-[1.06fr_.94fr] lg:gap-10 lg:px-10">
         {/* Left column — copy */}
         <div className="hero-copy max-w-2xl">
-          <p className="mb-7 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.15em] text-lime">
-            <span className="h-px w-9 bg-lime" aria-hidden="true" />
-            Conexiones que impulsan trayectorias
-          </p>
           <h1 className="max-w-2xl font-display text-[clamp(2.65rem,5.3vw,4rem)] font-semibold leading-[1.1] tracking-[-0.045em] text-white" id="hero-title">
             Vinculación laboral para <span className="text-lime">talento universitario.</span>
           </h1>

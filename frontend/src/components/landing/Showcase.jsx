@@ -1,4 +1,4 @@
-import { sectionEyebrow, sectionTitle } from '../../utils/classes.js';
+import { sectionTitle } from '../../utils/classes.js';
 
 const photos = [
   {
@@ -35,7 +35,6 @@ export default function Showcase() {
     <section className="bg-page px-5 py-16 sm:px-6 lg:px-10 lg:py-20" aria-labelledby="showcase-title">
       <div className="mx-auto max-w-7xl">
         <div className="mb-9 max-w-3xl">
-          <p className={sectionEyebrow}>En la práctica</p>
           <h2 className={sectionTitle} id="showcase-title">Talento público. Nuevas posibilidades.</h2>
         </div>
         <div className="grid gap-4 md:grid-cols-12 md:items-end">
@@ -45,7 +44,6 @@ export default function Showcase() {
               <div className={`showcase-image-shade--${photo.type} absolute inset-0 z-10`} aria-hidden="true" />
               {photo.type === 'bottom' ? (
                 <div className="relative z-20 p-7 sm:p-8">
-                  <span className="mb-3 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-white/85"><span className="size-2 rounded-full bg-lime" aria-hidden="true" />{photo.eyebrow}</span>
                   <h3 className="max-w-lg font-display text-2xl font-semibold leading-tight sm:text-3xl">{photo.caption}</h3>
                 </div>
               ) : (

@@ -4,7 +4,7 @@ import { normalizeText } from '../../data/jobs.js';
 import { vacancyService } from '../../services/vacancyService.js';
 import { authService } from '../../services/authService.js';
 import { formatPublicPublishedDate, mapPublicVacancy } from '../../utils/publicVacancies.js';
-import { primaryButton, sectionEyebrow, sectionTitle } from '../../utils/classes.js';
+import { primaryButton, sectionTitle } from '../../utils/classes.js';
 import JobDetailDialog from '../JobDetailDialog.jsx';
 
 const sectors = [
@@ -357,7 +357,6 @@ export default function JobBoardPreview({ variant = 'home' }) {
         {/* Section header + filters */}
         <div className={`mb-8 flex flex-col gap-6 lg:mb-10 ${explore ? 'xl:flex-row xl:items-end xl:justify-between' : 'lg:flex-row lg:items-end lg:justify-between'}`}>
           <div className="max-w-2xl">
-            {!explore && <p className={sectionEyebrow}>{dashboard ? 'Buscar empleo' : 'Oportunidades para avanzar'}</p>}
             {!explore && (
               <h2 className={sectionTitle} id="opportunities-title">
                 {dashboard ? 'Vacantes abiertas para explorar' : 'Encuentra un próximo paso que conecte contigo.'}

@@ -31,7 +31,7 @@ export default function JobDetailDialog({ job, onClose }) {
         <div className="p-6 sm:p-8">
           <div className="flex items-start justify-between gap-5 border-b border-line-soft pb-5">
             <div>
-              <p className="mb-2 text-xs font-bold uppercase tracking-[0.15em] text-blue-muted">
+              <p className="mb-2 text-sm font-semibold text-blue-muted">
                 {job.sectorLabel}{job.category ? ` · ${job.category}` : ''}
               </p>
               <h2 className="font-display text-2xl font-semibold leading-tight tracking-tight text-ink" id="job-detail-title">
