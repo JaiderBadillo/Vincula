@@ -510,3 +510,12 @@
     transition: none;
   }
 }
+
+/* Entrada del panel de beneficios del registro */
+.benefit-enter {
+  animation: rise-in 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .benefit-enter { animation: none; }
+}
