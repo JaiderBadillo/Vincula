@@ -1625,9 +1625,11 @@ export default function VacanciesPage() {
               <div className="rounded-xl border border-line bg-page p-3 text-[0.72rem] text-body-muted flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <i className="bx bx-file text-base text-secondary" />
-                  {profile.cvFile ? profile.cvFile.name : 'Hoja de Vida Digital (Perfil Institucional)'}
+                  {(profile.cvs?.find((cv) => cv.primary) || profile.cvs?.[0])?.fileName || 'Aún no has subido una hoja de vida'}
                 </span>
-                <span className="text-emerald-700 font-bold">Adjunto</span>
+                {profile.cvs?.length
+                  ? <span className="text-emerald-700 font-bold">La empresa podrá verla</span>
+                  : <a href="/dashboard/perfil#subir-cv" className="font-bold text-green-dark">Subirla</a>}
               </div>
             </div>
 

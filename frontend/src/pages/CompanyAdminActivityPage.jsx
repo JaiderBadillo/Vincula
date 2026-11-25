@@ -168,14 +168,11 @@ export default function CompanyAdminActivityPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-                <div className="rounded-3xl border border-sand-line/90 bg-white p-6 shadow-sm lg:col-span-5">
-                  <FunnelConversionCard funnel={data.funnel} avgTimeToHireDays={metrics.avgTimeToHireDays} />
-                </div>
-                <div className="lg:col-span-7">
-                  <RecruiterPerformanceTable recruiters={data.recruiters} />
-                </div>
+              <div className="rounded-3xl border border-sand-line/90 bg-white p-6 shadow-sm">
+                <FunnelConversionCard funnel={data.funnel} avgTimeToHireDays={metrics.avgTimeToHireDays} />
               </div>
+
+              <RecruiterPerformanceTable recruiters={data.recruiters} />
             </>
           )}
 

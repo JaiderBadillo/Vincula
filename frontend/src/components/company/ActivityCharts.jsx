@@ -190,7 +190,7 @@ export function MonthlyRecruitmentChart({ data = [] }) {
   return (
     <div className="relative w-full space-y-4">
       {/* Cabecera Ejecutiva con Filtro de Métricas */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-sand-line pb-3.5">
+      <div className="flex flex-col gap-3 border-b border-sand-line pb-3.5">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="grid size-7 place-items-center rounded-lg bg-terracotta/15 text-terracotta text-sm">
@@ -206,7 +206,7 @@ export function MonthlyRecruitmentChart({ data = [] }) {
         </div>
 
         {/* Selector de métricas */}
-        <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+        <div className="flex flex-wrap items-center gap-2 self-start">
           {/* Selector de visualización tipo Pill Switcher */}
           <div className="flex items-center gap-1 rounded-xl border border-sand-line bg-cream/70 p-1">
             <button
@@ -590,7 +590,7 @@ export function TalentSourcesCard({ sources = [] }) {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className={`size-2.5 shrink-0 rounded-full ${s.color}`} />
-                  <span className="truncate font-bold text-ink">{s.label}</span>
+                  <span className="font-bold text-ink">{s.label}</span>
                   {isIes && (
                     <span className="rounded bg-ochre/20 px-1 py-0.2 text-[0.58rem] font-bold text-cocoa">
                       IES

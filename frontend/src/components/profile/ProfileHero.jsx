@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { getInitials, resizeImage } from '../../hooks/useProfile.js';
+import { applicationService } from '../../services/applicationService.js';
 
 const DEFAULT_COVER = '/images/profile/cover-office.jpg';
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -51,10 +52,24 @@ export default function ProfileHero({
     }
   }
 
+  const [applications, setApplications] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    applicationService.getMyApplications()
+      .then((list) => active && setApplications(list))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const today = new Date().toLocaleDateString('en-CA'); // AAAA-MM-DD en hora local
+  const count = (test) => (applications ? String(applications.filter(test).length) : '—');
   const stats = [
-    { icon: 'bx-show', value: String(profile.profileViews ?? 0), label: 'Vistas de perfil' },
-    { icon: 'bx-search-alt', value: String(profile.searchAppearances ?? 0), label: 'Apariciones en búsquedas' },
-    { icon: 'bx-send', value: String(profile.activeApplicationsCount ?? profile.applicationsCount ?? 0), label: 'Postulaciones activas' },
+    { icon: 'bx-send', value: count((a) => !['contratado', 'descartados'].includes(a.fase_actual)), label: 'Postulaciones activas' },
+    { icon: 'bx-calendar-event', value: count((a) => a.interview?.isUpcoming && a.interview.date >= today), label: 'Entrevistas próximas' },
+    { icon: 'bx-file', value: String(profile.cvs?.length ?? 0), label: 'Hojas de vida guardadas' },
   ];
 
   return (
@@ -271,9 +286,8 @@ export default function ProfileHero({
                 <div className="min-w-0">
                   <p className="m-0 flex items-baseline gap-2 font-display text-xl font-bold text-ink">
                     {s.value}
-                    {s.trend && <span className="text-[0.68rem] font-bold text-emerald-600">{s.trend}</span>}
                   </p>
-                  <p className="m-0 truncate text-xs text-body-muted">{s.label} · últimos 30 días</p>
+                  <p className="m-0 truncate text-xs text-body-muted">{s.label}</p>
                 </div>
               </li>
             ))}

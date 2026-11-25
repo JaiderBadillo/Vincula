@@ -43,7 +43,7 @@ export function RecruiterPerformanceTable({ recruiters = [] }) {
                         </span>
                       )}
                       <div className="min-w-0">
-                        <p className="m-0 font-bold text-ink truncate">{rec.fullName}</p>
+                        <p className="m-0 font-bold text-ink">{rec.fullName}</p>
                         <span className="text-[0.62rem] text-secondary">Reclutador</span>
                       </div>
                     </div>
