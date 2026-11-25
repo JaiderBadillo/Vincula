@@ -35,6 +35,7 @@ from app.modules.companies.schemas import (
     SiteSchema,
     RecruiterSchema,
 )
+from app.modules.companies.activity import actividad
 from app.modules.companies.services import CompanyService
 from app.modules.companies.models import Empresa
 
@@ -148,6 +149,15 @@ async def update_company_profile(
     company.url_portada = cover
     await db.commit()
     return _company_profile(company)
+
+
+@router.get("/actividad")
+async def company_activity(
+    db: AsyncSession = Depends(get_db),
+    current_user: Dict[str, Any] = Depends(require_role(["admin_empresa"])),
+) -> Dict[str, Any]:
+    company = await _own_company(db, current_user)
+    return await actividad(db, company.id)
 
 
 def _resolve_company_id(current_user: Dict[str, Any], query_company_id: Optional[str] = None) -> str:

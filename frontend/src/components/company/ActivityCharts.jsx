@@ -1,8 +1,5 @@
 import { useState, useMemo } from 'react';
 import Chart from 'react-apexcharts';
-import * as LegacyActivity from '../legacy_charts/LegacyActivityCharts.jsx';
-
-export { LegacyActivity };
 
 /**
  * Utilidad matemática para redondear escalas a números legibles (50, 100, 200, etc.)
@@ -28,39 +25,6 @@ function niceCeil(value, steps = 4) {
  */
 export function MonthlyRecruitmentChart({ data = [] }) {
   const [activeMetricFilter, setActiveMetricFilter] = useState('all'); // 'all' | 'applicants' | 'hired'
-  const [chartEngine, setChartEngine] = useState('apex'); // 'apex' | 'legacy'
-
-  if (!data || data.length === 0) return null;
-
-  if (chartEngine === 'legacy') {
-    return (
-      <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50/70 p-2.5 text-xs">
-          <span className="font-bold text-amber-900 flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-amber-500" />
-            Visualizando versión anterior (SVG Puro Manual)
-          </span>
-          <div className="inline-flex rounded-lg border border-amber-300 bg-white p-0.5 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setChartEngine('apex')}
-              className="rounded-md px-2.5 py-1 text-xs font-bold text-ink hover:bg-amber-100 transition-all cursor-pointer"
-            >
-              ⚡ Ver versión ApexCharts (Nueva)
-            </button>
-            <button
-              type="button"
-              onClick={() => setChartEngine('legacy')}
-              className="rounded-md bg-amber-600 text-white px-2.5 py-1 text-xs font-bold cursor-pointer shadow-2xs"
-            >
-              🏛️ SVG Anterior
-            </button>
-          </div>
-        </div>
-        <LegacyActivity.MonthlyRecruitmentChart data={data} />
-      </div>
-    );
-  }
 
   const totalApplicants = data.reduce((s, d) => s + (d.applicants || 0), 0);
   const totalHired = data.reduce((s, d) => s + (d.hired || 0), 0);
@@ -221,6 +185,8 @@ export function MonthlyRecruitmentChart({ data = [] }) {
     };
   }, [data, activeMetricFilter]);
 
+  if (data.length === 0) return null;
+
   return (
     <div className="relative w-full space-y-4">
       {/* Cabecera Ejecutiva con Filtro de Métricas */}
@@ -239,32 +205,8 @@ export function MonthlyRecruitmentChart({ data = [] }) {
           </p>
         </div>
 
-        {/* Controles: Switcher Antes/Después + Selector de Métricas */}
+        {/* Selector de métricas */}
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
-          {/* Switcher Antes/Después */}
-          <div className="inline-flex rounded-lg border border-sand-line bg-cream/70 p-0.5 text-xs">
-            <button
-              type="button"
-              onClick={() => setChartEngine('apex')}
-              className={`rounded-md px-2.5 py-1 font-bold text-[0.68rem] transition-all cursor-pointer ${
-                chartEngine === 'apex' ? 'bg-[#051F26] text-white shadow-2xs' : 'text-secondary hover:text-ink'
-              }`}
-              title="Versión moderna interactiva con ApexCharts"
-            >
-              ⚡ ApexCharts
-            </button>
-            <button
-              type="button"
-              onClick={() => setChartEngine('legacy')}
-              className={`rounded-md px-2.5 py-1 font-bold text-[0.68rem] transition-all cursor-pointer ${
-                chartEngine === 'legacy' ? 'bg-[#051F26] text-white shadow-2xs' : 'text-secondary hover:text-ink'
-              }`}
-              title="Ver versión anterior con SVG manual"
-            >
-              🏛️ SVG Anterior
-            </button>
-          </div>
-
           {/* Selector de visualización tipo Pill Switcher */}
           <div className="flex items-center gap-1 rounded-xl border border-sand-line bg-cream/70 p-1">
             <button
@@ -334,9 +276,11 @@ export function MonthlyRecruitmentChart({ data = [] }) {
             <i className="bx bxs-trophy text-sm" />
           </span>
           <span className="text-secondary">
-            Mes récord de vinculaciones:{' '}
-            <strong className="text-ink">{peakMonth.month}</strong> con{' '}
-            <strong className="text-emerald-700">{peakMonth.hired} contrataciones</strong>.
+            {peakMonth.hired > 0 ? (
+              <>
+                Mes con más contrataciones: <strong className="text-ink">{peakMonth.month}</strong> ({peakMonth.hired}).
+              </>
+            ) : 'Aún no hay contrataciones en los últimos seis meses.'}
           </span>
         </div>
         <span className="text-[0.68rem] font-bold text-terracotta">
@@ -356,10 +300,10 @@ export function MonthlyRecruitmentChart({ data = [] }) {
  *  - Conectores de flujo dinámicos indicando tasa de pase (%) y fuga de candidatos
  *  - Indicadores de mayor punto de fuga y tiempo promedio de cierre
  */
-export function FunnelConversionCard({ metrics }) {
+export function FunnelConversionCard({ funnel, avgTimeToHireDays }) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
 
-  const base = metrics.applicantsTotal || 0;
+  const base = funnel.applied;
   const safePct = (n) => (base > 0 ? (n / base) * 100 : 0);
 
   const stages = [
@@ -367,8 +311,8 @@ export function FunnelConversionCard({ metrics }) {
       id: 'step-1',
       stepNum: '01',
       label: 'Postulaciones Recibidas',
-      sublabel: 'Ingreso total de candidatos por todas las fuentes',
-      count: metrics.applicantsTotal,
+      sublabel: 'Todas las recibidas en tus vacantes',
+      count: funnel.applied,
       icon: 'bx-group',
       accentColor: 'from-amber-500 to-amber-600',
       textColor: 'text-amber-800',
@@ -379,8 +323,8 @@ export function FunnelConversionCard({ metrics }) {
       id: 'step-2',
       stepNum: '02',
       label: 'Filtro y Evaluación de Hoja de Vida',
-      sublabel: 'Candidatos que cumplen requisitos mínimos',
-      count: metrics.inReview,
+      sublabel: 'Pasaron a preseleccionados o más adelante',
+      count: funnel.screened,
       icon: 'bx-filter-alt',
       accentColor: 'from-orange-500 to-orange-600',
       textColor: 'text-orange-800',
@@ -391,8 +335,8 @@ export function FunnelConversionCard({ metrics }) {
       id: 'step-3',
       stepNum: '03',
       label: 'Entrevistas Técnicas y de Ajuste',
-      sublabel: 'Citaciones presenciales o virtuales activas',
-      count: metrics.interviewing,
+      sublabel: 'Llegaron a entrevista o más adelante',
+      count: funnel.interviewed,
       icon: 'bx-conversation',
       accentColor: 'from-terracotta to-terracotta-dark',
       textColor: 'text-terracotta-dark',
@@ -403,8 +347,8 @@ export function FunnelConversionCard({ metrics }) {
       id: 'step-4',
       stepNum: '04',
       label: 'Contrataciones Formalizadas',
-      sublabel: 'Ofertas laborales aceptadas y legalizadas',
-      count: metrics.hiredMonth,
+      sublabel: 'Marcadas como contratadas',
+      count: funnel.hired,
       icon: 'bx-check-double',
       accentColor: 'from-emerald-500 to-emerald-700',
       textColor: 'text-emerald-900',
@@ -416,18 +360,15 @@ export function FunnelConversionCard({ metrics }) {
     return {
       ...st,
       pctOfTotal: safePct(st.count),
-      stepConv: prev ? (st.count / prev) * 100 : 100,
+      stepConv: prev ? (st.count / prev) * 100 : 0,
       droppedCount: prev !== null ? prev - st.count : 0,
-      droppedPct: prev !== null ? ((prev - st.count) / prev) * 100 : 0,
+      droppedPct: prev ? ((prev - st.count) / prev) * 100 : 0,
     };
   });
 
-  const overall = safePct(metrics.hiredMonth);
+  const overall = safePct(funnel.hired);
   // Identifica la etapa con mayor porcentaje de deserción / caída
   const highestDropStage = stages.slice(1).reduce((max, st) => (st.droppedPct > max.droppedPct ? st : max), stages[1]);
-
-  const hasTime = metrics.avgTimeToHireDays && metrics.targetTimeToHireDays;
-  const onTarget = hasTime && metrics.avgTimeToHireDays <= metrics.targetTimeToHireDays;
 
   return (
     <div className="space-y-4">
@@ -469,7 +410,7 @@ export function FunnelConversionCard({ metrics }) {
                     <i className="bx bx-down-arrow-alt text-xs text-terracotta" />
                     <span>{st.stepConv.toFixed(0)}% avanza</span>
                     <span className="text-[0.62rem] font-normal text-secondary">
-                      ({st.droppedCount} descartados)
+                      ({st.droppedCount} no avanzan)
                     </span>
                   </span>
                   <div className="h-px flex-1 bg-gradient-to-r from-transparent via-sand-line to-transparent" />
@@ -540,41 +481,17 @@ export function FunnelConversionCard({ metrics }) {
               {highestDropStage.label}
             </p>
             <p className="m-0 mt-0.5 text-[0.68rem] text-rose-700 font-semibold">
-              Descartados: {highestDropStage.droppedCount} ({highestDropStage.droppedPct.toFixed(0)}% de fuga)
+              No avanzan: {highestDropStage.droppedCount} ({highestDropStage.droppedPct.toFixed(0)}%)
             </p>
           </div>
         </div>
 
-        {hasTime && (
-          <div
-            className={`rounded-xl border p-3 flex items-start gap-2.5 ${
-              onTarget ? 'border-emerald-300 bg-emerald-50/70' : 'border-rose-200 bg-rose-50/70'
-            }`}
-          >
-            <span
-              className={`grid size-7 shrink-0 place-items-center rounded-lg ${
-                onTarget ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-              }`}
-            >
-              <i className="bx bx-stopwatch text-base" />
-            </span>
-            <div>
-              <p className="m-0 text-[0.68rem] font-bold uppercase tracking-wider text-secondary">
-                Velocidad de contratación
-              </p>
-              <p className="m-0 mt-0.5 font-bold text-ink text-xs">
-                {metrics.avgTimeToHireDays} días promedio
-              </p>
-              <p
-                className={`m-0 mt-0.5 text-[0.68rem] font-semibold ${
-                  onTarget ? 'text-emerald-800' : 'text-rose-700'
-                }`}
-              >
-                {onTarget
-                  ? `Cumple meta (${metrics.targetTimeToHireDays} días máximo)`
-                  : `Supera meta por ${metrics.avgTimeToHireDays - metrics.targetTimeToHireDays} días`}
-              </p>
-            </div>
+        {avgTimeToHireDays !== null && (
+          <div className="rounded-xl border border-sand-line bg-cream/70 p-3">
+            <p className="m-0 text-[0.68rem] font-bold uppercase tracking-wider text-secondary">
+              Velocidad de contratación
+            </p>
+            <p className="m-0 mt-0.5 font-bold text-ink text-xs">{avgTimeToHireDays} días promedio</p>
           </div>
         )}
       </div>
@@ -590,13 +507,15 @@ export function FunnelConversionCard({ metrics }) {
  *  - Comparativa visual Convenios IES vs Mercado Abierto en barra doble
  *  - Lista de instituciones con chips y barras de progreso por cada fuente
  */
+const SOURCE_COLORS = ['bg-green', 'bg-ochre', 'bg-cocoa', 'bg-lime', 'bg-green-dark'];
+
 export function TalentSourcesCard({ sources = [] }) {
   const [hoveredId, setHoveredId] = useState(null);
 
   const total = sources.reduce((acc, s) => acc + (s.count || 0), 0);
-  const rows = sources
-    .map((s) => ({ ...s, pct: total > 0 ? (s.count / total) * 100 : s.percentage || 0 }))
-    .sort((a, b) => b.count - a.count);
+  const rows = [...sources]
+    .sort((a, b) => b.count - a.count)
+    .map((s, i) => ({ ...s, color: SOURCE_COLORS[i % SOURCE_COLORS.length], pct: total > 0 ? (s.count / total) * 100 : 0 }));
 
   const iesRows = rows.filter((s) => s.id.startsWith('ies-'));
   const iesPct = iesRows.reduce((acc, s) => acc + s.pct, 0);
@@ -612,10 +531,10 @@ export function TalentSourcesCard({ sources = [] }) {
           </span>
           <div>
             <h3 className="m-0 font-display text-sm sm:text-base font-bold text-ink">
-              Origen del Talento Vinculado
+              Origen de las postulaciones
             </h3>
             <p className="m-0 text-xs text-secondary">
-              Efectividad de convenios con universidades vs convocatorias abiertas
+              Vacantes de convenio con universidades frente a convocatorias abiertas
             </p>
           </div>
         </div>
@@ -703,7 +622,7 @@ export function TalentSourcesCard({ sources = [] }) {
       <div className="rounded-xl border border-sand-line bg-cream/60 p-3 text-xs text-secondary flex items-center gap-2">
         <i className="bx bx-bulb text-base text-ochre shrink-0" />
         <span>
-          <strong>{Math.round(iesPct)}% del talento</strong> proviene directamente de convenios universitarios validados en Vincula.
+          <strong>{Math.round(iesPct)}% de las postulaciones</strong> llega por vacantes de convenio.
         </span>
       </div>
     </div>

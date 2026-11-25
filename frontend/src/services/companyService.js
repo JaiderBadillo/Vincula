@@ -26,6 +26,12 @@ class CompanyService {
     return res.json();
   }
 
+  async getActivity() {
+    const res = await fetch(`${API_BASE_URL}/empresas/actividad`, { headers: this.getAuthHeaders() });
+    if (!res.ok) throw new Error(extractErrorMessage(await res.json().catch(() => null), 'No se pudo cargar la actividad de la empresa.'));
+    return res.json();
+  }
+
   /**
    * Genera los encabezados con Bearer token de la empresa o reclutador
    */

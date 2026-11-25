@@ -12,7 +12,7 @@ export function RecruiterPerformanceTable({ recruiters = [] }) {
           <p className="m-0 text-xs text-secondary">Métricas de carga de vacantes, velocidad de cobertura y contrataciones</p>
         </div>
         <span className="text-xs text-secondary font-medium">
-          {recruiters.length} reclutadores activos
+          {recruiters.length} {recruiters.length === 1 ? 'reclutador activo' : 'reclutadores activos'}
         </span>
       </div>
 
@@ -35,11 +35,13 @@ export function RecruiterPerformanceTable({ recruiters = [] }) {
                 <tr key={rec.recruiterId} className="transition-colors hover:bg-cream/40">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <img
-                        src={rec.avatar}
-                        alt=""
-                        className="size-8 rounded-full object-cover border border-sand-line shrink-0"
-                      />
+                      {rec.avatar ? (
+                        <img src={rec.avatar} alt="" className="size-8 rounded-full object-cover border border-sand-line shrink-0" />
+                      ) : (
+                        <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-sand text-[0.68rem] font-bold text-cocoa">
+                          {rec.fullName.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
+                        </span>
+                      )}
                       <div className="min-w-0">
                         <p className="m-0 font-bold text-ink truncate">{rec.fullName}</p>
                         <span className="text-[0.62rem] text-secondary">Reclutador</span>
@@ -47,7 +49,7 @@ export function RecruiterPerformanceTable({ recruiters = [] }) {
                     </div>
                   </td>
                   <td className="px-3 py-3 text-secondary text-[0.7rem] max-w-[140px] truncate">
-                    {rec.sites}
+                    {rec.sites || 'Sin sede'}
                   </td>
                   <td className="px-3 py-3 text-center font-bold text-ink">
                     {rec.activeVacancies}
@@ -59,17 +61,17 @@ export function RecruiterPerformanceTable({ recruiters = [] }) {
                     {rec.hiresMonth}
                   </td>
                   <td className="px-3 py-3 text-center text-secondary">
-                    <span className="font-semibold text-ink">{rec.avgDaysToFill}</span> d
+                    {rec.avgDaysToFill === null ? '—' : <><span className="font-semibold text-ink">{rec.avgDaysToFill}</span> d</>}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center justify-end gap-2">
                       <div className="h-1.5 w-16 overflow-hidden rounded-full bg-sand/60">
                         <div
                           className="h-full rounded-full bg-terracotta"
-                          style={{ width: `${rec.effectivenessRate}%` }}
+                          style={{ width: `${rec.effectivenessRate ?? 0}%` }}
                         />
                       </div>
-                      <span className="font-bold text-ink">{rec.effectivenessRate}%</span>
+                      <span className="font-bold text-ink">{rec.effectivenessRate === null ? '—' : `${rec.effectivenessRate}%`}</span>
                     </div>
                   </td>
                 </tr>
@@ -82,6 +84,12 @@ export function RecruiterPerformanceTable({ recruiters = [] }) {
   );
 }
 
+const LOG_CATEGORIES = {
+  vacantes: { label: 'Vacantes', icon: 'bx-briefcase-alt-2', color: 'bg-ochre text-cocoa' },
+  contrataciones: { label: 'Contrataciones', icon: 'bx-user-check', color: 'bg-green text-white' },
+  postulaciones: { label: 'Postulaciones', icon: 'bx-user-voice', color: 'bg-cocoa text-white' },
+};
+
 /**
  * Bitácora rectangular cronológica de actividades del portal
  */
@@ -89,25 +97,15 @@ export function ActivityLogSection({ log = [] }) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const categories = [
-    { id: 'all', label: 'Todas las acciones' },
-    { id: 'vacantes', label: 'Vacantes' },
-    { id: 'contrataciones', label: 'Contrataciones' },
-    { id: 'convenios', label: 'Convenios IES' },
-    { id: 'postulaciones', label: 'Postulaciones' },
-    { id: 'seguridad', label: 'Seguridad' },
-  ];
+  const categories = [{ id: 'all', label: 'Todas las acciones' }, ...Object.entries(LOG_CATEGORIES)
+    .filter(([id]) => log.some((item) => item.category === id))
+    .map(([id, c]) => ({ id, label: c.label }))];
 
   const filteredLog = useMemo(() => {
-    return log.filter((item) => {
-      const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
-      const matchesSearch =
-        searchTerm.trim() === '' ||
-        item.detail.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.user.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesCategory && matchesSearch;
-    });
+    const term = searchTerm.trim().toLowerCase();
+    return log.filter((item) =>
+      (selectedCategory === 'all' || item.category === selectedCategory)
+      && (!term || `${item.action} ${item.detail} ${item.user || ''}`.toLowerCase().includes(term)));
   }, [log, selectedCategory, searchTerm]);
 
   return (
@@ -115,7 +113,7 @@ export function ActivityLogSection({ log = [] }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="m-0 font-display text-sm font-bold text-ink">Bitácora de actividad y trazabilidad</h3>
-          <p className="m-0 text-xs text-secondary">Registro de cambios en vacantes, convenios, contrataciones y accesos</p>
+          <p className="m-0 text-xs text-secondary">Últimos movimientos de tus vacantes y postulaciones</p>
         </div>
         <div className="relative w-full sm:w-64">
           <i className="bx bx-search absolute left-3 top-1/2 -translate-y-1/2 text-sm text-secondary" />
@@ -152,7 +150,7 @@ export function ActivityLogSection({ log = [] }) {
         {filteredLog.length === 0 ? (
           <div className="rounded-2xl border border-sand-line bg-white p-8 text-center text-xs text-secondary">
             <i className="bx bx-info-circle text-2xl text-secondary mb-1" />
-            <p className="m-0">No se encontraron eventos con los filtros seleccionados.</p>
+            <p className="m-0">{log.length ? 'No se encontraron eventos con los filtros seleccionados.' : 'Aún no hay movimientos registrados.'}</p>
           </div>
         ) : (
           filteredLog.map((event) => (
@@ -162,18 +160,20 @@ export function ActivityLogSection({ log = [] }) {
             >
               <div className="flex items-start gap-3 min-w-0">
                 <span
-                  className={`grid size-9 shrink-0 place-items-center rounded-xl text-base font-bold shadow-2xs ${event.iconColor}`}
+                  className={`grid size-9 shrink-0 place-items-center rounded-xl text-base font-bold shadow-2xs ${LOG_CATEGORIES[event.category].color}`}
                 >
-                  <i className={`bx ${event.icon}`} />
+                  <i className={`bx ${LOG_CATEGORIES[event.category].icon}`} />
                 </span>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-display text-xs font-bold text-ink leading-tight">
                       {event.action}
                     </span>
-                    <span className="text-[0.68rem] text-secondary">
-                      por <strong className="text-ink font-semibold">{event.user}</strong> ({event.role})
-                    </span>
+                    {event.user && (
+                      <span className="text-[0.68rem] text-secondary">
+                        por <strong className="text-ink font-semibold">{event.user}</strong>{event.role ? ` (${event.role})` : ''}
+                      </span>
+                    )}
                   </div>
                   <p className="m-0 mt-0.5 text-xs text-secondary leading-snug">
                     {event.detail}
@@ -181,8 +181,8 @@ export function ActivityLogSection({ log = [] }) {
                 </div>
               </div>
               <div className="text-right shrink-0">
-                <p className="m-0 text-[0.7rem] font-bold text-ink">{event.timestamp}</p>
-                <p className="m-0 text-[0.62rem] text-secondary">{event.exactTime}</p>
+                <p className="m-0 text-[0.7rem] font-bold text-ink">{new Date(event.at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}</p>
+                <p className="m-0 text-[0.62rem] text-secondary">{new Date(event.at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</p>
               </div>
             </div>
           ))
