@@ -245,7 +245,7 @@ export default function CompanyVerificationDrawer({
                     Actividad Económica CIIU
                   </span>
                   <p className="m-0 text-xs font-bold text-ink">
-                    Código {company.ciiuCode}: {company.ciiuDescription}
+                    {company.ciiuCode ? `Código ${company.ciiuCode}: ${company.ciiuDescription}` : 'No informado en el registro'}
                   </p>
                 </div>
 

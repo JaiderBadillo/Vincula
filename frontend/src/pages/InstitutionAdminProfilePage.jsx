@@ -233,7 +233,7 @@ export default function InstitutionAdminProfilePage() {
             subtitle="Esta información oficial identifica a la institución en convenios empresariales, títulos y auditorías curriculares."
             stats={[
               { value: form.acronym || 'IES', label: 'Siglas' },
-              { value: form.city || 'Santander', label: 'Sede Principal' },
+              { value: form.city || '—', label: 'Sede Principal' },
             ]}
           />
 

@@ -121,21 +121,20 @@ export default function ProfileForm() {
   const [gradValues, setGradValues] = useState({
     name: '',
     career: '',
-    dept: 'Santander',
-    city: 'Bucaramanga',
+    dept: '',
+    city: '',
   });
   const [companyValues, setCompanyValues] = useState({ name: '', nit: '', sector: '', email: '' });
   const [iesValues, setIesValues] = useState({
     institution: '',
     snies: '',
-    role: 'Asesor de Prácticas y Empleabilidad',
+    role: '',
     email: '',
   });
 
   const departments = Object.keys(COLOMBIAN_LOCATIONS);
   const availableCities = gradValues.dept ? COLOMBIAN_LOCATIONS[gradValues.dept] || [] : [];
 
-  const [cvName, setCvName] = useState('PDF o documento de texto · opcional');
   const [submitted, setSubmitted] = useState(false);
   const [feedback, setFeedback] = useState('');
 
@@ -153,10 +152,9 @@ export default function ProfileForm() {
       name: gradValues.name.trim(),
       headline: gradValues.career.trim(),
       location: `${gradValues.city}, ${gradValues.dept}`,
-      ...(cvName && cvName !== 'PDF o documento de texto · opcional' ? { cvFileName: cvName } : {}),
     }));
 
-    setFeedback(`¡Pre-registro recibido, ${gradValues.name.trim().split(' ')[0]}! Continuando al paso de validación oficial...`);
+    setFeedback(`Sigamos con tu registro, ${gradValues.name.trim().split(' ')[0]}.`);
     setTimeout(() => {
       navigate('/registro-egresado', {
         state: {
@@ -164,7 +162,6 @@ export default function ProfileForm() {
           career: gradValues.career.trim(),
           dept: gradValues.dept,
           city: gradValues.city,
-          cvName: cvName !== 'PDF o documento de texto · opcional' ? cvName : '',
         },
       });
     }, 1000);
@@ -176,7 +173,7 @@ export default function ProfileForm() {
     setFeedback('');
     if (!companyValues.name.trim() || !companyValues.nit.trim() || !companyValues.sector || !companyValues.email.trim()) return;
 
-    setFeedback(`¡Pre-registro recibido, ${companyValues.name}! Continuando a la radicación de documentos (SLA 72h)...`);
+    setFeedback(`Sigamos con el registro de ${companyValues.name}.`);
     setTimeout(() => {
       navigate('/registro-empresa', {
         state: {
@@ -195,7 +192,7 @@ export default function ProfileForm() {
     setFeedback('');
     if (!iesValues.institution.trim() || !iesValues.snies.trim() || !iesValues.email.trim() || !iesValues.role) return;
 
-    setFeedback(`¡Pre-registro recibido, ${iesValues.institution}! Continuando a la radicación y aval del MEN...`);
+    setFeedback(`Sigamos con el registro de ${iesValues.institution}.`);
     setTimeout(() => {
       navigate('/registro-institucion', {
         state: {
@@ -327,8 +324,7 @@ export default function ProfileForm() {
                 value={gradValues.dept}
                 onChange={(e) => {
                   const newDept = e.target.value;
-                  const firstCity = COLOMBIAN_LOCATIONS[newDept]?.[0] || '';
-                  setGradValues((p) => ({ ...p, dept: newDept, city: firstCity }));
+                  setGradValues((p) => ({ ...p, dept: newDept, city: '' }));
                 }}
                 options={departments}
                 placeholder="Selecciona departamento"
@@ -345,34 +341,9 @@ export default function ProfileForm() {
               />
             </div>
 
-            {/* Adjunta tu hoja de vida */}
-            <label
-              className="flex min-h-[3.6rem] cursor-pointer items-center gap-3 rounded-control border border-dashed border-[#cbd7db] bg-white px-3.5 py-2.5 text-blue-muted hover:border-green focus-within:border-green transition-colors"
-              htmlFor="profile-cv"
-            >
-              <i className="bx bx-upload text-xl text-green-dark" aria-hidden="true" />
-              <span className="grid min-w-0 gap-0.5">
-                <span className="text-xs font-bold text-ink">Adjunta tu hoja de vida</span>
-                <span className="truncate text-[0.68rem] text-secondary" id="cv-hint">
-                  {cvName}
-                </span>
-              </span>
-              <i className="bx bx-plus ml-auto text-base text-body-muted" aria-hidden="true" />
-              <input
-                className="sr-only"
-                id="profile-cv"
-                type="file"
-                accept=".pdf,.doc,.docx"
-                aria-describedby="cv-hint"
-                onChange={(event) =>
-                  setCvName(event.target.files?.[0]?.name || 'PDF o documento de texto · opcional')
-                }
-              />
-            </label>
-
             {/* Botón de Pre-Registro */}
             <button className={`${primaryButton} mt-4 w-full justify-between px-5 py-3.5 text-xs sm:text-sm`} type="submit">
-              <span>Completar pre-registro y entrar</span>
+              <span>Continuar con el registro</span>
               <i className="bx bx-right-arrow-alt text-lg" aria-hidden="true" />
             </button>
 

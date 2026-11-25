@@ -11,7 +11,7 @@ import { ConsentCheck, Field, PasswordPair, PdfDropzone, SelectInput, TextInput,
 
 // `fields` son los ids de los campos que valida cada paso
 const STEPS = [
-  { id: 'company', title: 'Tu empresa', fields: ['legalName', 'commercialName', 'nit', 'companyPhone', 'address'] },
+  { id: 'company', title: 'Tu empresa', fields: ['legalName', 'commercialName', 'nit', 'sector', 'companySize', 'companyPhone', 'dept', 'city', 'address'] },
   { id: 'people', title: 'Responsables', fields: ['legalRepName', 'legalRepDoc', 'recruiterName', 'recruiterEmail', 'recruiterPhone'] },
   { id: 'verify', title: 'Verificación', fields: ['camaraComercio', 'rut', 'legalRepId', 'password', 'confirmPassword', 'juramento'] },
 ];
@@ -45,10 +45,10 @@ export default function CompanyRegistrationPage() {
   const [legalName, setLegalName] = useState(prefilled.name || profile?.legalName || '');
   const [commercialName, setCommercialName] = useState(profile?.commercialName || prefilled.name || '');
   const [nit, setNit] = useState(prefilled.nit || profile?.nit || '');
-  const [sector, setSector] = useState(prefilled.sector || profile?.sector || COMPANY_SECTORS[0]);
-  const [companySize, setCompanySize] = useState(profile?.size || 'Mediana (51 - 200 empleados)');
-  const [dept, setDept] = useState('Santander');
-  const [city, setCity] = useState('Bucaramanga');
+  const [sector, setSector] = useState(prefilled.sector || profile?.sector || '');
+  const [companySize, setCompanySize] = useState(profile?.size || '');
+  const [dept, setDept] = useState('');
+  const [city, setCity] = useState('');
   const [address, setAddress] = useState(profile?.address || '');
   const [website, setWebsite] = useState(profile?.website || '');
   const [companyPhone, setCompanyPhone] = useState(profile?.phone || '');
@@ -96,6 +96,10 @@ export default function CompanyRegistrationPage() {
     if (!legalName.trim()) e.legalName = 'Ingresa la razón social completa.';
     if (!commercialName.trim()) e.commercialName = 'Ingresa el nombre comercial o marca.';
     if (!NIT_PATTERN.test(nit.trim())) e.nit = 'Ingresa el NIT con dígito de verificación, así: 900.123.456-7';
+    if (!sector) e.sector = 'Selecciona el sector económico.';
+    if (!companySize) e.companySize = 'Selecciona el tamaño de la organización.';
+    if (!dept) e.dept = 'Selecciona el departamento.';
+    if (!city) e.city = 'Selecciona la ciudad.';
     if (!address.trim()) e.address = 'Ingresa la dirección de la sede principal.';
     if (!companyPhone.trim()) e.companyPhone = 'Ingresa el teléfono o PBX corporativo.';
     if (!legalRepName.trim()) e.legalRepName = 'Ingresa los nombres y apellidos del representante legal.';
@@ -188,16 +192,19 @@ export default function CompanyRegistrationPage() {
               <Field id="nit" label="NIT con dígito de verificación" error={errors.nit}>
                 <TextInput id="nit" value={nit} onChange={(e) => setNit(e.target.value)} placeholder="900.123.456-7" error={errors.nit} />
               </Field>
-              <Field id="sector" label="Sector económico">
-                <SelectInput id="sector" value={sector} onChange={(e) => setSector(e.target.value)}>
+              <Field id="sector" label="Sector económico" error={errors.sector}>
+                <SelectInput error={errors.sector} id="sector" value={sector} onChange={(e) => setSector(e.target.value)}>
+                  <option value="" disabled>Selecciona…</option>
+                  {sector && !COMPANY_SECTORS.includes(sector) && <option value={sector}>{sector}</option>}
                   {COMPANY_SECTORS.map((sec) => <option key={sec} value={sec}>{sec}</option>)}
                 </SelectInput>
               </Field>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="companySize" label="Tamaño de la organización">
-                <SelectInput id="companySize" value={companySize} onChange={(e) => setCompanySize(e.target.value)}>
+              <Field id="companySize" label="Tamaño de la organización" error={errors.companySize}>
+                <SelectInput error={errors.companySize} id="companySize" value={companySize} onChange={(e) => setCompanySize(e.target.value)}>
+                  <option value="" disabled>Selecciona…</option>
                   {COMPANY_SIZES.map((sz) => <option key={sz} value={sz}>{sz}</option>)}
                 </SelectInput>
               </Field>
@@ -207,20 +214,22 @@ export default function CompanyRegistrationPage() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="dept" label="Departamento de la sede principal">
-                <SelectInput
+              <Field id="dept" label="Departamento de la sede principal" error={errors.dept}>
+                <SelectInput error={errors.dept}
                   id="dept"
                   value={dept}
                   onChange={(e) => {
                     setDept(e.target.value);
-                    setCity(COLOMBIAN_LOCATIONS[e.target.value]?.[0] || '');
+                    setCity('');
                   }}
                 >
+                  <option value="" disabled>Selecciona…</option>
                   {departments.map((d) => <option key={d} value={d}>{d}</option>)}
                 </SelectInput>
               </Field>
-              <Field id="city" label="Ciudad o municipio">
-                <SelectInput id="city" value={city} onChange={(e) => setCity(e.target.value)}>
+              <Field id="city" label="Ciudad o municipio" error={errors.city}>
+                <SelectInput error={errors.city} id="city" value={city} onChange={(e) => setCity(e.target.value)}>
+                  <option value="" disabled>Selecciona…</option>
                   {availableCities.map((c) => <option key={c} value={c}>{c}</option>)}
                 </SelectInput>
               </Field>

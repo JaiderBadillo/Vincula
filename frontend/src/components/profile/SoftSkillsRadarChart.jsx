@@ -1,9 +1,6 @@
 import { useState, useMemo } from 'react';
 import Chart from 'react-apexcharts';
 import { skillLevels, skillSuggestions } from '../../data/profile.js';
-import LegacySoftSkillsRadarChart from '../legacy_charts/LegacySoftSkillsRadarChart.jsx';
-
-export { LegacySoftSkillsRadarChart };
 
 /**
  * Divide de forma equilibrada etiquetas largas en 2 renglones para evitar
@@ -38,48 +35,10 @@ export default function SoftSkillsRadarChart({
   className = '',
 }) {
   const [viewMode, setViewMode] = useState('both'); // 'both' | 'radar' | 'bars'
-  const [chartEngine, setChartEngine] = useState('apex'); // 'apex' | 'legacy'
 
   const softSkills = useMemo(() => {
     return skills.filter((s) => s.type === 'soft');
   }, [skills]);
-
-  if (chartEngine === 'legacy') {
-    return (
-      <div className={`space-y-3 ${className}`}>
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-300 bg-amber-50/70 p-2.5 text-xs">
-          <span className="font-bold text-amber-900 flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-amber-500" />
-            Visualizando versión anterior (SVG Puro Manual)
-          </span>
-          <div className="inline-flex rounded-lg border border-amber-300 bg-white p-0.5 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setChartEngine('apex')}
-              className="rounded-md px-2.5 py-1 text-xs font-bold text-ink hover:bg-amber-100 transition-all cursor-pointer"
-            >
-              ⚡ Ver versión ApexCharts (Nueva)
-            </button>
-            <button
-              type="button"
-              onClick={() => setChartEngine('legacy')}
-              className="rounded-md bg-amber-600 text-white px-2.5 py-1 text-xs font-bold cursor-pointer shadow-2xs"
-            >
-              🏛️ SVG Anterior
-            </button>
-          </div>
-        </div>
-        <LegacySoftSkillsRadarChart
-          skills={skills}
-          onUpdateSkill={onUpdateSkill}
-          onRemoveSkill={onRemoveSkill}
-          onAddSkill={onAddSkill}
-          readOnly={readOnly}
-          className=""
-        />
-      </div>
-    );
-  }
 
   // Si hay menos de 3 habilidades blandas, completamos con sugerencias benchmark para que el radar siempre tenga forma geométrica
   const chartItems = useMemo(() => {
@@ -232,32 +191,8 @@ export default function SoftSkillsRadarChart({
           </div>
         </div>
 
-        {/* Controles: Switcher Antes/Después + Alternador de vista */}
+        {/* Controles: Alternador de vista */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Switcher Antes/Después */}
-          <div className="inline-flex rounded-lg border border-line bg-page p-0.5 text-xs">
-            <button
-              type="button"
-              onClick={() => setChartEngine('apex')}
-              className={`rounded-md px-2.5 py-1 font-bold transition-all cursor-pointer ${
-                chartEngine === 'apex' ? 'bg-[#051F26] text-white shadow-2xs' : 'text-secondary hover:text-ink'
-              }`}
-              title="Versión moderna interactiva con ApexCharts"
-            >
-              ⚡ ApexCharts
-            </button>
-            <button
-              type="button"
-              onClick={() => setChartEngine('legacy')}
-              className={`rounded-md px-2.5 py-1 font-bold transition-all cursor-pointer ${
-                chartEngine === 'legacy' ? 'bg-[#051F26] text-white shadow-2xs' : 'text-secondary hover:text-ink'
-              }`}
-              title="Ver versión anterior construida con SVG manual"
-            >
-              🏛️ SVG Anterior
-            </button>
-          </div>
-
           {/* Alternador de vista */}
           <div className="inline-flex rounded-lg border border-line bg-page p-0.5 text-xs font-semibold">
             <button

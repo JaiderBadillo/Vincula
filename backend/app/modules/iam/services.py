@@ -265,12 +265,11 @@ class IAMService:
                     tipo_documento="CC",
                     numero_documento=doc_provisional,
                     nombre_completo=nombre,
-                    ciudad_residencia="Bucaramanga",
-                    departamento_residencia="Santander",
-                    telefono="No suministrado",
+                    ciudad_residencia="",  # Google no entrega estos datos; los completa el egresado
+                    departamento_residencia=None,
+                    telefono="",
                     correo_personal=usuario.correo_electronico,
                     url_avatar=avatar_url or None,
-                    titular_profesional="Profesional en Formación / Graduado",
                     disponible_para_trabajar=True,
                     estado="activo"
                 )

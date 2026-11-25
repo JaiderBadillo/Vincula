@@ -1,27 +1,39 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { primaryButton } from '../../utils/classes.js';
+import { graduateProfileService } from '../../services/graduateProfileService.js';
+import { useProfile } from '../../hooks/useProfile.js';
 
 export default function ResumeUploadCard() {
   const inputRef = useRef(null);
-  const [selectedFile, setSelectedFile] = useState(null);
+  const { profile, updateProfile } = useProfile();
+  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const saved = profile.cvs?.length || 0;
 
-  function handleFileChange(event) {
-    const file = event.target.files?.[0];
+  async function handleFileChange(event) {
+    const input = event.target;
+    const file = input.files?.[0];
+    input.value = '';
     if (!file) return;
 
     const hasPdfExtension = file.name.toLowerCase().endsWith('.pdf');
     const isPdf = file.type === 'application/pdf' || (!file.type && hasPdfExtension);
-    if (!isPdf) {
-      setSelectedFile(null);
-      setError('Selecciona un archivo PDF para continuar.');
-      event.target.value = '';
-      return;
-    }
+    if (!isPdf) return setError('Selecciona un archivo PDF para continuar.');
+    if (file.size > 5 * 1024 * 1024) return setError('El archivo supera los 5 MB.');
 
     setError('');
-    setSelectedFile(file);
+    setMessage('');
+    setSaving(true);
+    try {
+      const result = await graduateProfileService.uploadCv(file);
+      updateProfile((p) => ({ ...p, cvs: result.cvs }));
+      setMessage(`Guardada en tu perfil: ${file.name}`);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -54,7 +66,7 @@ export default function ResumeUploadCard() {
             Activa tu motor de búsqueda.
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-white/70 sm:text-base sm:leading-7">
-            Sube tu hoja de vida en formato PDF y nuestra IA extraerá tus habilidades técnicas para calcular tu afinidad con las empresas.
+            Sube tu hoja de vida en formato PDF para tenerla en tu perfil. Tu afinidad con las vacantes se calcula con tu programa y las habilidades que registres.
           </p>
         </div>
 
@@ -77,8 +89,9 @@ export default function ResumeUploadCard() {
             type="button"
             aria-describedby="resume-upload-help"
             onClick={() => inputRef.current?.click()}
+            disabled={saving}
           >
-            Subir Hoja de Vida (PDF)
+            {saving ? 'Subiendo…' : 'Subir Hoja de Vida (PDF)'}
             <i className="bx bx-upload text-xl" aria-hidden="true" />
           </button>
         </div>
@@ -86,14 +99,14 @@ export default function ResumeUploadCard() {
 
       <div className="relative z-10 mt-7 flex flex-col gap-2 border-t border-white/15 pt-5 text-sm sm:flex-row sm:items-center sm:justify-between">
         <p className="text-white/50" id="resume-upload-help">
-          Tu archivo se procesa de forma segura. Puedes gestionar múltiples versiones en{' '}
+          Máximo 5 MB. Puedes gestionar tus versiones en{' '}
           <Link to="/dashboard/perfil#subir-cv" className="font-semibold text-lime underline-offset-4 hover:underline">
             Mi Perfil & CV
           </Link>
           .
         </p>
         <p className="font-medium text-white/80" role={error ? 'alert' : 'status'} aria-live={error ? 'assertive' : 'polite'}>
-          {error || (selectedFile ? `Archivo seleccionado: ${selectedFile.name}` : 'Aún no has seleccionado una hoja de vida.')}
+          {error || message || (saved ? `${saved} ${saved === 1 ? 'versión guardada' : 'versiones guardadas'} en tu perfil.` : 'Aún no has subido una hoja de vida.')}
         </p>
       </div>
     </section>

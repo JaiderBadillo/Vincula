@@ -27,7 +27,6 @@ from app.modules.institutions.models import DocumentoInstitucion
 from app.modules.companies.models import Empresa, DocumentoEmpresa
 from app.modules.graduates.models import Egresado, AcademicoEgresado
 from app.modules.superadmin.models import AuditoriaSuperadmin
-from app.integrations.email_service import EmailService
 
 router = APIRouter(prefix="/auth", tags=["IAM - Autenticación y Registro"])
 from app.modules.iam.password_reset import router as password_reset_router
@@ -168,11 +167,11 @@ async def registro_egresado_form(
     correo: str = Form(...),
     password: Optional[str] = Form("Egresado123*"),
     telefono: Optional[str] = Form(None),
-    departamento: str = Form("Santander"),
-    ciudad: str = Form("Bucaramanga"),
+    departamento: str = Form(...),
+    ciudad: str = Form(...),
     id_institucion: Optional[str] = Form(None),
     carrera: str = Form(...),
-    nivel_educativo: Optional[str] = Form("Profesional Universitario"),
+    nivel_educativo: Optional[str] = Form(None),
     ano_graduacion: str = Form(...),
     autoriza_datos: bool = Form(True),
     diploma_pdf: UploadFile = File(...),
@@ -227,8 +226,8 @@ async def registro_empresa_form(
     razon_social: str = Form(...),
     nombre_comercial: str = Form(...),
     nit: str = Form(...),
-    codigo_ciiu: Optional[str] = Form("6201"),
-    descripcion_ciiu: Optional[str] = Form("Actividades de tecnología y servicios empresariales"),
+    codigo_ciiu: Optional[str] = Form(""),
+    descripcion_ciiu: Optional[str] = Form(""),
     sector_economico: str = Form(...),
     tamano_empresa: str = Form(...),
     departamento: str = Form(...),
@@ -313,7 +312,7 @@ async def registro_institucion_form(
     nombre_rector: str = Form(...),
     documento_rector: Optional[str] = Form("No suministrado"),
     nombre_contacto_asesor: str = Form(...),
-    cargo_asesor: Optional[str] = Form("Coordinador de Egresados y Empleabilidad"),
+    cargo_asesor: Optional[str] = Form(""),
     resolucion_men_pdf: Optional[UploadFile] = File(None),
     snies_cert_pdf: Optional[UploadFile] = File(None),
     rut_pdf: Optional[UploadFile] = File(None),
@@ -372,62 +371,3 @@ async def get_me(current_user: Dict[str, Any] = Depends(get_current_user)):
         id_entidad=current_user.get("id_entidad"),
         es_cuenta_aprobada=(estado == "aprobado")
     )
-
-
-@router.post("/test-email")
-async def test_email(destinatario: str, tipo: str = "registro"):
-    """
-    Endpoint de prueba para verificar la conectividad y el diseño visual de Gmail SMTP.
-    Tipos soportados: 'registro', 'aprobacion_empresa', 'aprobacion_ies', 'postulacion', 'avance_fase'
-    """
-    if tipo == "aprobacion_empresa":
-        res = await EmailService.send_company_approved_email(
-            to_email=destinatario,
-            company_name="Innovación y Software S.A.S.",
-            nit="901.482.190-4",
-            notes="Verificación de RUT DIAN y Certificado de Existencia en Cámara de Comercio aprobada satisfactoriamente.",
-        )
-    elif tipo == "aprobacion_ies":
-        res = await EmailService.send_institution_approved_email(
-            to_email=destinatario,
-            institution_name="Unidades Tecnológicas de Santander (UTS)",
-            snies_code="2812",
-            notes="Resolución MEN y código SNIES validados por el Comité de Gobernanza de Vincula.",
-        )
-    elif tipo == "postulacion":
-        res = await EmailService.send_application_created_email(
-            to_email=destinatario,
-            graduate_name="Jaider Badillo",
-            vacancy_title="Ingeniero de Software Full Stack (React & FastAPI)",
-            company_name="Soluciones Digitales de Santander S.A.S.",
-            vacancy_code="VAC-2026-084",
-            modality="Híbrido",
-            location="Bucaramanga, Santander",
-        )
-    elif tipo == "avance_fase":
-        res = await EmailService.send_application_phase_changed_email(
-            to_email=destinatario,
-            graduate_name="Jaider Badillo",
-            vacancy_title="Ingeniero de Software Full Stack (React & FastAPI)",
-            company_name="Soluciones Digitales de Santander S.A.S.",
-            new_stage="interview",
-            previous_stage="evaluation",
-            vacancy_code="VAC-2026-084",
-            recruiter_feedback="Excelente desempeño en el reto de arquitectura técnica. Pasas a entrevista con el líder de ingeniería.",
-            interview_details="Viernes 14 de Noviembre, 10:00 AM - 11:00 AM · Modalidad: Virtual (Google Meet)",
-        )
-    else:
-        res = await EmailService.send_graduate_welcome_email(
-            to_email=destinatario,
-            name="Jaider Badillo",
-            career="Ingeniería de Sistemas (UTS)",
-            city="Bucaramanga, Santander",
-        )
-
-    if not res.get("success"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Fallo enviando correo: {res.get('error') or res.get('reason')}"
-        )
-    return {"success": True, "tipo": tipo, "mensaje": f"Correo '{tipo}' enviado exitosamente a {destinatario}"}
-

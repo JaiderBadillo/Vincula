@@ -774,7 +774,7 @@ class CompanyService:
             nombre_completo=payload.nombre_completo.strip(),
             correo_corporativo=correo_clean,
             telefono=payload.telefono.strip() if payload.telefono else None,
-            cargo=payload.cargo.strip() if payload.cargo else "Especialista de Atracción de Talento",
+            cargo=payload.cargo.strip() if payload.cargo else "",
             estado="active"
         )
         session.add(nuevo_reclutador)
@@ -966,37 +966,3 @@ class CompanyService:
             if r.id == str(val_rec):
                 return r
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"codigo": "RECLUTADOR_NO_ENCONTRADO", "mensaje": "Reclutador no encontrado."})
-
-    # Fallbacks síncronos de compatibilidad
-    @staticmethod
-    def get_sites(company_id: str) -> List[Dict[str, Any]]:
-        return [
-            {
-                "id": "site-001",
-                "nombre_sede": "Sede Principal Bucaramanga",
-                "departamento": "Santander",
-                "ciudad": "Bucaramanga",
-                "direccion": "Cra. 27 # 45-20, Cabecera",
-                "es_principal": True
-            },
-            {
-                "id": "site-002",
-                "nombre_sede": "Centro de Operaciones Floridablanca",
-                "departamento": "Santander",
-                "ciudad": "Floridablanca",
-                "direccion": "Anillo Vial Km 2.5",
-                "es_principal": False
-            }
-        ]
-
-    @staticmethod
-    def get_recruiters(company_id: str) -> List[Dict[str, Any]]:
-        return [
-            {
-                "id": "rec-001",
-                "nombre_completo": "Laura Gómez",
-                "correo": "laura.gomez@techinnovations.co",
-                "cargo": "Líder de Atracción de Talento",
-                "activo": True
-            }
-        ]

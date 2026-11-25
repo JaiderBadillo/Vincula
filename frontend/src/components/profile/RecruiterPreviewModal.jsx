@@ -430,7 +430,7 @@ export default function RecruiterPreviewModal({ profile, onClose }) {
                         {profile.program}
                       </p>
                       <p className="m-0 mt-0.5 text-[0.7rem] text-secondary">
-                        {profile.faculty || 'Facultad de Ciencias Naturales e Ingenierías'} · Graduado {profile.graduationYear}
+                        {profile.faculty ? `${profile.faculty} · ` : ''}Graduado {profile.graduationYear}
                       </p>
                     </div>
                   </div>

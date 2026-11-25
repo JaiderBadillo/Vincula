@@ -12,7 +12,7 @@ const LEVELS = [
 const MODALITIES = ['Presencial', 'Virtual', 'Híbrida', 'A Distancia'];
 
 function parseSemesters(program) {
-  if (!program) return 10;
+  if (!program) return '';
   if (Number.isFinite(Number(program.semesters)) && Number(program.semesters) > 0) {
     return Number(program.semesters);
   }
@@ -43,7 +43,7 @@ export default function ProgramModal({
     modality: MODALITIES[0],
     semesters: 10,
     credits: 160,
-    accreditation: 'Registro Calificado Vigente',
+    accreditation: '',
     director: '',
     directorEmail: '',
   });
@@ -75,8 +75,8 @@ export default function ProgramModal({
         level: LEVELS.includes(program.level) ? program.level : LEVELS[0],
         modality: MODALITIES.includes(program.modality) ? program.modality : MODALITIES[0],
         semesters: parseSemesters(program),
-        credits: Number(program.credits) || 160,
-        accreditation: program.accreditation || 'Registro Calificado Vigente',
+        credits: Number(program.credits) || '',
+        accreditation: program.accreditation || '',
         director: program.director || '',
         directorEmail: program.directorEmail || '',
       });
@@ -91,9 +91,9 @@ export default function ProgramModal({
         campusId: defaultCampus?.id || '',
         level: LEVELS[0],
         modality: MODALITIES[0],
-        semesters: 10,
-        credits: 160,
-        accreditation: 'Registro Calificado Vigente',
+        semesters: '',
+        credits: '',
+        accreditation: '',
         director: '',
         directorEmail: '',
       });
@@ -174,7 +174,7 @@ export default function ProgramModal({
       modality: form.modality,
       semesters: Number(form.semesters),
       credits: Number(form.credits),
-      accreditation: form.accreditation.trim() || 'Registro Calificado Vigente',
+      accreditation: form.accreditation.trim(),
       director: form.director.trim(),
       directorEmail: form.directorEmail.trim(),
     };

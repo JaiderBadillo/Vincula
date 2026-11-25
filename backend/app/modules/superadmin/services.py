@@ -344,7 +344,7 @@ class SuperAdminService:
         )
 
         # Registrar bitácora de auditoría
-        notas_txt = payload.notas if (payload and payload.notas) else "Verificación documental satisfactoria (RUT y Cámara de Comercio validados)."
+        notas_txt = payload.notas if (payload and payload.notas) else "Aprobada sin observaciones del auditor."
         audit = AuditoriaSuperadmin(
             tipo_entidad="empresa",
             id_entidad=comp_uuid,
@@ -520,7 +520,7 @@ class SuperAdminService:
             .values(estado="aprobado")
         )
 
-        notas_txt = payload.notas if (payload and payload.notas) else f"Aval institucional verificado ante el MEN (SNIES {ies.codigo_snies})."
+        notas_txt = payload.notas if (payload and payload.notas) else "Aprobada sin observaciones del auditor."
         audit = AuditoriaSuperadmin(
             tipo_entidad="institucion",
             id_entidad=ies_uuid,

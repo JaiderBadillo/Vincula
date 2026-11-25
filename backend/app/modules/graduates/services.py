@@ -94,7 +94,7 @@ class GraduateService:
         if rec:
             recruiter_dto = RecruiterContact(
                 name=rec.nombre_completo,
-                role=rec.cargo or "Líder de Selección",
+                role=rec.cargo or "Reclutador",
                 company=emp.nombre_comercial or emp.razon_social if emp else "Empresa Aliada",
                 email=rec.correo_corporativo,
                 phone=rec.telefono,
@@ -167,7 +167,7 @@ class GraduateService:
         if not feedback and fase_db == "descartados" and p.motivo_descarte:
             feedback = f"Motivo informado: {p.motivo_descarte}"
 
-        app_code = f"POST-2026-{str(p.id)[:6].upper()}"
+        app_code = f"POST-{(p.postulado_en or datetime.now(timezone.utc)).year}-{str(p.id)[:6].upper()}"
 
         return GraduateApplicationResponse(
             id=str(p.id),
@@ -181,7 +181,7 @@ class GraduateService:
             companyCover=emp.url_portada if emp else None,
             companySector=emp.sector_economico if emp else "Tecnología",
             partnershipType=None,
-            location=f"{vac.sede.ciudad}, {vac.sede.departamento}" if (vac and vac.sede) else "Bucaramanga, Santander",
+            location=f"{vac.sede.ciudad}, {vac.sede.departamento}" if (vac and vac.sede) else "Ubicación no especificada",
             workMode=vac.modalidad if vac else "Presencial",
             salary=salary_str,
             salaryOffered=salary_str if phase_num >= 4 else None,
@@ -192,7 +192,7 @@ class GraduateService:
             stage=stage_ui,
             phaseStatusLabel=phase_label,
             phaseFeedback=feedback,
-            estimatedStartDate="Inmediata" if phase_num >= 4 else None,
+            estimatedStartDate=None,  # no se registra una fecha de ingreso
             recruiter=recruiter_dto,
             interview=interview_dto,
             submittedDocument=doc_dto,

@@ -173,7 +173,7 @@ class AsesorCreateRequest(BaseModel):
     password: str = Field(..., min_length=8, description="Contraseña de acceso inicial")
     nombre_completo: str = Field(..., min_length=3, max_length=150)
     telefono: Optional[str] = Field(None, max_length=50)
-    cargo: Optional[str] = Field("Asesor de Enlace y Prácticas", max_length=100)
+    cargo: Optional[str] = Field(None, max_length=100)
     id_sede: Optional[str] = None
     id_facultad: Optional[str] = None
     sedes_ids: Optional[List[str]] = Field(default_factory=list, description="Lista de IDs de sedes o campus de cobertura")

@@ -37,7 +37,7 @@ export default function DashboardStatCard({
   actionText = 'Ver sección',
 }) {
   const colors = accentMap[accent] || accentMap.green;
-  const parsedPercent = progressValue ?? (isProgress ? parseInt(value, 10) || 85 : 0);
+  const parsedPercent = progressValue ?? (isProgress ? parseInt(value, 10) || 0 : 0);
 
   return (
     <article

@@ -19,8 +19,8 @@ const INSTITUTION_ORIGINS = ['Oficial / Pública', 'Privada'];
 
 // `fields` son los ids de los campos que valida cada paso
 const STEPS = [
-  { id: 'institution', title: 'Tu institución', fields: ['legalName', 'sniesCode', 'nit', 'phone', 'address'] },
-  { id: 'people', title: 'Responsables', fields: ['rectorName', 'advisorName', 'advisorEmail', 'advisorPhone'] },
+  { id: 'institution', title: 'Tu institución', fields: ['legalName', 'sniesCode', 'nit', 'academicCharacter', 'institutionOrigin', 'phone', 'dept', 'city', 'address'] },
+  { id: 'people', title: 'Responsables', fields: ['rectorName', 'advisorName', 'advisorRole', 'advisorEmail', 'advisorPhone'] },
   { id: 'verify', title: 'Verificación', fields: ['resolucionMen', 'sniesCert', 'actaPosesion', 'rut', 'password', 'confirmPassword', 'juramento'] },
 ];
 
@@ -53,11 +53,11 @@ export default function InstitutionRegistrationPage() {
   const [legalName, setLegalName] = useState(prefilled.institution || profile?.legalName || profile?.name || '');
   const [acronym, setAcronym] = useState(profile?.acronym || '');
   const [sniesCode, setSniesCode] = useState(prefilled.snies || '');
-  const [academicCharacter, setAcademicCharacter] = useState(ACADEMIC_CHARACTERS[0]);
-  const [institutionOrigin, setInstitutionOrigin] = useState(INSTITUTION_ORIGINS[0]);
+  const [academicCharacter, setAcademicCharacter] = useState('');
+  const [institutionOrigin, setInstitutionOrigin] = useState('');
   const [nit, setNit] = useState(profile?.nit || '');
-  const [dept, setDept] = useState('Santander');
-  const [city, setCity] = useState('Bucaramanga');
+  const [dept, setDept] = useState('');
+  const [city, setCity] = useState('');
   const [address, setAddress] = useState(profile?.address || '');
   const [website, setWebsite] = useState(profile?.website || '');
   const [phone, setPhone] = useState(profile?.phone || '');
@@ -66,7 +66,7 @@ export default function InstitutionRegistrationPage() {
   const [rectorName, setRectorName] = useState(profile?.legalRepresentative || '');
   const [rectorDoc, setRectorDoc] = useState('');
   const [advisorName, setAdvisorName] = useState('');
-  const [advisorRole, setAdvisorRole] = useState(prefilled.role || 'Asesor de Prácticas y Empleabilidad');
+  const [advisorRole, setAdvisorRole] = useState(prefilled.role || '');
   const [advisorEmail, setAdvisorEmail] = useState(prefilled.email || profile?.contactEmail || '');
   const [advisorPhone, setAdvisorPhone] = useState('');
 
@@ -102,6 +102,11 @@ export default function InstitutionRegistrationPage() {
     if (!legalName.trim()) e.legalName = 'Ingresa el nombre oficial de la institución.';
     if (!sniesCode.trim()) e.sniesCode = 'Ingresa el código SNIES emitido por el MEN.';
     if (!NIT_PATTERN.test(nit.trim())) e.nit = 'Ingresa el NIT con dígito de verificación, así: 890.201.213-4';
+    if (!academicCharacter) e.academicCharacter = 'Selecciona el carácter académico.';
+    if (!institutionOrigin) e.institutionOrigin = 'Selecciona la naturaleza de la institución.';
+    if (!dept) e.dept = 'Selecciona el departamento.';
+    if (!city) e.city = 'Selecciona la ciudad.';
+    if (!advisorRole.trim()) e.advisorRole = 'Ingresa el cargo del asesor en la institución.';
     if (!address.trim()) e.address = 'Ingresa la dirección del campus o sede principal.';
     if (!phone.trim()) e.phone = 'Ingresa el teléfono o PBX institucional.';
     if (!rectorName.trim()) e.rectorName = 'Ingresa el nombre del rector(a) o representante legal.';
@@ -204,33 +209,37 @@ export default function InstitutionRegistrationPage() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="academicCharacter" label="Carácter académico">
-                <SelectInput id="academicCharacter" value={academicCharacter} onChange={(e) => setAcademicCharacter(e.target.value)}>
+              <Field id="academicCharacter" label="Carácter académico" error={errors.academicCharacter}>
+                <SelectInput error={errors.academicCharacter} id="academicCharacter" value={academicCharacter} onChange={(e) => setAcademicCharacter(e.target.value)}>
+                  <option value="" disabled>Selecciona…</option>
                   {ACADEMIC_CHARACTERS.map((c) => <option key={c} value={c}>{c}</option>)}
                 </SelectInput>
               </Field>
-              <Field id="institutionOrigin" label="Naturaleza de la institución">
-                <SelectInput id="institutionOrigin" value={institutionOrigin} onChange={(e) => setInstitutionOrigin(e.target.value)}>
+              <Field id="institutionOrigin" label="Naturaleza de la institución" error={errors.institutionOrigin}>
+                <SelectInput error={errors.institutionOrigin} id="institutionOrigin" value={institutionOrigin} onChange={(e) => setInstitutionOrigin(e.target.value)}>
+                  <option value="" disabled>Selecciona…</option>
                   {INSTITUTION_ORIGINS.map((o) => <option key={o} value={o}>{o}</option>)}
                 </SelectInput>
               </Field>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="dept" label="Departamento de la sede principal">
-                <SelectInput
+              <Field id="dept" label="Departamento de la sede principal" error={errors.dept}>
+                <SelectInput error={errors.dept}
                   id="dept"
                   value={dept}
                   onChange={(e) => {
                     setDept(e.target.value);
-                    setCity(COLOMBIAN_LOCATIONS[e.target.value]?.[0] || '');
+                    setCity('');
                   }}
                 >
+                  <option value="" disabled>Selecciona…</option>
                   {departments.map((d) => <option key={d} value={d}>{d}</option>)}
                 </SelectInput>
               </Field>
-              <Field id="city" label="Ciudad o municipio">
-                <SelectInput id="city" value={city} onChange={(e) => setCity(e.target.value)}>
+              <Field id="city" label="Ciudad o municipio" error={errors.city}>
+                <SelectInput error={errors.city} id="city" value={city} onChange={(e) => setCity(e.target.value)}>
+                  <option value="" disabled>Selecciona…</option>
                   {availableCities.map((c) => <option key={c} value={c}>{c}</option>)}
                 </SelectInput>
               </Field>
@@ -266,8 +275,8 @@ export default function InstitutionRegistrationPage() {
               <Field id="advisorName" label="Asesor responsable de egresados" error={errors.advisorName}>
                 <TextInput id="advisorName" value={advisorName} onChange={(e) => setAdvisorName(e.target.value)} placeholder="Nombres y apellidos" error={errors.advisorName} />
               </Field>
-              <Field id="advisorRole" label="Cargo en la institución">
-                <TextInput id="advisorRole" value={advisorRole} onChange={(e) => setAdvisorRole(e.target.value)} placeholder="Directora de Prácticas y Egresados" />
+              <Field id="advisorRole" label="Cargo en la institución" error={errors.advisorRole}>
+                <TextInput id="advisorRole" value={advisorRole} onChange={(e) => setAdvisorRole(e.target.value)} placeholder="Directora de Prácticas y Egresados" error={errors.advisorRole} />
               </Field>
             </div>
 

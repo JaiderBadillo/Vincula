@@ -12,7 +12,7 @@ const educationLevels = ['Técnico Profesional', 'Tecnológico', 'Profesional Un
 // `fields` son los ids de los campos que valida cada paso
 const STEPS = [
   { id: 'personal', title: 'Tus datos', fields: ['docNumber', 'fullName', 'email', 'phone', 'dept', 'city'] },
-  { id: 'academic', title: 'Tu formación', fields: ['university', 'career', 'graduationYear'] },
+  { id: 'academic', title: 'Tu formación', fields: ['university', 'career', 'educationLevel', 'graduationYear'] },
   { id: 'security', title: 'Verificación', fields: ['diploma', 'password', 'confirmPassword', 'habeasData'] },
 ];
 
@@ -125,16 +125,15 @@ export default function GraduateRegistrationPage() {
   const [fullName, setFullName] = useState(paramName || prefilled.name || '');
   const [email, setEmail] = useState(paramEmail || prefilled.email || '');
   const [phone, setPhone] = useState('');
-  const [dept, setDept] = useState(prefilled.dept || 'Santander');
-  const [city, setCity] = useState(prefilled.city || 'Bucaramanga');
-  const [cvName] = useState(prefilled.cvName || '');
+  const [dept, setDept] = useState(prefilled.dept || '');
+  const [city, setCity] = useState(prefilled.city || '');
 
   // Paso 2: formación
   const [selectedUniversityId, setSelectedUniversityId] = useState('');
   const [universities, setUniversities] = useState([]);
   const [catalogError, setCatalogError] = useState('');
   const [career, setCareer] = useState(prefilled.career || '');
-  const [educationLevel, setEducationLevel] = useState('Profesional Universitario');
+  const [educationLevel, setEducationLevel] = useState('');
   const [graduationYear, setGraduationYear] = useState('');
 
   // Paso 3: verificación y acceso
@@ -177,6 +176,7 @@ export default function GraduateRegistrationPage() {
     if (!phone.trim()) e.phone = 'Ingresa un teléfono o número de WhatsApp.';
     if (!dept) e.dept = 'Selecciona tu departamento.';
     if (!city) e.city = 'Selecciona tu ciudad.';
+    if (!educationLevel) e.educationLevel = 'Selecciona tu nivel de formación.';
     if (!selectedUniversityId) e.university = 'Selecciona tu universidad de egreso.';
     if (!career.trim() || !selectedUni?.programs?.some((name) => name.toLowerCase() === career.trim().toLowerCase())) {
       e.career = 'Selecciona un programa de la lista de tu universidad.';
@@ -230,7 +230,6 @@ export default function GraduateRegistrationPage() {
         diplomaVerified: false,
         verificationStatus: 'pending',
         registrationCompleted: true,
-        ...(cvName ? { cvFileName: cvName } : {}),
       }));
 
       // Inicia sesión automáticamente para dejar el token en el cliente
@@ -302,29 +301,20 @@ export default function GraduateRegistrationPage() {
                   error={errors.dept}
                   onChange={(e) => {
                     setDept(e.target.value);
-                    setCity(COLOMBIAN_LOCATIONS[e.target.value]?.[0] || '');
+                    setCity('');
                   }}
                 >
+                  <option value="" disabled>Selecciona…</option>
                   {departments.map((d) => <option key={d} value={d}>{d}</option>)}
                 </SelectInput>
               </Field>
               <Field id="city" label="Ciudad o municipio" error={errors.city}>
                 <SelectInput id="city" value={city} onChange={(e) => setCity(e.target.value)} error={errors.city}>
+                  <option value="" disabled>Selecciona…</option>
                   {availableCities.map((c) => <option key={c} value={c}>{c}</option>)}
                 </SelectInput>
               </Field>
             </div>
-
-            {cvName && (
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-line-soft bg-page p-3 text-xs">
-                <span className="flex min-w-0 items-center gap-2 text-ink">
-                  <i className="bx bx-file shrink-0 text-base text-green" />
-                  <span className="font-semibold">Hoja de vida precargada:</span>
-                  <span className="truncate font-bold text-[#051F26]">{cvName}</span>
-                </span>
-                <span className="shrink-0 rounded-md bg-green/15 px-2 py-0.5 text-[0.65rem] font-bold text-green-dark">Vinculada</span>
-              </div>
-            )}
           </div>
         )}
 
@@ -357,8 +347,9 @@ export default function GraduateRegistrationPage() {
             </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="educationLevel" label="Nivel de formación">
-                <SelectInput id="educationLevel" value={educationLevel} onChange={(e) => setEducationLevel(e.target.value)}>
+              <Field id="educationLevel" label="Nivel de formación" error={errors.educationLevel}>
+                <SelectInput id="educationLevel" value={educationLevel} onChange={(e) => setEducationLevel(e.target.value)} error={errors.educationLevel}>
+                  <option value="" disabled>Selecciona…</option>
                   {educationLevels.map((lvl) => <option key={lvl} value={lvl}>{lvl}</option>)}
                 </SelectInput>
               </Field>

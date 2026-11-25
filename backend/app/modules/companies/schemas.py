@@ -97,7 +97,7 @@ class ReclutadorCreateRequest(BaseModel):
     correo_corporativo: EmailStr
     password: str = Field(..., min_length=8, description="Contraseña provisional de acceso")
     telefono: Optional[str] = Field(None, max_length=50)
-    cargo: Optional[str] = Field("Especialista de Atracción de Talento", max_length=100)
+    cargo: Optional[str] = Field(None, max_length=100)
     sedes_asignadas_ids: Optional[List[str]] = Field(default_factory=list, description="Lista de UUIDs de sedes")
 
 

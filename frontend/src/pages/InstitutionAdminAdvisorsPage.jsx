@@ -106,7 +106,7 @@ export default function InstitutionAdminAdvisorsPage() {
     fullName: '',
     email: '',
     phone: '',
-    position: 'Asesor de Graduados y Empleabilidad',
+    position: '',
     campusIds: campuses[0]?.id ? [campuses[0].id] : [],
     status: 'active',
     password: '',
@@ -148,10 +148,9 @@ export default function InstitutionAdminAdvisorsPage() {
               fullName: item.nombre_completo,
               email: item.correo_institucional,
               phone: item.telefono || '',
-              position: item.cargo || 'Asesor de Enlace y Prácticas',
-              campusIds: backendCampusIds || (campuses.length > 0 ? campuses.map((c) => c.id) : []),
+              position: item.cargo || '',
+              campusIds: backendCampusIds || [],
               status: item.estado === 'activo' ? 'active' : 'inactive',
-              lastAccess: 'Hoy',
               avatar: null,
               assignedProgramsCount: item.programas_asignados_count || 0,
             };
@@ -268,7 +267,7 @@ export default function InstitutionAdminAdvisorsPage() {
       fullName: '',
       email: '',
       phone: '',
-      position: 'Asesor de Graduados y Empleabilidad',
+      position: '',
       campusIds: campuses[0]?.id ? [campuses[0].id] : [],
       status: 'active',
       password: '',
@@ -373,7 +372,7 @@ export default function InstitutionAdminAdvisorsPage() {
             password: form.password,
             nombre_completo: form.fullName.trim(),
             telefono: form.phone.trim() || null,
-            cargo: form.position.trim() || 'Asesor de Enlace y Prácticas',
+            cargo: form.position.trim(),
             sedes_ids: form.campusIds || [],
             id_sede: form.campusIds?.[0]?.startsWith('sede-') ? null : form.campusIds?.[0],
           };
@@ -388,7 +387,6 @@ export default function InstitutionAdminAdvisorsPage() {
         position: backendResult.cargo,
         campusIds: backendResult.sedes_ids || form.campusIds,
         status: backendResult.estado === 'activo' ? 'active' : 'inactive',
-        lastAccess: 'Sin accesos registrados',
         avatar: null,
       };
       const updated = [newAdv, ...advisors];
@@ -677,10 +675,6 @@ export default function InstitutionAdminAdvisorsPage() {
                                 {advisor.phone}
                               </span>
                             )}
-                            <span className="flex items-center gap-1.5 text-secondary">
-                              <i className="bx bx-time-five text-sm" />
-                              Acceso: {advisor.lastAccess}
-                            </span>
                           </p>
                         </div>
 

@@ -161,7 +161,7 @@ export default function VacancyDetailDrawer({
                 <div>
                   <dt className="text-xs text-secondary">Jornada y Horario</dt>
                   <dd className="m-0 mt-0.5 text-xs font-medium text-ink">
-                    {vacancy.workSchedule || 'Lunes a Viernes'}
+                    {vacancy.workSchedule || 'Sin definir'}
                   </dd>
                 </div>
                 <div>

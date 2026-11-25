@@ -262,7 +262,7 @@ function GraduatePreview({ form, companyProfile, site }) {
           </div>
           <div className="col-span-2">
             <dt className="text-secondary">Jornada</dt>
-            <dd className="m-0 mt-0.5 text-ink">{form.workSchedule || 'Lunes a Viernes'}</dd>
+            <dd className="m-0 mt-0.5 text-ink">{form.workSchedule || 'Sin definir'}</dd>
           </div>
         </dl>
 

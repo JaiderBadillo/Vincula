@@ -578,7 +578,7 @@ class InstitutionService:
             total_creditos=payload.total_creditos,
             nombre_director=payload.nombre_director.strip() if payload.nombre_director else None,
             correo_director=payload.correo_director.strip() if payload.correo_director else None,
-            estado_acreditacion=payload.estado_acreditacion or "Registro Calificado Vigente",
+            estado_acreditacion=payload.estado_acreditacion or None,
             estado="activo"
         )
         session.add(nuevo_prog)
@@ -811,7 +811,7 @@ class InstitutionService:
                     nombre_completo=a.nombre_completo,
                     correo_institucional=a.correo_institucional,
                     telefono=a.telefono,
-                    cargo=a.cargo or "Asesor de Enlace y Prácticas",
+                    cargo=a.cargo or "",
                     estado=a.estado,
                     programas_asignados_count=len(p_ids),
                     programas_ids=p_ids,
@@ -863,7 +863,7 @@ class InstitutionService:
             nombre_completo=payload.nombre_completo.strip(),
             correo_institucional=correo_clean,
             telefono=payload.telefono.strip() if payload.telefono else None,
-            cargo=payload.cargo.strip() if payload.cargo else "Asesor de Enlace y Prácticas",
+            cargo=payload.cargo.strip() if payload.cargo else "",
             sedes_cobertura=cobertura_str,
             estado="activo"
         )
@@ -1408,8 +1408,8 @@ class InstitutionService:
         if payload.fecha_grado:
             try:
                 f_grado = datetime.strptime(payload.fecha_grado.strip(), "%Y-%m-%d").date()
-            except Exception:
-                f_grado = datetime.now().date()
+            except ValueError:
+                raise HTTPException(status_code=422, detail="La fecha de grado debe tener el formato AAAA-MM-DD.")
 
         now_dt = datetime.now(timezone.utc)
 

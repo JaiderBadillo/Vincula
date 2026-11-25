@@ -212,8 +212,8 @@ const TOUR_STEPS_BY_ROLE = {
       badge: 'Paso 1 de 5 · Inicio & Estado',
       title: 'Completitud de tu Perfil',
       description:
-        '¡Mira este indicador! Mide el porcentaje de completitud de tu hoja de vida. A mayor nivel, el algoritmo de Vincula te recomendará prioritariamente ante empresas aliadas.',
-      actionHint: 'Un perfil al 100% triplica las oportunidades de contacto.',
+        '¡Mira este indicador! Mide qué tan completo está tu perfil. Las empresas ven esa información cuando te postulas.',
+      actionHint: 'Un perfil completo le da a las empresas más información para evaluarte.',
     },
     {
       id: 'grad-subir-cv',
@@ -222,8 +222,8 @@ const TOUR_STEPS_BY_ROLE = {
       badge: 'Paso 2 de 5 · Tu Hoja de Vida',
       title: 'Carga de tu CV en PDF',
       description:
-        '¡Mira esta sección! Sube aquí tu hoja de vida en PDF. El motor de IA extraerá tus competencias y te conectará con ofertas afines a tu carrera.',
-      actionHint: 'Mantén tu CV actualizado para recibir alertas inteligentes.',
+        '¡Mira esta sección! Sube aquí tu hoja de vida en PDF para guardarla en tu perfil.',
+      actionHint: 'Mantén tu hoja de vida actualizada antes de postularte.',
     },
     {
       id: 'grad-perfil-tabs',

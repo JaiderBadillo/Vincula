@@ -39,7 +39,7 @@ class RegisterGraduateRequest(BaseModel):
     ciudad: str
     id_institucion: Optional[str] = None
     carrera: str
-    nivel_educativo: Optional[str] = "Profesional Universitario"
+    nivel_educativo: Optional[str] = None
     ano_graduacion: str
     autoriza_datos: bool = True
 
@@ -54,8 +54,8 @@ class RegisterCompanyRequest(BaseModel):
     razon_social: str
     nombre_comercial: str
     nit: str
-    codigo_ciiu: Optional[str] = "6201"
-    descripcion_ciiu: Optional[str] = "Actividades de tecnología y servicios empresariales"
+    codigo_ciiu: Optional[str] = ""
+    descripcion_ciiu: Optional[str] = ""
     sector_economico: str
     tamano_empresa: str
     departamento: str
@@ -88,7 +88,7 @@ class RegisterInstitutionRequest(BaseModel):
     nombre_rector: str
     documento_rector: Optional[str] = "No suministrado"
     nombre_contacto_asesor: str
-    cargo_asesor: Optional[str] = "Coordinador de Egresados y Empleabilidad"
+    cargo_asesor: Optional[str] = ""
     documentos: Optional[List[DocumentBase64Item]] = None
 
 

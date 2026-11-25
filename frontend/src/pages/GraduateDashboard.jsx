@@ -1,6 +1,8 @@
 import GraduatePageHero from '../components/dashboard/GraduatePageHero.jsx';
 import { graduatePhotos } from '../data/graduateImages.js';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { applicationService } from '../services/applicationService.js';
+import { aiService } from '../services/aiService.js';
 import DashboardStatCard from '../components/dashboard/DashboardStatCard.jsx';
 import GraduatePortalLayout from '../components/dashboard/GraduatePortalLayout.jsx';
 import GridVacancyDetailModal from '../components/dashboard/GridVacancyDetailModal.jsx';
@@ -22,15 +24,34 @@ export default function GraduateDashboard() {
   const [detailJob, setDetailJob] = useState(null);
   const [appliedJobs, setAppliedJobs] = useState(new Set());
   const [toastMessage, setToastMessage] = useState(null);
+  const [highMatch, setHighMatch] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    aiService.getRecommendedVacancies(50)
+      .then((res) => active && setHighMatch((res?.vacantes || []).filter((v) => v.nivel_afinidad === 'alta').length))
+      .catch(() => {});
+    applicationService.getMyApplications()
+      .then((apps) => active && setAppliedJobs(new Set(apps.map((a) => a.jobId))))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function notify(msg) {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   }
 
-  function handleApply(job) {
-    setAppliedJobs((prev) => new Set(prev).add(job.id));
-    notify(`¡Postulación enviada exitosamente a ${job.company} (${job.title})!`);
+  async function handleApply(job) {
+    try {
+      await applicationService.applyToVacancy(job.id);
+      setAppliedJobs((prev) => new Set(prev).add(job.id));
+      notify(`Postulación registrada en ${job.company} (${job.title}).`);
+    } catch (err) {
+      notify(err.message || 'No se pudo registrar la postulación. Inténtalo de nuevo.');
+    }
   }
 
   function handleScrollToSection(targetId) {
@@ -68,14 +89,14 @@ export default function GraduateDashboard() {
       },
       {
         label: 'Vacantes con alto Match',
-        value: '0',
+        value: highMatch === null ? '—' : String(highMatch),
         icon: 'bx-target-lock',
         accent: 'blue',
         onClick: () => handleScrollToSection('oportunidades'),
         actionText: 'Bajar a vacantes',
       },
     ],
-    [profileScore, savedCount]
+    [profileScore, savedCount, highMatch]
   );
 
   return (

@@ -297,20 +297,20 @@ class AuthService {
     formData.append('nit', data.nit?.trim() || '');
     if (data.ciiuCode) formData.append('codigo_ciiu', data.ciiuCode.trim());
     if (data.ciiuDesc) formData.append('descripcion_ciiu', data.ciiuDesc.trim());
-    formData.append('sector_economico', data.sector || 'Tecnología e Información');
-    formData.append('tamano_empresa', data.companySize || 'Mediana (51 - 200 empleados)');
-    formData.append('departamento', data.dept || 'Santander');
-    formData.append('ciudad', data.city || 'Bucaramanga');
-    formData.append('direccion', data.address?.trim() || 'No suministrada');
-    formData.append('telefono', data.companyPhone?.trim() || 'No suministrado');
+    formData.append('sector_economico', data.sector);
+    formData.append('tamano_empresa', data.companySize);
+    formData.append('departamento', data.dept);
+    formData.append('ciudad', data.city);
+    formData.append('direccion', data.address?.trim() || '');
+    formData.append('telefono', data.companyPhone?.trim() || '');
     formData.append('correo_contacto', (data.recruiterEmail || data.email)?.trim().toLowerCase() || '');
     formData.append('password', data.password || 'Empresa123*');
     if (data.website) formData.append('sitio_web', data.website.trim());
 
     // Representante Legal y contacto
-    formData.append('nombre_representante_legal', data.legalRepName?.trim() || data.recruiterName?.trim() || 'No indicado');
-    formData.append('documento_representante_legal', data.legalRepDoc?.trim() || 'No indicado');
-    formData.append('persona_contacto', data.recruiterName?.trim() || 'Contacto de Selección');
+    formData.append('nombre_representante_legal', data.legalRepName?.trim() || '');
+    formData.append('documento_representante_legal', data.legalRepDoc?.trim() || '');
+    formData.append('persona_contacto', data.recruiterName?.trim() || '');
 
     // Archivos PDF para Supabase Storage
     if (files.camaraComercio) {
@@ -356,10 +356,10 @@ class AuthService {
     if (data.acronym) formData.append('sigla', data.acronym.trim());
     formData.append('codigo_snies', data.sniesCode?.trim() || '');
     formData.append('caracter_academico', data.academicCharacter || 'Institución Universitaria');
-    formData.append('origen_institucional', data.institutionOrigin || 'Oficial / Pública');
+    formData.append('origen_institucional', data.institutionOrigin);
     formData.append('nit', data.nit?.trim() || '');
-    formData.append('departamento', data.dept || 'Santander');
-    formData.append('ciudad', data.city || 'Bucaramanga');
+    formData.append('departamento', data.dept);
+    formData.append('ciudad', data.city);
     formData.append('direccion', data.address?.trim() || '');
     if (data.website) formData.append('sitio_web', data.website.trim());
     formData.append('correo_institucional', data.advisorEmail?.trim().toLowerCase() || '');
@@ -368,7 +368,7 @@ class AuthService {
     formData.append('nombre_rector', data.rectorName?.trim() || '');
     formData.append('documento_rector', data.rectorDoc?.trim() || 'No suministrado');
     formData.append('nombre_contacto_asesor', data.advisorName?.trim() || '');
-    formData.append('cargo_asesor', data.advisorRole?.trim() || 'Coordinador de Empleabilidad');
+    formData.append('cargo_asesor', data.advisorRole?.trim() || '');
 
     // Documentos PDF
     if (files.resolucionMen) {
@@ -424,11 +424,11 @@ class AuthService {
       formData.append('correo', data.email?.trim().toLowerCase() || '');
       formData.append('password', data.password || 'Egresado123*');
       if (data.phone) formData.append('telefono', data.phone.trim());
-      formData.append('departamento', data.dept || 'Santander');
-      formData.append('ciudad', data.city || 'Bucaramanga');
+      formData.append('departamento', data.dept);
+      formData.append('ciudad', data.city);
       if (data.institutionId) formData.append('id_institucion', data.institutionId);
-      formData.append('carrera', data.career?.trim() || 'Profesional Universitario');
-      formData.append('nivel_educativo', data.educationLevel || 'Profesional Universitario');
+      formData.append('carrera', data.career?.trim() || '');
+      formData.append('nivel_educativo', data.educationLevel);
         formData.append('ano_graduacion', String(data.graduationYear || ''));
       formData.append('autoriza_datos', String(data.habeasData ?? true));
       formData.append('diploma_pdf', diplomaFile);
@@ -445,11 +445,11 @@ class AuthService {
         correo: data.email?.trim().toLowerCase() || '',
         password: data.password || 'Egresado123*',
         telefono: data.phone?.trim() || null,
-        departamento: data.dept || 'Santander',
-        ciudad: data.city || 'Bucaramanga',
+        departamento: data.dept,
+        ciudad: data.city,
         id_institucion: data.institutionId || null,
-        carrera: data.career?.trim() || 'Profesional Universitario',
-        nivel_educativo: data.educationLevel || 'Profesional Universitario',
+        carrera: data.career?.trim() || '',
+        nivel_educativo: data.educationLevel,
           ano_graduacion: String(data.graduationYear || ''),
         autoriza_datos: data.habeasData ?? true,
       };

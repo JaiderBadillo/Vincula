@@ -16,6 +16,7 @@ export default function MyApplicationsPage() {
   const [applications, setApplications] = useState(proposalApplications);
   const [interviews, setInterviews] = useState(proposalInterviews);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [phaseFilter, setPhaseFilter] = useState('all'); // 'all' | '1' | '2' | '3' | '4'
   const [keyword, setKeyword] = useState('');
   const [selectedAppId, setSelectedAppId] = useState(proposalApplications[0]?.id || null);
@@ -54,8 +55,7 @@ export default function MyApplicationsPage() {
           }
         }
       } catch (err) {
-        // Fallback resiliente a los datos de propuesta si no hay sesión o falla la red
-        console.info('[MyApplicationsPage] Modo demostración / datos precargados:', err.message);
+        if (isMounted) setLoadError(err.message || 'No pudimos cargar tus postulaciones.');
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -139,8 +139,8 @@ export default function MyApplicationsPage() {
     try {
       await applicationService.withdrawApplication(appId);
     } catch (err) {
-      // Ignorar si es postulación de prueba estática sin registro en BD
-      console.info('[MyApplicationsPage] Retiro local:', err.message);
+      notify(err.message || 'No se pudo retirar la postulación.');
+      return;
     }
     setWithdrawnApps((prev) => new Set(prev).add(appId));
     setMobileDetailOpen(false);
@@ -399,6 +399,9 @@ export default function MyApplicationsPage() {
           </section>
 
           {/* ─── Estructura Maestro - Detalle ─── */}
+          {loadError && (
+            <p className="my-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800" role="alert">{loadError}</p>
+          )}
           {filteredApplications.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-line bg-white p-12 text-center my-6">
               <div className="grid size-14 place-items-center rounded-2xl bg-panel text-2xl text-secondary mx-auto mb-3">

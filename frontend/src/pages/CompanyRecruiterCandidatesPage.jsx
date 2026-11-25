@@ -737,7 +737,7 @@ export default function CompanyRecruiterCandidatesPage() {
                                   Vacante: {cand.vacancyTitle} ({cand.vacancyCode})
                                 </span>
                                 <span>•</span>
-                                <span>{site?.shortName || site?.name || 'Sede Bucaramanga'}</span>
+                                <span>{site?.shortName || site?.name || 'Sede sin registrar'}</span>
                                 <span>•</span>
                                 <span>
                                   Postulado:{' '}

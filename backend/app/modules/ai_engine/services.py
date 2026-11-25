@@ -434,9 +434,9 @@ class TalentMatcherService:
             else:
                 salario_str = "A convenir según experiencia"
 
-            sede_loc = f"{vac.sede.ciudad}, {vac.sede.departamento}" if vac.sede else "Bucaramanga, Santander"
-            ciudad = vac.sede.ciudad if vac.sede else "Bucaramanga"
-            departamento = vac.sede.departamento if vac.sede else "Santander"
+            sede_loc = f"{vac.sede.ciudad}, {vac.sede.departamento}" if vac.sede else "Ubicación no especificada"
+            ciudad = vac.sede.ciudad if vac.sede else ""
+            departamento = vac.sede.departamento if vac.sede else ""
 
             competencias_list = [
                 c.competencia.nombre
@@ -462,7 +462,7 @@ class TalentMatcherService:
                 nivel_experiencia=vac.nivel_experiencia or "Sin experiencia",
                 categoria=vac.categoria or "General",
                 requisitos=vac.requisitos if isinstance(vac.requisitos, list) else ([str(vac.requisitos)] if vac.requisitos else []),
-                fecha_publicacion=vac.publicado_en.strftime("%Y-%m-%d") if vac.publicado_en else "2026-01-01",
+                fecha_publicacion=vac.publicado_en.strftime("%Y-%m-%d") if vac.publicado_en else "",
                 publicado_en=vac.publicado_en.isoformat() if vac.publicado_en else None,
                 fecha_cierre=vac.fecha_cierre.isoformat() if getattr(vac, "fecha_cierre", None) else None,
                 descripcion=vac.descripcion or "",
