@@ -1,10 +1,10 @@
+import { NIT_PATTERN } from '../utils/formatters.js';
 import { useEffect, useRef, useState } from 'react';
 import InstitutionPortalLayout from '../components/institution/InstitutionPortalLayout.jsx';
 import InstitutionPageHero from '../components/institution/InstitutionPageHero.jsx';
 import { useInstitutionProfile } from '../hooks/useInstitutionProfile.js';
 import { institutionPhotos } from '../data/institutionImages.js';
 
-const NIT_PATTERN = /^\d{3}\.?\d{3}\.?\d{3}-?\d$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
@@ -180,7 +180,8 @@ export default function InstitutionAdminProfilePage() {
     const next = {};
     if (!form.name.trim()) next.name = 'Escribe el nombre de la institución.';
     if (!form.legalName.trim()) next.legalName = 'Escribe la razón social.';
-    if (!NIT_PATTERN.test(form.nit.trim())) next.nit = 'El NIT debe verse así: 890.201.213-4';
+    // Solo se valida un NIT que se está cambiando: uno ya guardado (y bloqueado) no debe impedir otros cambios
+    if (form.nit.trim() !== saved.nit && !NIT_PATTERN.test(form.nit.trim())) next.nit = 'El NIT debe verse así: 890.201.213-4';
     if (!EMAIL_PATTERN.test(form.contactEmail.trim())) next.contactEmail = 'Escribe un correo válido.';
     setErrors(next);
     return Object.keys(next).length === 0;

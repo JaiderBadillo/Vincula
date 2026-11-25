@@ -5,6 +5,7 @@ import { COLOMBIAN_LOCATIONS } from '../data/profile.js';
 import { COMPANY_SECTORS, COMPANY_SIZES } from '../data/companyAdminData.js';
 import { useCompanyProfile } from '../hooks/useCompanyProfile.js';
 import { authService } from '../services/authService.js';
+import { NIT_PATTERN } from '../utils/formatters.js';
 import RegistrationShell, { ApiError, StepActions, SuccessModal, useRegistrationSteps } from '../components/registration/RegistrationShell.jsx';
 import { ConsentCheck, Field, PasswordPair, PdfDropzone, SelectInput, TextInput, pdfProblem } from '../components/registration/fields.jsx';
 
@@ -94,7 +95,7 @@ export default function CompanyRegistrationPage() {
     const e = {};
     if (!legalName.trim()) e.legalName = 'Ingresa la razón social completa.';
     if (!commercialName.trim()) e.commercialName = 'Ingresa el nombre comercial o marca.';
-    if (!nit.trim()) e.nit = 'Ingresa el NIT con dígito de verificación.';
+    if (!NIT_PATTERN.test(nit.trim())) e.nit = 'Ingresa el NIT con dígito de verificación, así: 900.123.456-7';
     if (!address.trim()) e.address = 'Ingresa la dirección de la sede principal.';
     if (!companyPhone.trim()) e.companyPhone = 'Ingresa el teléfono o PBX corporativo.';
     if (!legalRepName.trim()) e.legalRepName = 'Ingresa los nombres y apellidos del representante legal.';

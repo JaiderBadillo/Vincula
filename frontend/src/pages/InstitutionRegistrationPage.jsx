@@ -4,6 +4,7 @@ import { primaryButton } from '../utils/classes.js';
 import { COLOMBIAN_LOCATIONS } from '../data/profile.js';
 import { useInstitutionProfile } from '../hooks/useInstitutionProfile.js';
 import { authService } from '../services/authService.js';
+import { NIT_PATTERN } from '../utils/formatters.js';
 import RegistrationShell, { ApiError, StepActions, SuccessModal, useRegistrationSteps } from '../components/registration/RegistrationShell.jsx';
 import { ConsentCheck, Field, PasswordPair, PdfDropzone, SelectInput, TextInput, pdfProblem } from '../components/registration/fields.jsx';
 
@@ -100,7 +101,7 @@ export default function InstitutionRegistrationPage() {
     const e = {};
     if (!legalName.trim()) e.legalName = 'Ingresa el nombre oficial de la institución.';
     if (!sniesCode.trim()) e.sniesCode = 'Ingresa el código SNIES emitido por el MEN.';
-    if (!nit.trim()) e.nit = 'Ingresa el NIT con dígito de verificación.';
+    if (!NIT_PATTERN.test(nit.trim())) e.nit = 'Ingresa el NIT con dígito de verificación, así: 890.201.213-4';
     if (!address.trim()) e.address = 'Ingresa la dirección del campus o sede principal.';
     if (!phone.trim()) e.phone = 'Ingresa el teléfono o PBX institucional.';
     if (!rectorName.trim()) e.rectorName = 'Ingresa el nombre del rector(a) o representante legal.';

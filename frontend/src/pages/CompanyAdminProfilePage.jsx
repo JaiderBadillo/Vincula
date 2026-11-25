@@ -1,3 +1,4 @@
+import { NIT_PATTERN } from '../utils/formatters.js';
 import { useEffect, useRef, useState } from 'react';
 import CompanyPortalLayout from '../components/company/CompanyPortalLayout.jsx';
 import CompanyPageHero from '../components/company/CompanyPageHero.jsx';
@@ -6,7 +7,6 @@ import { useCompanyProfile } from '../hooks/useCompanyProfile.js';
 import { COMPANY_SECTORS, COMPANY_SIZES } from '../data/companyAdminData.js';
 import { companyPhotos } from '../data/companyImages.js';
 
-const NIT_PATTERN = /^\d{3}\.?\d{3}\.?\d{3}-?\d$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
@@ -178,7 +178,8 @@ export default function CompanyAdminProfilePage() {
     const next = {};
     if (!form.name.trim()) next.name = 'Escribe el nombre de la empresa.';
     if (!form.legalName.trim()) next.legalName = 'Escribe la razón social.';
-    if (!NIT_PATTERN.test(form.nit.trim())) next.nit = 'El NIT debe verse así: 900.531.210-3';
+    // Solo se valida un NIT que se está cambiando: uno ya guardado (y bloqueado) no debe impedir otros cambios
+    if (form.nit.trim() !== saved.nit && !NIT_PATTERN.test(form.nit.trim())) next.nit = 'El NIT debe verse así: 900.531.210-3';
     if (!EMAIL_PATTERN.test(form.contactEmail.trim())) next.contactEmail = 'Escribe un correo válido.';
     setErrors(next);
     return Object.keys(next).length === 0;

@@ -53,3 +53,6 @@ export function formatInterviewTime(dateTime) {
     timeZone: 'America/Bogota',
   }).format(new Date(dateTime));
 }
+
+// NIT colombiano con dígito de verificación, p. ej. 900.531.210-3
+export const NIT_PATTERN = /^\d{3}\.?\d{3}\.?\d{3}-?\d$/;
