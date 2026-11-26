@@ -60,7 +60,7 @@ export default function VinculaAdminSidebar({
         {
           id: 'admin-instituciones',
           label: 'Aprobar IES (Universidades)',
-          icon: 'bx-graduation',
+          icon: 'bxs-graduation',
           to: '/admin/instituciones',
           badge: metrics.pendingInstitutions > 0 ? String(metrics.pendingInstitutions) : null,
           badgeColor: 'bg-ochre text-cocoa font-bold',

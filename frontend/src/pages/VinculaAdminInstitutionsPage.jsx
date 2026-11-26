@@ -174,7 +174,7 @@ export default function VinculaAdminInstitutionsPage() {
           {filteredInstitutions.length === 0 ? (
             <div className="rounded-2xl border border-sand-line bg-white p-12 text-center space-y-3">
               <span className="grid size-12 place-items-center rounded-xl bg-sand text-2xl text-secondary mx-auto">
-                <i className="bx bx-graduation" />
+                <i className="bx bxs-graduation" />
               </span>
               <h4 className="m-0 font-display text-base font-bold text-ink">
                 No hay instituciones en esta categoría

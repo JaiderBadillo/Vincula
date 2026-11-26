@@ -5,7 +5,7 @@ Mapeado a PostgreSQL / Supabase bajo arquitectura Monolito Modular Híbrido Así
 
 import uuid
 from typing import Dict, Any, List, Optional
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
@@ -78,6 +78,12 @@ class GraduateService:
             return f"Hasta ${max_sal:,.0f} COP".replace(",", ".")
         return "A convenir según experiencia"
 
+    @staticmethod
+    def entrevista_a_mostrar(entrevistas, hoy: date):
+        """La próxima vigente (programada o confirmada); si no hay, la última. Vienen ordenadas por fecha."""
+        vigentes = [e for e in entrevistas if e.estado in ("programada", "confirmada") and e.fecha_entrevista >= hoy]
+        return (vigentes[0], True) if vigentes else (entrevistas[-1], False)
+
     @classmethod
     def _build_application_dto(cls, p: Postulacion) -> GraduateApplicationResponse:
         vac = p.vacante
@@ -102,10 +108,10 @@ class GraduateService:
                 status="Estado no disponible"
             )
 
-        # Entrevista más reciente
         interview_dto = None
         if hasattr(p, "entrevistas") and p.entrevistas:
-            first_ent = p.entrevistas[0]
+            hoy = datetime.now(timezone(timedelta(hours=-5))).date()  # Colombia
+            first_ent, proxima = cls.entrevista_a_mostrar(p.entrevistas, hoy)
             interview_dto = InterviewDetail(
                 id=str(first_ent.id),
                 date=first_ent.fecha_entrevista.strftime("%Y-%m-%d"),
@@ -114,7 +120,7 @@ class GraduateService:
                 meetUrl=first_ent.url_reunion,
                 objective=first_ent.objetivo,
                 status=first_ent.estado,
-                isUpcoming=(first_ent.estado == "programada")
+                isUpcoming=proxima
             )
 
         # No existe una relación entre la postulación y un archivo concreto.
@@ -177,7 +183,7 @@ class GraduateService:
             companyName=emp.nombre_comercial or emp.razon_social if emp else "Empresa Confidencial",
             companyShort=emp.nombre_comercial if emp else "Empresa",
             companySlug=str(emp.id) if emp else None,
-            companyLogoBg="bg-[#0f172a] text-white",
+            companyLogoBg="bg-ink text-white",
             companyCover=emp.url_portada if emp else None,
             companySector=emp.sector_economico if emp else "Tecnología",
             partnershipType=None,

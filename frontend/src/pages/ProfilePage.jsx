@@ -27,7 +27,7 @@ const TABS = [
     id: 'educacion',
     label: 'Educación',
     shortLabel: 'Educación',
-    icon: 'bx-graduation',
+    icon: 'bxs-graduation',
     getBadge: (profile) => {
       const count = 1 + (profile.otherEducation?.length || 0);
       return String(count);

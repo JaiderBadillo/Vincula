@@ -14,7 +14,7 @@ const educationTypeMeta = {
   },
   Diplomado: {
     label: 'Diplomado',
-    icon: 'bx-certificate',
+    icon: 'bx-certification',
     badgeCls: 'bg-amber-50 text-amber-800 border-amber-200',
   },
   'Posgrado / Maestría': {
@@ -133,7 +133,7 @@ export default function EducationSection({ profile, updateProfile, notify }) {
   return (
     <SectionCard
       id="educacion"
-      icon="bx-graduation"
+      icon="bxs-graduation"
       tone="green"
       title="Educación y Certificaciones"
       subtitle="Titulaciones de pregrado, especializaciones, posgrados y certificaciones oficiales."
@@ -248,7 +248,7 @@ export default function EducationSection({ profile, updateProfile, notify }) {
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line-soft pt-3 text-[0.72rem] text-secondary">
               {profile.isVerified ? (
                 <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-800">
-                  <i className="bx bx-shield-check text-green text-sm" />
+                  <i className="bx bx-check-shield text-green text-sm" />
                   Título verificado y registrado en el sistema institucional de graduados
                 </span>
               ) : (

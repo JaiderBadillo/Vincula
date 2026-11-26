@@ -290,7 +290,7 @@ export default function StudentValidationDrawer({
                 <div className="rounded-xl border border-emerald-300 bg-emerald-50/70 p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
-                      <i className="bx bxs-shield-check text-emerald-700 text-base" />
+                      <i className="bx bxs-check-shield text-emerald-700 text-base" />
                       <span>Sello Digital Institucional Expedido</span>
                     </span>
                     <span className="text-[0.65rem] font-bold text-emerald-800 bg-emerald-200/80 rounded px-1.5 py-0.5">

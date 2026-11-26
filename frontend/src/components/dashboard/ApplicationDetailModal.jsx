@@ -364,7 +364,7 @@ export default function ApplicationDetailModal({ application, interview, onClose
                 Nivel académico
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-panel px-3 py-1.5 text-xs font-semibold text-ink">
-                <i className="bx bx-graduation text-sm text-green" aria-hidden="true" />
+                <i className="bx bxs-graduation text-sm text-green" aria-hidden="true" />
                 {application.studyLevel || 'Tecnólogo o Profesional'}
               </span>
             </div>

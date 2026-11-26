@@ -717,7 +717,7 @@ export default function CompanyRecruiterCandidatesPage() {
 
                                 {cand.degreeVerified && (
                                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.2 text-[0.68rem] font-bold text-emerald-800">
-                                    <i className="bx bxs-shield-check text-emerald-600" />
+                                    <i className="bx bxs-check-shield text-emerald-600" />
                                     <span>Título verificado IES</span>
                                   </span>
                                 )}

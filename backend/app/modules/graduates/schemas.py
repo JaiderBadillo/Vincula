@@ -120,7 +120,7 @@ class GraduateApplicationResponse(BaseModel):
     companyName: str
     companyShort: str
     companySlug: Optional[str] = None
-    companyLogoBg: str = "bg-[#0f172a] text-white"
+    companyLogoBg: str = "bg-ink text-white"
     companyCover: Optional[str] = None
     companySector: Optional[str] = None
     partnershipType: Optional[str] = None

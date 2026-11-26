@@ -118,7 +118,7 @@ export default function VinculaAdminDashboardPage() {
                     to="/admin/instituciones"
                     className="inline-flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3.5 py-2 text-xs font-semibold text-white backdrop-blur-xs hover:bg-white/20 no-underline transition-colors cursor-pointer"
                   >
-                    <i className="bx bx-graduation text-sm" />
+                    <i className="bx bxs-graduation text-sm" />
                     <span>Aprobar IES ({metrics.pendingInstitutions})</span>
                   </Link>
                   <ExportExcelButton
@@ -245,7 +245,7 @@ export default function VinculaAdminDashboardPage() {
                 <div className="flex items-center justify-between border-b border-sand-line pb-3">
                   <div className="flex items-center gap-2">
                     <span className="grid size-8 place-items-center rounded-lg bg-ochre/25 text-cocoa text-base">
-                      <i className="bx bx-graduation" />
+                      <i className="bx bxs-graduation" />
                     </span>
                     <h4 className="m-0 font-display text-xs font-bold text-ink">
                       Instituciones IES por Validar ({pendingInstitutions.length})

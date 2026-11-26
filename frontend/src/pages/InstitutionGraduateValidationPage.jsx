@@ -453,7 +453,7 @@ export default function InstitutionGraduateValidationPage() {
                               )}
                               {student.status === 'approved' && (
                                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 text-[0.65rem] font-bold">
-                                  <i className="bx bxs-shield-check text-xs text-emerald-600" />
+                                  <i className="bx bxs-check-shield text-xs text-emerald-600" />
                                   <span>Sello Digital Activo</span>
                                 </span>
                               )}

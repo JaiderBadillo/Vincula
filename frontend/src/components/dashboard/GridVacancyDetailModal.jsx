@@ -402,7 +402,7 @@ export default function GridVacancyDetailModal({
                 {/* Postulación en Víncula */}
                 <div className="rounded-2xl border border-line bg-page/60 p-5 sm:p-6 space-y-2 text-xs sm:text-sm">
                   <h5 className="m-0 font-display text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-1.5">
-                    <i className="bx bxs-shield-check text-green-dark text-base" />
+                    <i className="bx bxs-check-shield text-green-dark text-base" />
                     Postulación en Víncula
                   </h5>
                   <p className="m-0 text-body-muted leading-relaxed">
