@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { departmentForCity } from '../../data/profile.js';
 
 const CITIES = ['Bucaramanga', 'Barrancabermeja', 'Piedecuesta', 'Floridablanca', 'Girón', 'Vélez', 'San Gil', 'Socorro', 'Málaga'];
 
@@ -171,7 +172,7 @@ export default function CampusModal({ isOpen, onClose, onSave, campus }) {
                 list="campus-cities-list"
                 value={form.city}
                 onChange={(e) => {
-                  setForm({ ...form, city: e.target.value });
+                  setForm({ ...form, city: e.target.value, department: departmentForCity(e.target.value) || form.department });
                   if (errors.city) setErrors((prev) => ({ ...prev, city: null }));
                 }}
                 placeholder="Ej: Bucaramanga"

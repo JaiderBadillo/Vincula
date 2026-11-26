@@ -145,6 +145,7 @@ export default function InstitutionAdminAdvisorsPage() {
 
             return {
               id: item.id,
+              userId: item.id_usuario,
               fullName: item.nombre_completo,
               email: item.correo_institucional,
               phone: item.telefono || '',
@@ -168,8 +169,8 @@ export default function InstitutionAdminAdvisorsPage() {
     };
   }, [campuses]);
 
-  function notify(msg) {
-    setToast(msg);
+  function notify(msg, isError = false) {
+    setToast({ msg, isError });
   }
 
   function handleViewChange(view) {
@@ -385,6 +386,7 @@ export default function InstitutionAdminAdvisorsPage() {
 
       const newAdv = {
         id: backendResult.id,
+        userId: backendResult.id_usuario,
         fullName: backendResult.nombre_completo,
         email: backendResult.correo_institucional,
         phone: backendResult.telefono || '',
@@ -393,7 +395,7 @@ export default function InstitutionAdminAdvisorsPage() {
         status: backendResult.estado === 'activo' ? 'active' : 'inactive',
         avatar: null,
       };
-      const updated = [newAdv, ...advisors];
+      const updated = [newAdv, ...advisors.filter((a) => a.id !== newAdv.id)];
       setAdvisors(updated);
       writeStoredAdvisors(updated);
       notify(`Se vinculó a ${newAdv.fullName} con cobertura en ${form.campusIds.length} sede(s).`);
@@ -406,30 +408,35 @@ export default function InstitutionAdminAdvisorsPage() {
     }
   }
 
-  function handleToggleAdvisorStatus(advisor) {
-    const nextStatus = advisor.status === 'active' ? 'inactive' : 'active';
-    if (authService.isAuthenticated() && advisor.id && !advisor.id.startsWith('adv-init')) {
-      institutionService.updateAsesor(advisor.id, {
-        estado: nextStatus === 'active' ? 'activo' : 'inactivo',
-      }).catch((e) => console.warn('Sync status backend:', e));
+  async function handleToggleAdvisorStatus(advisor) {
+    const suspend = advisor.status === 'active';
+    if (suspend && !window.confirm(`¿Suspender el acceso de ${advisor.fullName}? No podrá entrar hasta que lo reactives.`)) return;
+    try {
+      await institutionService.updateAsesor(advisor.id, { estado: suspend ? 'inactivo' : 'activo' });
+    } catch (err) {
+      notify(`No se pudo ${suspend ? 'suspender' : 'reactivar'} a ${advisor.fullName}: ${err.message}`, true);
+      return;
     }
-    const updated = advisors.map((a) => (a.id === advisor.id ? { ...a, status: nextStatus } : a));
+    const updated = advisors.map((a) => (a.id === advisor.id ? { ...a, status: suspend ? 'inactive' : 'active' } : a));
     setAdvisors(updated);
     writeStoredAdvisors(updated);
-    notify(
-      nextStatus === 'active'
-        ? `Se activó la cuenta de ${advisor.fullName}.`
-        : `Se suspendió el acceso de ${advisor.fullName}.`
-    );
+    notify(suspend ? `Se suspendió el acceso de ${advisor.fullName}.` : `Se activó la cuenta de ${advisor.fullName}.`);
   }
 
-  function handleConfirmDeleteAdvisor() {
-    if (!deletingAdvisor) return;
-    const updated = advisors.filter((a) => a.id !== deletingAdvisor.id);
+  async function handleConfirmDeleteAdvisor() {
+    const advisor = deletingAdvisor;
+    if (!advisor) return;
+    setDeletingAdvisor(null);
+    try {
+      await institutionService.updateAsesor(advisor.id, { estado: 'desvinculado' });
+    } catch (err) {
+      notify(`No se pudo desvincular a ${advisor.fullName}: ${err.message}`, true);
+      return;
+    }
+    const updated = advisors.filter((a) => a.id !== advisor.id);
     setAdvisors(updated);
     writeStoredAdvisors(updated);
-    notify(`Se desvinculó a ${deletingAdvisor.fullName}.`);
-    setDeletingAdvisor(null);
+    notify(`Se desvinculó a ${advisor.fullName}.`);
   }
 
   // Campus Handlers
@@ -461,7 +468,7 @@ export default function InstitutionAdminAdvisorsPage() {
       await deleteCampus(deletingCampus.id);
       notify(`Se eliminó la sede "${deletingCampus.name}".`);
     } catch (err) {
-      notify(`No se eliminó "${deletingCampus.name}": ${err.message}`);
+      notify(`No se eliminó "${deletingCampus.name}": ${err.message}`, true);
     }
     setDeletingCampus(null);
   }
@@ -688,13 +695,15 @@ export default function InstitutionAdminAdvisorsPage() {
                             {isActive ? 'Activo' : 'Suspendido'}
                           </span>
 
-                          <button
-                            type="button"
-                            onClick={() => handleToggleAdvisorStatus(advisor)}
-                            className="rounded-xl border border-sand-line bg-cream px-3 py-2 text-xs font-bold text-ink transition-colors hover:bg-sand cursor-pointer"
-                          >
-                            {isActive ? 'Suspender' : 'Reactivar'}
-                          </button>
+                          {advisor.userId !== authService.getCurrentUser()?.id && (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleAdvisorStatus(advisor)}
+                              className="rounded-xl border border-sand-line bg-cream px-3 py-2 text-xs font-bold text-ink transition-colors hover:bg-sand cursor-pointer"
+                            >
+                              {isActive ? 'Suspender' : 'Reactivar'}
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => openEditAdvisorModal(advisor)}
@@ -703,14 +712,16 @@ export default function InstitutionAdminAdvisorsPage() {
                             <i className="bx bx-edit text-sm text-ochre" />
                             Editar
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeletingAdvisor(advisor)}
-                            className="grid size-8 place-items-center rounded-xl border border-sand-line text-secondary transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
-                            title="Desvincular asesor"
-                          >
-                            <i className="bx bx-trash text-sm" />
-                          </button>
+                          {advisor.userId !== authService.getCurrentUser()?.id && (
+                            <button
+                              type="button"
+                              onClick={() => setDeletingAdvisor(advisor)}
+                              className="grid size-8 place-items-center rounded-xl border border-sand-line text-secondary transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
+                              title="Desvincular asesor"
+                            >
+                              <i className="bx bx-trash text-sm" />
+                            </button>
+                          )}
                         </div>
                       </article>
                     </li>
@@ -1314,8 +1325,8 @@ export default function InstitutionAdminAdvisorsPage() {
             role="status"
             className="fixed bottom-6 right-6 z-50 rounded-2xl bg-cocoa px-4.5 py-3 text-xs font-semibold text-white shadow-card flex items-center gap-2 animate-rise-in border border-sand-line"
           >
-            <i className="bx bx-check-circle text-ochre text-base" />
-            <span>{toast}</span>
+            <i className={`bx ${toast.isError ? 'bx-error-circle text-rose-300' : 'bx-check-circle text-ochre'} text-base`} />
+            <span>{toast.msg}</span>
           </div>
         )}
       </div>

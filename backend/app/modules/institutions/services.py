@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
+from app.core.dependencies import restore_sessions, revoke_sessions
 from app.core.security import get_password_hash
 from app.integrations.supabase_storage import SupabaseStorageService
 from app.modules.iam.models import Usuario
@@ -794,7 +795,7 @@ class InstitutionService:
         stmt = (
             select(AsesorIES)
             .options(selectinload(AsesorIES.programas_asignados))
-            .where(AsesorIES.id_institucion == val_uuid)
+            .where(AsesorIES.id_institucion == val_uuid, AsesorIES.estado != "desvinculado")
             .order_by(AsesorIES.nombre_completo)
         )
         res = await session.execute(stmt)
@@ -831,6 +832,14 @@ class InstitutionService:
             select(Usuario).where(Usuario.correo_electronico == correo_clean)
         )).scalar_one_or_none()
         if existing_user:
+            desvinculado = (await session.execute(
+                select(AsesorIES).where(AsesorIES.id_usuario == existing_user.id, AsesorIES.id_institucion == val_ies,
+                                        AsesorIES.estado == "desvinculado")
+            )).scalar_one_or_none()
+            if desvinculado:  # volver a vincular a la misma persona
+                return await cls.update_asesor(session, ies_id, str(desvinculado.id), AsesorUpdateRequest(
+                    estado="activo", password_nueva=payload.password, nombre_completo=payload.nombre_completo,
+                    telefono=payload.telefono, cargo=payload.cargo or "", sedes_ids=payload.sedes_ids, id_sede=payload.id_sede))
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
@@ -922,6 +931,11 @@ class InstitutionService:
                     status_code=status.HTTP_409_CONFLICT,
                     detail={"codigo": "CUENTA_ASESOR_NO_ENCONTRADA", "mensaje": "No se encontró la cuenta de acceso del asesor."}
                 )
+            if payload.estado is not None and payload.estado.strip().lower() != "activo" and user.rol != "asesor_ies":
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail={"codigo": "CUENTA_ADMINISTRADORA", "mensaje": "La cuenta administradora de la institución no se puede suspender ni desvincular."}
+                )
             if new_email and new_email != user.correo_electronico.lower():
                 # El vínculo de Google pertenece al correo anterior.
                 user.google_sub = None
@@ -948,6 +962,9 @@ class InstitutionService:
 
         await session.commit()
         await session.refresh(asesor)
+        if payload.estado is not None:
+            # El token dura 24 h: sin esto una cuenta suspendida seguiría entrando.
+            (restore_sessions if asesor.estado == "activo" else revoke_sessions)(asesor.id_usuario)
 
         p_ids = [str(ap.id_programa) for ap in asesor.programas_asignados] if asesor.programas_asignados else []
         sedes_list = [s.strip() for s in asesor.sedes_cobertura.split(",") if s.strip()] if getattr(asesor, "sedes_cobertura", None) else ([str(asesor.id_sede)] if asesor.id_sede else [])

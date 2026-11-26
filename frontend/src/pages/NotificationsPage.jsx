@@ -27,6 +27,7 @@ export default function NotificationsPage() {
   const [unread, setUnread] = useState(0);
   const [state, setState] = useState('loading'); // loading | ready | error
   const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -54,14 +55,16 @@ export default function NotificationsPage() {
   }
 
   async function markAll() {
-    setItems((list) => list.map((n) => ({ ...n, leida: true })));
-    setUnread(0);
+    setActionError('');
     try {
       await notificationService.markAllRead();
-      notifyBells();
     } catch {
-      load();
+      setActionError('No se pudieron marcar como leídas. Inténtalo de nuevo.');
+      return;
     }
+    setItems((list) => list.map((n) => ({ ...n, leida: true })));
+    setUnread(0);
+    notifyBells();
   }
 
   return (
@@ -82,6 +85,7 @@ export default function NotificationsPage() {
             )}
           </div>
 
+          {actionError && <p role="alert" className="m-0 mb-3 text-sm text-rose-700">{actionError}</p>}
           <div className="overflow-hidden rounded-xl border border-line bg-white">
             {state === 'loading' && <p className="m-0 px-5 py-10 text-center text-sm text-secondary">Cargando…</p>}
             {state === 'error' && (

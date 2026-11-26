@@ -297,7 +297,7 @@ export default function VacancyDetailDrawer({
                     aria-label="Reclutador responsable"
                     className="w-full appearance-none rounded-xl border border-sand-line bg-cream/60 py-2.5 pl-3.5 pr-9 text-sm font-semibold text-ink outline-none transition-colors focus:border-terracotta cursor-pointer"
                   >
-                    <option value="">Sin asignar</option>
+                    {!vacancy.ownerRecruiterId && <option value="">Sin asignar</option>}
                     {recruiters.map((r) => (
                       <option key={r.id} value={r.id}>
                         {r.fullName}

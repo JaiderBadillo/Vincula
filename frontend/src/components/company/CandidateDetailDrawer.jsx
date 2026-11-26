@@ -252,7 +252,7 @@ export default function CandidateDetailDrawer({ candidate, initialTab = 'summary
                       className="w-full rounded-xl border border-sand-line p-3 text-sm text-ink focus:border-terracotta focus:outline-none" />
                     <div className="flex justify-end gap-2">
                       <button type="button" onClick={() => { setNotes(candidate.recruiterNotes || ''); setIsEditingNotes(false); }} className="rounded-lg px-3 py-1.5 text-xs font-semibold text-secondary hover:text-ink cursor-pointer">Cancelar</button>
-                      <button type="button" onClick={() => { onSaveNotes?.(candidate.id, notes); setIsEditingNotes(false); }} className="rounded-lg bg-cocoa px-3.5 py-1.5 text-xs font-bold text-white hover:bg-cocoa/90 cursor-pointer">Guardar</button>
+                      <button type="button" onClick={async () => { if (await onSaveNotes?.(candidate.id, notes)) setIsEditingNotes(false); }} className="rounded-lg bg-cocoa px-3.5 py-1.5 text-xs font-bold text-white hover:bg-cocoa/90 cursor-pointer">Guardar</button>
                     </div>
                   </div>
                 ) : (

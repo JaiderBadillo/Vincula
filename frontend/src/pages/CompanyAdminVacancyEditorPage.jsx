@@ -19,7 +19,9 @@ import {
   VACANCY_EXPERIENCE_LEVELS,
   VACANCY_MODALITIES,
   WORK_SCHEDULE_SUGGESTIONS,
+  changedFields,
   experienceLabel,
+  formatSalary,
   parseCategoryField,
   parseExperienceField,
   resolveCategoryValue,
@@ -77,7 +79,10 @@ function buildInitialForm(vacancy, recruiters, isRecruiter = false) {
       responsibilities: [...(vacancy.responsibilities || [])],
       skillsTech: [...defaultTech],
       skillsSoft: [...defaultSoft],
-      salary: vacancy.salary || '',
+      requirements: [...(vacancy.requirements || [])],
+      salaryMin: vacancy.salaryMin ? String(vacancy.salaryMin) : '',
+      salaryMax: vacancy.salaryMax ? String(vacancy.salaryMax) : '',
+      salaryConfidential: Boolean(vacancy.salaryConfidential),
       workSchedule: vacancy.workSchedule || WORK_SCHEDULE_SUGGESTIONS[0],
       languages: vacancy.languages || LANGUAGE_OPTIONS[0],
       benefits: [...(vacancy.benefits || [])],
@@ -102,7 +107,10 @@ function buildInitialForm(vacancy, recruiters, isRecruiter = false) {
     responsibilities: [],
     skillsTech: [],
     skillsSoft: [],
-    salary: '',
+    requirements: [],
+    salaryMin: '',
+    salaryMax: '',
+    salaryConfidential: false,
     workSchedule: WORK_SCHEDULE_SUGGESTIONS[0],
     languages: LANGUAGE_OPTIONS[0],
     benefits: [],
@@ -142,7 +150,11 @@ function validateStep(stepIndex, form) {
     }
   }
   if (stepIndex === 2) {
-    if (!form.salary.trim()) e.salary = 'Indica el rango salarial o el apoyo económico.';
+    const min = Number(form.salaryMin) || 0;
+    const max = Number(form.salaryMax) || 0;
+    if (min < 0 || max < 0) e.salary = 'El salario no puede ser negativo.';
+    else if (max && !min) e.salary = 'Escribe también el salario mínimo.';
+    else if (max && max < min) e.salary = 'El máximo no puede ser menor que el mínimo.';
     if (!form.closingDate) e.closingDate = 'Define hasta cuándo recibirás hojas de vida.';
     else if (form.closingDate < todayISO()) e.closingDate = 'La fecha de cierre no puede estar en el pasado.';
   }
@@ -258,7 +270,7 @@ function GraduatePreview({ form, companyProfile, site }) {
           </div>
           <div>
             <dt className="text-secondary">Salario</dt>
-            <dd className="m-0 mt-0.5 font-semibold text-ink">{form.salary.trim() || 'A convenir'}</dd>
+            <dd className="m-0 mt-0.5 font-semibold text-ink">{formatSalary(form.salaryMin, form.salaryMax, form.salaryConfidential) || 'A convenir'}</dd>
           </div>
           <div className="col-span-2">
             <dt className="text-secondary">Jornada</dt>
@@ -412,6 +424,7 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
   const [loadingPrograms, setLoadingPrograms] = useState(true);
   const [benefitInput, setBenefitInput] = useState('');
   const [respInput, setRespInput] = useState('');
+  const [reqInput, setReqInput] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -585,6 +598,13 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
     update('responsibilities', form.responsibilities.filter((_, i) => i !== index));
   }
 
+  function addRequirement() {
+    const val = reqInput.trim();
+    if (!val || form.requirements.includes(val)) return;
+    update('requirements', [...form.requirements, val]);
+    setReqInput('');
+  }
+
   function goToStep(index) {
     if (index > maxReached) return;
     setErrors({});
@@ -614,22 +634,26 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
     return true;
   }
 
-  function payload(status) {
-    const combinedSkills = [...new Set([...form.skillsTech, ...form.skillsSoft])];
+  function payload(status, source = form) {
+    const combinedSkills = [...new Set([...source.skillsTech, ...source.skillsSoft])];
     return {
-      ...form,
-      category: resolveCategoryValue(form.category, form.customCategory),
-      experienceLevel: resolveExperienceValue(form.experienceLevel, form.customExperience),
-      title: form.title.trim(),
-      openSpots: Number(form.openSpots) || 1,
-      description: form.description.trim(),
-      salary: form.salary.trim(),
-      ownerRecruiterId: form.ownerRecruiterId || null,
-      agreementId: form.agreementId || null,
+      ...source,
+      category: resolveCategoryValue(source.category, source.customCategory),
+      experienceLevel: resolveExperienceValue(source.experienceLevel, source.customExperience),
+      title: source.title.trim(),
+      openSpots: Number(source.openSpots) || 1,
+      description: source.description.trim(),
+      salaryMin: Number(source.salaryMin) || null,
+      salaryMax: Number(source.salaryMax) || null,
+      ownerRecruiterId: source.ownerRecruiterId || null,
+      agreementId: source.agreementId || null,
       skills: combinedSkills,
       status,
     };
   }
+
+  const pendingChanges = (status) =>
+    changedFields(payload(editing.status, buildInitialForm(editing, recruiters, isRecruiter)), payload(status));
 
   function finish(status, toast) {
     navigate(isRecruiter ? '/empresa/reclutador/vacantes' : '/empresa/admin/vacantes', {
@@ -649,8 +673,8 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
     setSaving(true);
     setSaveError('');
     try {
-      if (isEditing) await updateVacancy(editing.id, payload('draft'));
-      else await addVacancy(payload('draft'));
+      if (!isEditing) await addVacancy(payload('draft'));
+      else if (Object.keys(pendingChanges('draft')).length) await updateVacancy(editing.id, pendingChanges('draft'));
       finish('draft', `Se guardó «${form.title.trim()}» como borrador.`);
     } catch (error) { setSaveError(error.message); }
     finally { setSaving(false); }
@@ -663,8 +687,8 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
     setSaving(true);
     setSaveError('');
     try {
-      if (isEditing) await updateVacancy(editing.id, payload('open'));
-      else await addVacancy(payload('open'));
+      if (!isEditing) await addVacancy(payload('open'));
+      else await updateVacancy(editing.id, pendingChanges('open'));
       finish('open', `Se publicó «${form.title.trim()}». Ya es visible para los egresados.`);
     } catch (error) { setSaveError(error.message); }
     finally { setSaving(false); }
@@ -674,10 +698,12 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
     if (saving) return;
     const status = editing.status;
     if (status !== 'draft' && !validateAll()) return;
+    const changes = pendingChanges(status);
+    if (!Object.keys(changes).length) return finish(status, 'No había cambios por guardar.');
     setSaving(true);
     setSaveError('');
     try {
-      await updateVacancy(editing.id, payload(status));
+      await updateVacancy(editing.id, changes);
       finish(status, `Se guardaron los cambios de «${form.title.trim()}».`);
     } catch (error) { setSaveError(error.message); }
     finally { setSaving(false); }
@@ -1253,14 +1279,38 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
               {step === 2 && (
                 <div className="mt-6 grid gap-6">
                   <div className="grid gap-5 sm:grid-cols-2">
-                    <Field id="vac-salary" label="Rango salarial o apoyo económico" error={errors.salary}>
-                      <input
-                        id="vac-salary"
-                        className={inputClass}
-                        value={form.salary}
-                        onChange={(e) => update('salary', e.target.value)}
-                        placeholder="Ej: $3.800.000 - $4.800.000 COP"
-                      />
+                    <Field
+                      id="vac-salary"
+                      label="Salario o apoyo mensual (COP)"
+                      error={errors.salary}
+                      hint="Déjalo vacío para mostrar «A convenir»."
+                    >
+                      <div className="flex gap-2">
+                        {[['salaryMin', 'Desde', 'vac-salary'], ['salaryMax', 'Hasta', 'vac-salary-max']].map(([field, label, id]) => (
+                          <input
+                            key={field}
+                            id={id}
+                            type="number"
+                            min="0"
+                            step="1000"
+                            inputMode="numeric"
+                            aria-label={`Salario ${label.toLowerCase()}`}
+                            placeholder={label}
+                            className={inputClass}
+                            value={form[field]}
+                            onChange={(e) => { update(field, e.target.value); setErrors((prev) => ({ ...prev, salary: undefined })); }}
+                          />
+                        ))}
+                      </div>
+                      <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-ink">
+                        <input
+                          type="checkbox"
+                          className="size-4 cursor-pointer accent-terracotta"
+                          checked={form.salaryConfidential}
+                          onChange={(e) => update('salaryConfidential', e.target.checked)}
+                        />
+                        <span>No mostrar el salario (confidencial)</span>
+                      </label>
                     </Field>
 
                     <Field
@@ -1331,6 +1381,55 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
                         ))}
                       </select>
                     </Field>
+                  </div>
+
+                  {/* Requisitos */}
+                  <div>
+                    <label htmlFor="vac-requirement" className="block text-sm font-semibold text-ink">
+                      Requisitos del cargo
+                    </label>
+                    <p className="m-0 mt-0.5 text-xs text-secondary">
+                      Lo que debe cumplir quien se postule: título, certificaciones, disponibilidad…
+                    </p>
+                    {form.requirements.length > 0 && (
+                      <ul className="m-0 mt-3 grid list-none gap-2 p-0">
+                        {form.requirements.map((req) => (
+                          <li key={req} className="flex items-start justify-between gap-2 rounded-lg border border-sand-line bg-white p-2.5 text-xs text-ink">
+                            <span>{req}</span>
+                            <button
+                              type="button"
+                              onClick={() => update('requirements', form.requirements.filter((x) => x !== req))}
+                              className="text-secondary hover:text-rose-600 cursor-pointer"
+                              aria-label={`Eliminar requisito: ${req}`}
+                            >
+                              <i className="bx bx-trash text-sm" aria-hidden="true" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="mt-2.5 flex gap-2">
+                      <input
+                        id="vac-requirement"
+                        className={inputClass}
+                        value={reqInput}
+                        onChange={(e) => setReqInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addRequirement();
+                          }
+                        }}
+                        placeholder="Ej: Tarjeta profesional vigente"
+                      />
+                      <button
+                        type="button"
+                        onClick={addRequirement}
+                        className="shrink-0 rounded-lg border border-sand-line bg-cream px-4 text-xs font-bold text-ink transition-colors hover:bg-sand cursor-pointer"
+                      >
+                        Agregar
+                      </button>
+                    </div>
                   </div>
 
                   {/* Beneficios Corporativos */}
@@ -1425,7 +1524,7 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
                         value={form.ownerRecruiterId}
                         onChange={(e) => update('ownerRecruiterId', e.target.value)}
                       >
-                        <option value="">Sin asignar por ahora</option>
+                        {!editing?.ownerRecruiterId && <option value="">Sin asignar por ahora</option>}
                         {recruiters
                           .filter((r) => r.status !== 'suspended' || r.id === form.ownerRecruiterId)
                           .map((r) => (
@@ -1478,7 +1577,7 @@ export default function CompanyAdminVacancyEditorPage({ role = 'admin' }) {
 
                       <dt className="text-secondary">Salario & Cierre</dt>
                       <dd className="m-0 text-ink">
-                        {form.salary || 'A convenir'} · {form.closingDate ? formatApplicationDate(form.closingDate) : 'Sin fecha'}
+                        {formatSalary(form.salaryMin, form.salaryMax, form.salaryConfidential) || 'A convenir'} · {form.closingDate ? formatApplicationDate(form.closingDate) : 'Sin fecha'}
                       </dd>
 
                       <dt className="text-secondary">Responsable</dt>

@@ -114,45 +114,6 @@ export function useCompanyRecruiters() {
     });
   }, []);
 
-  const syncRecruitersForSite = useCallback((siteId, selectedRecruiterIds) => {
-    setRecruiters((prev) => {
-      const next = prev.map((r) => {
-        const isSelected = selectedRecruiterIds.includes(r.id);
-        const currentSites = r.siteIds || [];
-        const currentlyHas = currentSites.includes(siteId);
-
-        let newSites = currentSites;
-        if (isSelected && !currentlyHas) {
-          newSites = [...currentSites, siteId];
-        } else if (!isSelected && currentlyHas) {
-          newSites = currentSites.filter((id) => id !== siteId);
-        }
-
-        if (newSites !== currentSites && authService.isAuthenticated()) {
-          companyService.assignSedesToRecruiter(r.id, newSites).catch(() => {});
-        }
-
-        return newSites !== currentSites ? { ...r, siteIds: newSites } : r;
-      });
-      writeRecruiters(next);
-      return next;
-    });
-  }, []);
-
-  const removeSiteFromAllRecruiters = useCallback((siteId) => {
-    setRecruiters((prev) => {
-      const next = prev.map((r) => {
-        const filtered = (r.siteIds || []).filter((id) => id !== siteId);
-        if (filtered.length !== (r.siteIds || []).length && authService.isAuthenticated()) {
-          companyService.assignSedesToRecruiter(r.id, filtered).catch(() => {});
-        }
-        return { ...r, siteIds: filtered };
-      });
-      writeRecruiters(next);
-      return next;
-    });
-  }, []);
-
   const resetRecruiters = useCallback(() => {
     writeRecruiters([]);
     setRecruiters([]);
@@ -164,8 +125,6 @@ export function useCompanyRecruiters() {
     error,
     addRecruiter,
     updateRecruiter,
-    syncRecruitersForSite,
-    removeSiteFromAllRecruiters,
     resetRecruiters,
   };
 }

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 import math
 import uuid
 
+from fastapi import HTTPException
 from sqlalchemy import select, update, desc, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +31,15 @@ from app.modules.superadmin.schemas import (
 from app.integrations.supabase_storage import SupabaseStorageService
 from app.integrations.transactional_notifications import send_vincula_email
 from app.modules.notifications import services as avisos
+
+
+def _impedir_rechazo_de_aprobada(entidad) -> None:
+    """Rechazar es para solicitudes; a una cuenta ya aprobada se le corta el acceso desde Moderación."""
+    if entidad.estado == "aprobado":
+        raise HTTPException(
+            status_code=409,
+            detail="Esta cuenta ya está aprobada y no se puede rechazar. Para cortar el acceso usa «Suspender cuenta» en Moderación.",
+        )
 
 
 class SuperAdminService:
@@ -450,6 +460,7 @@ class SuperAdminService:
         emp = (await session.execute(select(Empresa).where(Empresa.id == comp_uuid))).scalar_one_or_none()
         if not emp:
             raise ValueError(f"Empresa con ID {company_id} no encontrada.")
+        _impedir_rechazo_de_aprobada(emp)
 
         emp.estado = "rechazado"
 
@@ -619,6 +630,7 @@ class SuperAdminService:
         ies = (await session.execute(select(Institucion).where(Institucion.id == ies_uuid))).scalar_one_or_none()
         if not ies:
             raise ValueError(f"Institución con ID {ies_id} no encontrada.")
+        _impedir_rechazo_de_aprobada(ies)
 
         ies.estado = "rechazado"
 

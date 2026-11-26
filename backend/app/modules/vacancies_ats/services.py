@@ -13,7 +13,7 @@ import uuid
 import time
 import re
 from datetime import datetime, date, timedelta, timezone
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, desc, or_, and_, text
@@ -492,7 +492,7 @@ class VacancyATSService:
             total_postulantes=0,
             descripcion=payload.descripcion.strip(),
             responsabilidades=payload.responsabilidades or [],
-            requisitos=payload.requisitos or ["Título profesional o estudiante de últimos semestres"],
+            requisitos=payload.requisitos or [],
             beneficios=payload.beneficios or [],
             idiomas_requeridos=payload.idiomas_requeridos or [],
             estado=estado_final,
@@ -510,31 +510,12 @@ class VacancyATSService:
                 if not any(c.nombre.lower() == hab.lower() for c in competencias_a_procesar):
                     competencias_a_procesar.append(CompetenciaItem(nombre=hab, categoria="tecnica", es_obligatoria=True))
 
-        for c_item in competencias_a_procesar:
-            c_name = c_item.nombre.strip()
-            slug = _slugify(c_name)
-            if not slug:
-                continue
-
-            comp_db = (await session.execute(
-                select(TaxonomiaCompetencia).where(TaxonomiaCompetencia.etiqueta_normalizada == slug)
-            )).scalar_one_or_none()
-
-            if not comp_db:
-                comp_db = TaxonomiaCompetencia(
-                    nombre=c_name,
-                    categoria=c_item.categoria if c_item.categoria in ("tecnica", "blanda") else "tecnica",
-                    etiqueta_normalizada=slug
-                )
-                session.add(comp_db)
-                await session.flush()
-
-            # Relacionar competencia a vacante
+        for id_competencia, es_obligatoria in await cls._resolve_competencias(session, competencias_a_procesar):
             session.add(
                 CompetenciaExigidaVacante(
                     id_vacante=nueva_vacante.id,
-                    id_competencia=comp_db.id,
-                    es_obligatoria=c_item.es_obligatoria
+                    id_competencia=id_competencia,
+                    es_obligatoria=es_obligatoria
                 )
             )
 
@@ -644,6 +625,46 @@ class VacancyATSService:
 
         return cls._build_vacante_response(vacante)
 
+    @staticmethod
+    async def _owned_id(session: AsyncSession, model, raw_id, company_uuid, codigo: str, mensaje: str):
+        """Id de una sede o reclutador, solo si pertenece a la empresa."""
+        try:
+            buscado = uuid.UUID(str(raw_id))
+        except ValueError:
+            buscado = None
+        encontrado = None
+        if buscado:
+            encontrado = (await session.execute(
+                select(model.id).where(model.id == buscado, model.id_empresa == company_uuid)
+            )).scalar_one_or_none()
+        if not encontrado:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                                detail={"codigo": codigo, "mensaje": mensaje})
+        return encontrado
+
+    @classmethod
+    async def _resolve_competencias(cls, session: AsyncSession, items) -> List[Tuple[Any, bool]]:
+        """Devuelve (id de la competencia, es obligatoria), creando en la taxonomía las que no existan."""
+        resueltas: Dict[Any, bool] = {}
+        for item in items:
+            nombre = item.nombre.strip()
+            slug = _slugify(nombre)
+            if not slug:
+                continue
+            competencia = (await session.execute(
+                select(TaxonomiaCompetencia).where(TaxonomiaCompetencia.etiqueta_normalizada == slug)
+            )).scalar_one_or_none()
+            if not competencia:
+                competencia = TaxonomiaCompetencia(
+                    nombre=nombre,
+                    categoria=item.categoria if item.categoria in ("tecnica", "blanda") else "tecnica",
+                    etiqueta_normalizada=slug
+                )
+                session.add(competencia)
+                await session.flush()
+            resueltas.setdefault(competencia.id, item.es_obligatoria)
+        return list(resueltas.items())
+
     @classmethod
     async def _link_programs_by_name(cls, session: AsyncSession, vacante_id, nombres, ya_vinculados: set) -> None:
         """Vincula la vacante a los programas registrados (de cualquier IES) cuyo nombre coincide."""
@@ -686,9 +707,10 @@ class VacancyATSService:
             vacante.tipo_contrato = payload.tipo_contrato.strip()
         if payload.nivel_experiencia is not None:
             vacante.nivel_experiencia = payload.nivel_experiencia.strip()
-        if payload.salario_minimo is not None:
+        # null explícito = quitar el salario ("A convenir")
+        if "salario_minimo" in payload.model_fields_set:
             vacante.salario_minimo = payload.salario_minimo
-        if payload.salario_maximo is not None:
+        if "salario_maximo" in payload.model_fields_set:
             vacante.salario_maximo = payload.salario_maximo
         if payload.salario_es_confidencial is not None:
             vacante.salario_es_confidencial = payload.salario_es_confidencial
@@ -710,6 +732,19 @@ class VacancyATSService:
             vacante.idiomas_requeridos = payload.idiomas_requeridos
         if payload.fecha_cierre is not None:
             vacante.fecha_cierre = datetime.strptime(payload.fecha_cierre, "%Y-%m-%d").date()
+        if payload.id_sede is not None:
+            vacante.id_sede = await cls._owned_id(session, SedeEmpresa, payload.id_sede, val_comp,
+                                                  "SEDE_NO_AUTORIZADA", "La sede indicada no pertenece a tu empresa.")
+        if "id_reclutador_responsable" in payload.model_fields_set:
+            vacante.id_reclutador_responsable = await cls._owned_id(
+                session, ReclutadorEmpresa, payload.id_reclutador_responsable, val_comp,
+                "RECLUTADOR_REQUERIDO", "La vacante necesita un reclutador responsable de tu empresa.")
+        if payload.competencias is not None:
+            actuales = {c.id_competencia: c for c in vacante.competencias}
+            vacante.competencias = [
+                actuales.get(id_competencia) or CompetenciaExigidaVacante(id_competencia=id_competencia, es_obligatoria=obligatoria)
+                for id_competencia, obligatoria in await cls._resolve_competencias(session, payload.competencias)
+            ]
         if "id_convenio" in payload.model_fields_set:
             if payload.id_convenio is None:
                 vacante.id_convenio = None  # volver a abrirla a todos los egresados
@@ -723,8 +758,8 @@ class VacancyATSService:
             await cls._link_programs_by_name(session, vacante.id, payload.programas_afines_nombres, set())
 
         await session.commit()
-        await session.refresh(vacante)
-        return cls._build_vacante_response(vacante)
+        session.expunge_all()  # releer sede, responsable y competencias ya guardados
+        return await cls.get_company_vacancy_detail(session, company_id, vacancy_id)
 
     @classmethod
     async def update_vacancy_status(

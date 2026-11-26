@@ -8,6 +8,22 @@ const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:800
 export const AUTH_TOKEN_KEY = 'vincula.auth.token';
 export const AUTH_USER_KEY = 'vincula.auth.user';
 
+// Copias locales de datos de los portales (empresas, asesores, sedes, correos…).
+// No incluye borradores, vacantes guardadas ni preferencias: solo existen en el navegador.
+export const PORTAL_CACHE_PREFIXES = [
+  'vincula.admin.companies',
+  'vincula.admin.institutions',
+  'vincula.institution.profile',
+  'vincula.institution.campuses',
+  'vincula.institution.faculties',
+  'vincula.institution.programs',
+  'vincula.institution.advisors',
+  'vincula.company.profile',
+  'vincula.company.recruiters',
+  'vincula.company.talent_pool',
+  'vincula.profile.v1',
+];
+
 const FIELD_NAMES_ES = {
   correo: 'Correo electrónico',
   email: 'Correo electrónico',
@@ -156,7 +172,9 @@ class AuthService {
     try {
       localStorage.removeItem(AUTH_TOKEN_KEY);
       localStorage.removeItem(AUTH_USER_KEY);
-      localStorage.removeItem('vincula.profile.v1');
+      Object.keys(localStorage)
+        .filter((key) => PORTAL_CACHE_PREFIXES.some((prefix) => key.startsWith(prefix)))
+        .forEach((key) => localStorage.removeItem(key));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('vincula:profile-updated', { detail: null }));
       }

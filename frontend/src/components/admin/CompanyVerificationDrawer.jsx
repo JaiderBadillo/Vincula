@@ -481,7 +481,7 @@ export default function CompanyVerificationDrawer({
           ) : (
             <>
               <div className="flex items-center gap-2">
-                {!isRejected && (
+                {!isRejected && !isApproved && (
                   <button
                     type="button"
                     onClick={() => onReject(company)}

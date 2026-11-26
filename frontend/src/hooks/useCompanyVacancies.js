@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { vacancyService } from '../services/vacancyService.js';
 import { authService } from '../services/authService.js';
+import { formatSalary } from '../data/companyVacanciesData.js';
+
+const toCompetencias = (skills = [], skillsSoft = []) =>
+  skills.map((nombre) => ({ nombre, categoria: skillsSoft.includes(nombre) ? 'blanda' : 'tecnica', es_obligatoria: true }));
+
+const toIdiomas = (value) => (value && value !== 'No requerido' ? [value] : []);
 
 const SYNC_EVENT = 'vincula:company-vacancies-updated';
 
@@ -49,12 +55,13 @@ function mapApiVacancyToLocal(v) {
     siteId: v.id_sede,
     ownerRecruiterId: v.id_reclutador_responsable,
     status: v.estado === 'abierta' ? 'open' : v.estado === 'borrador' ? 'draft' : v.estado === 'pausada' ? 'paused' : v.estado === 'inhabilitada' ? 'disabled' : 'closed',
-    modality: (v.modalidad || 'presencial').toLowerCase(),
+    modality: v.modalidad || 'Presencial',
     contractType: v.tipo_contrato,
     experienceLevel: v.nivel_experiencia || '',
     salaryMin: v.salario_minimo,
     salaryMax: v.salario_maximo,
-    salary: v.salario_es_confidencial ? 'Confidencial' : v.salario_minimo && v.salario_maximo ? `$${v.salario_minimo.toLocaleString('es-CO')} - $${v.salario_maximo.toLocaleString('es-CO')}` : '',
+    salaryConfidential: Boolean(v.salario_es_confidencial),
+    salary: formatSalary(v.salario_minimo, v.salario_maximo, v.salario_es_confidencial),
     openSpots: v.cupos_disponibles,
     workSchedule: v.jornada_laboral || '',
     description: v.descripcion,
@@ -150,19 +157,17 @@ export function useCompanyVacancies() {
     if (!data.siteId) throw new Error('Selecciona una sede registrada antes de guardar la vacante.');
     if (!data.description?.trim() || data.description.trim().length < 15) throw new Error('Escribe una descripción de al menos 15 caracteres.');
     if (!data.closingDate) throw new Error('Selecciona la fecha de cierre de la vacante.');
-      const modalityApi = data.modality === 'remoto' ? 'Remoto' : data.modality === 'hibrido' ? 'Híbrido' : 'Presencial';
-
       const apiPayload = {
         titulo: data.title.trim(),
         id_sede: data.siteId,
         id_reclutador_responsable: data.ownerRecruiterId || null,
         categoria: data.category || 'Tecnología',
-        modalidad: modalityApi,
+        modalidad: data.modality || 'Presencial',
         tipo_contrato: data.contractType || 'Término Indefinido',
         nivel_experiencia: data.experienceLevel?.trim() || 'Sin experiencia',
         salario_minimo: data.salaryMin ? Number(data.salaryMin) : null,
         salario_maximo: data.salaryMax ? Number(data.salaryMax) : null,
-        salario_es_confidencial: Boolean(data.salary === 'Confidencial'),
+        salario_es_confidencial: Boolean(data.salaryConfidential),
         periodo_salario: 'Mensual',
         jornada_laboral: data.workSchedule || 'Tiempo Completo',
         cupos_disponibles: data.openSpots ? Number(data.openSpots) : 1,
@@ -170,16 +175,12 @@ export function useCompanyVacancies() {
         responsabilidades: data.responsibilities || [],
         requisitos: data.requirements || [],
         beneficios: data.benefits || [],
-        idiomas_requeridos: data.languages && data.languages !== 'No requerido' ? [data.languages] : [],
+        idiomas_requeridos: toIdiomas(data.languages),
         fecha_cierre: data.closingDate,
         estado: data.status === 'open' ? 'abierta' : 'borrador',
         programas_afines_nombres: data.targetPrograms || [],
         id_convenio: data.agreementId || null,
-        competencias: (data.skills || []).map((s) => ({
-          nombre: s,
-          categoria: (data.skillsSoft || []).includes(s) ? 'blanda' : 'tecnica',
-          es_obligatoria: true,
-        })),
+        competencias: toCompetencias(data.skills, data.skillsSoft),
       };
 
     const saved = await vacancyService.createVacancy(apiPayload);
@@ -199,6 +200,7 @@ export function useCompanyVacancies() {
       title: 'titulo', siteId: 'id_sede', ownerRecruiterId: 'id_reclutador_responsable',
       category: 'categoria', modality: 'modalidad', contractType: 'tipo_contrato',
       experienceLevel: 'nivel_experiencia', salaryMin: 'salario_minimo', salaryMax: 'salario_maximo',
+      salaryConfidential: 'salario_es_confidencial',
       workSchedule: 'jornada_laboral', openSpots: 'cupos_disponibles', description: 'descripcion',
       responsibilities: 'responsabilidades', requirements: 'requisitos', benefits: 'beneficios',
       closingDate: 'fecha_cierre', agreementId: 'id_convenio',
@@ -206,10 +208,9 @@ export function useCompanyVacancies() {
     Object.entries(fields).forEach(([source, target]) => {
       if (Object.prototype.hasOwnProperty.call(changes, source)) patch[target] = changes[source];
     });
-    if (changes.skills) patch.competencias = changes.skills.map((nombre) => ({ nombre, categoria: 'tecnica', es_obligatoria: true }));
+    if (changes.skills) patch.competencias = toCompetencias(changes.skills, changes.skillsSoft);
     if (changes.targetPrograms) patch.programas_afines_nombres = changes.targetPrograms;
-    if (changes.languages) patch.idiomas_requeridos = Array.isArray(changes.languages) ? changes.languages : [changes.languages];
-    if (changes.salary === 'Confidencial') patch.salario_es_confidencial = true;
+    if (changes.languages !== undefined) patch.idiomas_requeridos = toIdiomas(changes.languages);
     let saved = null;
     if (Object.keys(patch).length) saved = await vacancyService.updateVacancy(id, patch);
     if (changes.status) {

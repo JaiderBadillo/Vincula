@@ -11,6 +11,7 @@ export default function NotificationBell({ borderClass = 'border-line' }) {
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
   const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
   const [loaded, setLoaded] = useState(false);
   const rootRef = useRef(null);
   const navigate = useNavigate();
@@ -63,13 +64,15 @@ export default function NotificationBell({ borderClass = 'border-line' }) {
   }
 
   async function markAll() {
-    setItems((list) => list.map((n) => ({ ...n, leida: true })));
-    setUnread(0);
+    setActionError('');
     try {
       await notificationService.markAllRead();
     } catch {
-      load();
+      setActionError('No se pudieron marcar como leídas. Inténtalo de nuevo.');
+      return;
     }
+    setItems((list) => list.map((n) => ({ ...n, leida: true })));
+    setUnread(0);
   }
 
   return (
@@ -101,6 +104,7 @@ export default function NotificationBell({ borderClass = 'border-line' }) {
             )}
           </div>
 
+          {actionError && <p role="alert" className="m-0 border-b border-line-soft px-4 py-2 text-xs text-rose-700">{actionError}</p>}
           <div className="max-h-96 overflow-y-auto">
             {error ? (
               <div className="px-4 py-6 text-center text-sm text-secondary">

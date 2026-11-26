@@ -186,6 +186,26 @@ export function resolveExperienceValue(experienceLevel, customExperience = '') {
   return experienceLabel(experienceLevel);
 }
 
+/** Texto del salario a partir de lo que se guarda; '' = sin salario ("A convenir"). */
+export function formatSalary(min, max, confidential = false) {
+  if (confidential) return 'Confidencial';
+  const money = (value) => `$${Number(value).toLocaleString('es-CO')}`;
+  if (Number(min) && Number(max)) return `${money(min)} - ${money(max)}`;
+  return Number(min) ? `Desde ${money(min)}` : '';
+}
+
+/** Solo lo que la persona cambió al editar: lo demás se queda como está en el servidor. */
+export function changedFields(before, after) {
+  const changes = Object.fromEntries(
+    Object.entries(after).filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(before[key]))
+  );
+  // Las habilidades viajan juntas: la lista de blandas dice la categoría de cada una.
+  if (changes.skills || changes.skillsSoft) Object.assign(changes, { skills: after.skills, skillsSoft: after.skillsSoft });
+  // Campos que solo existen en el formulario: no se guardan por sí solos.
+  ['customCategory', 'customExperience', 'skillsTech'].forEach((key) => delete changes[key]);
+  return changes;
+}
+
 export function experienceLabel(value, customValue = '') {
   const cleaned = String(value || '').trim();
   if (!cleaned) return 'Sin definir';

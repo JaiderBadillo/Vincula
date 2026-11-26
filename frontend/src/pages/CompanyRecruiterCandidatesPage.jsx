@@ -200,8 +200,8 @@ export default function CompanyRecruiterCandidatesPage() {
   }
 
   async function handleSaveNotes(candidateId, noteText) {
-    try { await addCandidateNote(candidateId, noteText); setToast('Nota guardada en la cuenta.'); }
-    catch (error) { setToast(`No se guardó la nota: ${error.message}`); }
+    try { await addCandidateNote(candidateId, noteText); setToast('Nota guardada en la cuenta.'); return true; }
+    catch (error) { setToast(`No se guardó la nota: ${error.message}`); return false; }
   }
 
   function handleFilterVacancyChange(val) {

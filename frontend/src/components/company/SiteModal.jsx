@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AVAILABLE_CITIES } from '../../data/companySitesData.js';
+import { departmentForCity } from '../../data/profile.js';
 
 const inputClass =
   'w-full rounded-xl border border-sand-line bg-cream/50 px-3.5 py-2.5 text-xs text-ink placeholder:text-secondary focus:border-terracotta focus:bg-white focus:outline-none transition-colors';
@@ -230,7 +231,10 @@ export default function SiteModal({ isOpen, onClose, onSave, site }) {
               <select
                 id="site-city"
                 value={form.city}
-                onChange={(e) => updateField('city', e.target.value)}
+                onChange={(e) => {
+                  updateField('city', e.target.value);
+                  updateField('department', departmentForCity(e.target.value) || form.department);
+                }}
                 className={`${inputClass} cursor-pointer`}
               >
                 {AVAILABLE_CITIES.map((c) => (

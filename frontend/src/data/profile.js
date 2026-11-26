@@ -56,6 +56,14 @@ export const contractTypes = ['Término indefinido', 'Término fijo', 'Prestaci�
 export const availabilityOptions = ['Inmediata', '15 días', '30 días', 'Más de 30 días'];
 export const cityOptions = ['Bucaramanga', 'Floridablanca', 'Girón', 'Piedecuesta', 'Bogotá D.C.', 'Medellín', 'Cali', 'Barranquilla'];
 
+/** Departamento de una ciudad. Si el nombre se repite gana Santander; null si no se reconoce. */
+export function departmentForCity(city) {
+  const wanted = String(city || '').trim().toLowerCase();
+  const found = Object.keys(COLOMBIAN_LOCATIONS).filter((d) => COLOMBIAN_LOCATIONS[d].some((c) => c.toLowerCase() === wanted));
+  if (found.includes('Santander')) return 'Santander';
+  return found.length === 1 ? found[0] : null;
+}
+
 export const COLOMBIAN_LOCATIONS = {
   Amazonas: [
     'Leticia',

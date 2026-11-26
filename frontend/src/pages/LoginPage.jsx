@@ -224,49 +224,8 @@ export default function LoginPage() {
       navigate(targetRoute, { replace: true });
     } catch (apiErr) {
       setIsLoading(false);
-
-      // Si fue error de credenciales explícito desde FastAPI (401)
-      if (apiErr.status === 401) {
-        setAuthError(apiErr.message || 'Correo o contraseña incorrectos.');
-        return;
-      }
-
-      // Si fue error de validación de campos desde FastAPI (422)
-      if (apiErr.status === 422) {
-        setAuthError(apiErr.message || 'Los datos ingresados no cumplen con los requisitos mínimos.');
-        return;
-      }
-
-      // Si el backend FastAPI no está corriendo (error de conexión)
-      // se intenta el fallback local de contingencia para no interrumpir el flujo del usuario
-      console.warn('Backend FastAPI no respondió, verificando credenciales locales:', apiErr.message);
-
-      const matchedRole = Object.values(credentials).find(
-        (c) => c.email.toLowerCase() === trimmedEmail.toLowerCase()
-      );
-
-      if (matchedRole && matchedRole.password === password) {
-        authService.saveSession({
-          access_token: 'local-session-' + matchedRole.roleId,
-          user_id: matchedRole.roleId,
-          nombre: matchedRole.name,
-          correo: matchedRole.email,
-          rol: matchedRole.roleId,
-          estado_validacion: matchedRole.roleId === 'company_quarantine' ? 'pendiente' : 'aprobado',
-          id_entidad: 'local-entidad',
-        });
-
-        const redirectUrl = searchParams.get('redirect');
-        if (redirectUrl && redirectUrl.startsWith('/')) {
-          navigate(redirectUrl, { replace: true });
-          return;
-        }
-
-        navigate(matchedRole.portalRoute || '/dashboard', { replace: true });
-        return;
-      }
-
-      setAuthError(apiErr.message || 'No fue posible conectar con el servidor backend.');
+      // Sin status no hubo respuesta del servidor. Nunca se crea una sesión sin él.
+      setAuthError(apiErr.status ? apiErr.message : 'No fue posible conectar con el servidor. Inténtalo de nuevo en un momento.');
     }
   }
 
