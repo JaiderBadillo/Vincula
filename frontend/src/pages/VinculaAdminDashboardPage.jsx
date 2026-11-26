@@ -284,7 +284,7 @@ export default function VinculaAdminDashboardPage() {
                             SNIES: {ies.sniesCode} · {ies.city}
                           </p>
                           <p className="m-0 text-[0.68rem] text-cocoa">
-                            {ies.academicCharacter} ({ies.programsCount} programas)
+                            {ies.academicCharacter}
                           </p>
                         </div>
 

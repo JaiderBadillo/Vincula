@@ -314,8 +314,8 @@ export default function PlatformPeriodicAnalytics({ metrics }) {
             </p>
           </div>
           <div className="mt-2 pt-2 border-t border-sand-line/60 flex items-center justify-between text-xs">
-            <span className="text-secondary">Total IES en convenio:</span>
-            <strong className="text-cocoa">{latestLifetime.cumInstitutions} aliadas</strong>
+            <span className="text-secondary">Total acumulado en red:</span>
+            <strong className="text-cocoa">{latestLifetime.cumInstitutions} IES</strong>
           </div>
         </div>
 

@@ -48,7 +48,7 @@ export default function VinculaAdminInstitutionsPage() {
   const heroStats = [
     { label: 'IES Pendientes', value: String(metrics.pendingInstitutions) },
     { label: 'IES Acreditadas Activas', value: String(metrics.approvedInstitutions) },
-    { label: 'Convenios Marco', value: String(metrics.activeAgreements) },
+    { label: 'Convenios Marco', value: String(metrics.activeAgreements ?? '—') },
     { label: 'Total en Plataforma', value: String(metrics.totalInstitutionsCount) },
   ];
 
@@ -252,13 +252,8 @@ export default function VinculaAdminInstitutionsPage() {
                           </span>
                         )}
 
-                        <span className="inline-flex items-center gap-1 text-[0.68rem] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                          <i className="bx bx-check-shield text-xs" />
-                          <span>SNIES Oficial Activo</span>
-                        </span>
-
                         <span className="text-[0.68rem] text-secondary">
-                          {ies.programsCount} programas de formación · {ies.documents?.length || 0} soportes radicados
+                          {ies.documents?.length || 0} soportes radicados
                         </span>
                       </div>
 
