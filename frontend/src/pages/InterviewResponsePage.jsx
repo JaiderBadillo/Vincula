@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { extractErrorMessage } from '../services/authService.js';
+import { isPastInterview } from '../utils/formatters.js';
 import BrandMark from '../components/common/BrandMark.jsx';
 
 const API = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -55,8 +56,9 @@ export default function InterviewResponsePage() {
     }
   }
 
-  const [statusText, statusTone] = STATUS[info?.estado] || ['', ''];
-  const open = info && ['programada', 'confirmada', 'reprogramada'].includes(info.estado);
+  const past = isPastInterview(info?.fecha);
+  const [statusText, statusTone] = (past ? ['Esta entrevista ya pasó', 'text-secondary'] : STATUS[info?.estado]) || ['', ''];
+  const open = info && !past && ['programada', 'confirmada', 'reprogramada'].includes(info.estado);
   const rows = info ? [
     ['Vacante', info.vacante], ['Empresa', info.empresa], ['Fecha', longDate(info.fecha)], ['Hora', `${info.franja} (hora de Colombia)`],
     ['Modalidad', info.modalidad], [info.modalidad === 'Virtual' ? 'Enlace' : 'Lugar', info.lugar_o_enlace || 'Por confirmar'],
@@ -81,7 +83,7 @@ export default function InterviewResponsePage() {
                 <div key={k} className="flex gap-3 px-4 py-2.5">
                   <dt className="w-28 shrink-0 text-secondary">{k}</dt>
                   <dd className="m-0 min-w-0 break-words font-semibold text-ink">
-                    {k === 'Enlace' && /^https?:\/\//.test(v) ? <a href={v} target="_blank" rel="noreferrer noopener" className="text-terracotta">{v}</a> : v}
+                    {k === 'Enlace' && !past && /^https?:\/\//.test(v) ? <a href={v} target="_blank" rel="noreferrer noopener" className="text-terracotta">{v}</a> : v}
                   </dd>
                 </div>
               ))}

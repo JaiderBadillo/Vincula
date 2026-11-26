@@ -86,7 +86,7 @@ export default function CompanyAdminVacanciesPage() {
         value: vacancies
           .filter((v) => v.status !== 'closed')
           .reduce((acc, v) => acc + (v.applicantsCount || 0), 0),
-        label: 'Postulantes activos',
+        label: 'Postulaciones recibidas',
       },
       {
         value: vacancies.filter((v) => {

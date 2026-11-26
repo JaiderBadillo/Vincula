@@ -21,6 +21,13 @@ export function daysUntil(date) {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
+const todayInColombia = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+
+/** Una entrevista (`YYYY-MM-DD`) cuenta como pasada desde el día siguiente a la cita. */
+export function isPastInterview(date, today = todayInColombia()) {
+  return Boolean(date) && date < today;
+}
+
 export function formatClosingLabel(daysRemaining) {
   if (daysRemaining == null || Number.isNaN(daysRemaining)) return 'Cierre por definir';
   if (daysRemaining < 0) return 'Convocatoria cerrada';

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import GraduatePortalLayout from '../components/dashboard/GraduatePortalLayout.jsx';
 import { phaseDefinitions, proposalApplications, proposalInterviews } from '../data/proposalApplications.js';
 import { applicationService } from '../services/applicationService.js';
+import { isPastInterview } from '../utils/formatters.js';
 
 const phaseOptions = [
   { value: '1', label: 'Fase 1: Postulación recibida', shortLabel: 'Fase 1', dot: 'bg-amber-500' },
@@ -691,7 +692,7 @@ export default function MyApplicationsPage() {
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
                               <i className="bx bx-video text-purple-700 text-base" />
-                              Entrevista Programada
+                              {isPastInterview(selectedInterview.date) ? 'Entrevista' : 'Entrevista Programada'}
                             </span>
                             {(selectedInterview.platform || selectedInterview.modality) && (
                               <span className="rounded-full bg-purple-100 text-purple-800 px-2 py-0.5 text-[0.62rem] font-bold">
@@ -700,11 +701,13 @@ export default function MyApplicationsPage() {
                             )}
                           </div>
 
-                          <div className="rounded-xl border border-line-soft bg-page p-3 text-xs flex items-center justify-between">
+                          <div className="rounded-xl border border-line-soft bg-page p-3 text-xs flex flex-wrap items-center justify-between gap-2">
                             <span className="font-semibold text-ink">
                               {selectedInterview.dateFormatted || selectedInterview.date} ({selectedInterview.timeFormatted || selectedInterview.timeRange})
                             </span>
-                            {(selectedInterview.meetingUrl || selectedInterview.meetUrl) && (
+                            {isPastInterview(selectedInterview.date) ? (
+                              <span className="font-bold text-secondary">Esta entrevista ya pasó.</span>
+                            ) : (selectedInterview.meetingUrl || selectedInterview.meetUrl) && (
                               <a
                                 href={selectedInterview.meetingUrl || selectedInterview.meetUrl}
                                 target="_blank"
@@ -868,7 +871,9 @@ export default function MyApplicationsPage() {
             {selectedInterview && (
               <div className="rounded-xl border border-purple-200 bg-purple-50/50 p-3 text-xs flex items-center justify-between">
                 <span>{selectedInterview.dateFormatted || selectedInterview.date}</span>
-                {(selectedInterview.meetingUrl || selectedInterview.meetUrl) && (
+                {isPastInterview(selectedInterview.date) ? (
+                  <span className="font-bold text-secondary">Esta entrevista ya pasó.</span>
+                ) : (selectedInterview.meetingUrl || selectedInterview.meetUrl) && (
                   <a
                     href={selectedInterview.meetingUrl || selectedInterview.meetUrl}
                     target="_blank"

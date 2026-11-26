@@ -56,9 +56,13 @@ CONSULTAS = {
         SELECT r.id, r.nombre_completo, r.url_avatar, r.estado,
                string_agg(s.nombre, ', ' ORDER BY s.nombre) AS sedes
         FROM reclutadores_empresa r
+        JOIN usuarios u ON u.id = r.id_usuario
         LEFT JOIN asignacion_reclutadores_sedes a ON a.id_reclutador = r.id
         LEFT JOIN sedes_empresa s ON s.id = a.id_sede
         WHERE r.id_empresa = :e
+          -- el administrador también tiene fila aquí; solo cuenta como equipo si lleva vacantes
+          AND (u.rol = 'reclutador_empresa'
+               OR EXISTS (SELECT 1 FROM vacantes v WHERE v.id_reclutador_responsable = r.id))
         GROUP BY r.id""",
 }
 

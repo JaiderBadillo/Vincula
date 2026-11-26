@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ATS_STAGES, DISCARD_REASONS } from '../../data/companyCandidatesData.js';
 import { atsService } from '../../services/atsService.js';
+import { isPastInterview } from '../../utils/formatters.js';
 import DocumentViewerModal from '../common/DocumentViewerModal.jsx';
 import CandidateProfileModal from './CandidateProfileModal.jsx';
 import { RequiredSkills } from './CandidateProfileInfo.jsx';
@@ -53,7 +54,9 @@ function InterviewCard({ text }) {
         </div>
         <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[0.68rem] font-bold ${INTERVIEW_STATUS[iv.status] || 'border-sand-line bg-white text-secondary'}`}>{iv.status}</span>
       </div>
-      {iv.where && (isLink ? (
+      {isPastInterview(iv.date) ? (
+        <p className="m-0 text-xs font-bold text-secondary">Esta entrevista ya pasó.</p>
+      ) : iv.where && (isLink ? (
         <a href={iv.where} target="_blank" rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-xs font-bold text-terracotta-dark no-underline shadow-2xs ring-1 ring-sand-line hover:bg-sand">
           <i className="bx bx-video text-base" aria-hidden="true" />Abrir reunión
