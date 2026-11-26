@@ -278,7 +278,7 @@ export default function InstitutionGraduateValidationPage() {
           <InstitutionPageHero
             photo={advisorPhotos.graduateValidation}
             title="Validar Egresados Institucionales"
-            subtitle="Revisa la autenticidad académica, folios de acta y documentos oficiales en Supabase Storage para expedir el Sello Digital Institucional."
+            subtitle="Revisa la autenticidad académica, folios de acta y documentos oficiales para expedir el Sello Digital Institucional."
             stats={[
               { value: counts.pending, label: 'Pendientes' },
               { value: counts.approved, label: 'Aprobados' },
@@ -554,7 +554,7 @@ export default function InstitutionGraduateValidationPage() {
           onClose={() => setDrawerId(null)}
           onApprove={handleApprove}
           onOpenObservation={(st) => setObservationId(st.id)}
-          onViewDocument={(doc) => notify(`Inspeccionando ${doc.name} en Supabase Storage…`)}
+          onViewDocument={(doc) => notify(`Abriendo ${doc.name}…`)}
         />
 
         <StudentObservationModal

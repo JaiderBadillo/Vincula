@@ -34,7 +34,8 @@ export default function InstitutionLaborMarketPage() {
   }, new Map()).values()].sort((a, b) => b.vacantes - a.vacantes).slice(0, 8);
 
   const measured = rows.filter((r) => r.report?.indice_pertinencia != null);
-  const withGap = measured.filter((r) => r.report.indice_pertinencia < 75).length;
+  // Mismo criterio que cada fila y que "Brechas prioritarias": alguna técnica sin cubrir.
+  const withGap = measured.filter((r) => (r.report.demanda || []).some((d) => d.cobertura === 'brecha' && d.categoria === 'tecnica')).length;
   const openVacancies = Math.max(0, ...rows.map((r) => r.report?.total_vacantes_abiertas || 0));
 
   return (
