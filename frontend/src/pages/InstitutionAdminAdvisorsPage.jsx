@@ -243,9 +243,13 @@ export default function InstitutionAdminAdvisorsPage() {
   // Métricas generales
   const metrics = useMemo(() => {
     const activeAdvisors = advisors.filter((a) => a.status === 'active').length;
+    // Solo cuentan ids de sedes que existen; un asesor puede traer ids viejos o ajenos.
+    const existingIds = new Set(campuses.map((c) => c.id));
     const coveredCampusIds = new Set();
     advisors.forEach((adv) => {
-      getAdvisorCampusIds(adv).forEach((cid) => coveredCampusIds.add(cid));
+      getAdvisorCampusIds(adv).forEach((cid) => {
+        if (existingIds.has(cid)) coveredCampusIds.add(cid);
+      });
     });
     const mainCampus = campuses.find((c) => c.isMain);
 
